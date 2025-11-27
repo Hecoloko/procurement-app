@@ -131,7 +131,7 @@ export const ALL_VENDORS: Vendor[] = [
 
 export const DUMMY_CARTS: Cart[] = [
   {
-    id: 'cart-01', companyId: 'comp-1', name: 'Monthly Office Supplies', type: 'Recurring', itemCount: 2, totalCost: 120.50, status: 'Draft', lastModified: '2024-07-28', propertyId: 'prop-1', category: 'Office Supplies',
+    id: 'cart-01', companyId: 'comp-1', workOrderId: 'WO-0001-0001', name: 'Monthly Office Supplies', type: 'Recurring', itemCount: 2, totalCost: 120.50, status: 'Draft', lastModified: '2024-07-28', propertyId: 'prop-1', category: 'Office Supplies',
     frequency: 'Monthly', startDate: '2024-08-01', dayOfMonth: 1,
     items: [
       { id: 'item-1-1', name: 'A4 Paper Ream (500 sheets)', sku: 'PAP-A4-500', quantity: 10, unitPrice: 5.50, totalPrice: 55.00, note: 'For executive printer only' },
