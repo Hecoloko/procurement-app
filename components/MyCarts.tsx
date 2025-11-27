@@ -205,6 +205,9 @@ const CartCard: React.FC<{
 
                 <div className="mb-4">
                     <h3 className="font-bold text-base text-foreground leading-tight mb-1 truncate group-hover:text-primary transition-colors">{cart.name}</h3>
+                    {cart.workOrderId && (
+                        <p className="text-xs font-mono text-muted-foreground mb-1">#{cart.workOrderId}</p>
+                    )}
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         {property && (
                             <span className="flex items-center gap-1">
