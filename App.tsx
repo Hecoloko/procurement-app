@@ -61,32 +61,26 @@ const mapCartItem = (dbItem: any): CartItem => {
     };
 };
 
-const mapCart = (dbCart: any): Cart => {
-    if (!dbCart) return {} as Cart;
-    const items = (dbCart.cart_items || []).filter(Boolean).map(mapCartItem);
-    const calculatedTotal = items.reduce((sum: number, item: CartItem) => sum + item.totalPrice, 0);
-    const calculatedItemCount = items.length;
-
-    return {
-        id: dbCart.id,
-        companyId: dbCart.company_id,
-        name: dbCart.name,
-        type: dbCart.type,
-        status: dbCart.status,
-        itemCount: items.length > 0 ? calculatedItemCount : safeNumber(dbCart.item_count),
-        totalCost: items.length > 0 ? calculatedTotal : safeNumber(dbCart.total_cost),
-        propertyId: dbCart.property_id,
-        lastModified: new Date(dbCart.last_modified || dbCart.created_at).toLocaleDateString(),
-        category: dbCart.category,
-        scheduledDate: dbCart.scheduled_date,
-        frequency: dbCart.frequency,
-        startDate: dbCart.start_date,
-        dayOfWeek: dbCart.day_of_week,
-        dayOfMonth: dbCart.day_of_month,
-        lastRunAt: dbCart.last_run_at,
-        items: items
-    };
-};
+const mapCart = (dbCart: any): Cart => ({
+    id: dbCart.id,
+    companyId: dbCart.company_id,
+    workOrderId: dbCart.work_order_id || dbCart.id, // Fallback for old carts without work_order_id
+    name: dbCart.name,
+    type: dbCart.type,
+    status: dbCart.status,
+    itemCount: safeNumber(dbCart.item_count),
+    totalCost: safeNumber(dbCart.total_cost),
+    propertyId: dbCart.property_id,
+    lastModified: dbCart.last_modified || new Date().toISOString(),
+    category: dbCart.category,
+    scheduledDate: dbCart.scheduled_date,
+    frequency: dbCart.frequency,
+    startDate: dbCart.start_date,
+    dayOfWeek: dbCart.day_of_week,
+    dayOfMonth: dbCart.day_of_month,
+    lastRunAt: dbCart.last_run_at,
+    items: dbCart.cart_items ? dbCart.cart_items.map(mapCartItem) : []
+});
 
 const mapProduct = (dbProd: any): Product => ({
     id: dbProd.id,
@@ -593,15 +587,47 @@ export const App: React.FC = () => {
         }
     }, [viewingCompanyId]);
 
-    const handleCreateNewCart = async (cartType: CartType = 'Standard', additionalData?: any) => {
+    const handleAddCart = async (cartType: CartType = 'Standard', targetCompany?: string, additionalData?: any) => {
         if (!properties[0]) return;
         const currentUser = impersonatingUser || users.find(u => u.id === session?.user?.id);
-        const targetCompany = viewingCompanyId || currentUser?.companyId;
+        if (!targetCompany) {
+            targetCompany = viewingCompanyId || currentUser?.companyId;
+        }
 
         if (!targetCompany) return;
 
         const cartId = `cart-${Date.now()}`;
         const { propertyId, items, name, scheduledDate, startDate, dayOfWeek, dayOfMonth, frequency, category } = additionalData || {};
+
+        // Generate globally unique Work Order ID
+        let workOrderId = '';
+        let attempts = 0;
+        const maxAttempts = 10;
+
+        while (attempts < maxAttempts) {
+            const timestamp = Date.now().toString().slice(-4);
+            const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+            const candidateWO = `WO-${timestamp}-${random}`;
+
+            // Check global uniqueness across all companies
+            const { data: existing } = await supabase
+                .from('carts')
+                .select('id')
+                .eq('work_order_id', candidateWO)
+                .maybeSingle();
+
+            if (!existing) {
+                workOrderId = candidateWO;
+                break;
+            }
+
+            attempts++;
+        }
+
+        if (!workOrderId) {
+            alert('Failed to generate unique Work Order ID. Please try again.');
+            return;
+        }
 
         let initialItemCount = 0;
         let initialTotalCost = 0;
@@ -613,6 +639,7 @@ export const App: React.FC = () => {
         const dbPayload: any = {
             id: cartId,
             company_id: targetCompany,
+            work_order_id: workOrderId,
             name: name || `New ${cartType} Cart`,
             type: cartType,
             status: 'Draft',
@@ -687,6 +714,7 @@ export const App: React.FC = () => {
         const dbPayload = {
             id: newCartId,
             company_id: originalCart.company_id,
+            work_order_id: workOrderId,
             name: newName,
             type: originalCart.type,
             status: 'Draft',
@@ -1317,7 +1345,7 @@ export const App: React.FC = () => {
                     onSendMessage={handleSendMessage}
                     onSelectCart={setActiveCart}
                     onStartNewThread={handleStartThread}
-                    onNewCart={(type) => handleCreateNewCart(type)}
+                    onNewCart={(type) => handleAddCart(type)}
                     // Add Props for Full Parity
                     vendors={vendors}
                     units={units}
@@ -1407,8 +1435,8 @@ export const App: React.FC = () => {
                     <Header onQuickCartClick={() => setIsQuickCartModalOpen(true)} onCartIconClick={() => setIsCartDrawerOpen(true)} user={currentUser} activeCart={activeCart} roles={roles} />
                     <main className="flex-1 p-6 lg:p-8 overflow-y-auto">{renderContent()}</main>
                 </div>
-                <CreateCartFlowModal isOpen={isCreateCartModalOpen} onClose={() => setIsCreateCartModalOpen(false)} onSave={(data) => { handleCreateNewCart(data.type, data); return { success: true } }} properties={properties} userName={currentUser?.name || 'Unknown User'} />
-                <QuickCartModal isOpen={isQuickCartModalOpen} onClose={() => setIsQuickCartModalOpen(false)} onSave={(data) => { handleCreateNewCart('Standard', { name: data.name, propertyId: data.propertyId, items: data.items as any }); setIsQuickCartModalOpen(false); }} properties={properties} />
+                <CreateCartFlowModal isOpen={isCreateCartModalOpen} onClose={() => setIsCreateCartModalOpen(false)} onSave={(data) => { handleAddCart(data.type, viewingCompanyId || currentUser?.companyId, data); return { success: true } }} properties={properties} userName={currentUser?.name || 'Unknown User'} />
+                <QuickCartModal isOpen={isQuickCartModalOpen} onClose={() => setIsQuickCartModalOpen(false)} onSave={(data) => { handleAddCart('Standard', viewingCompanyId || currentUser?.companyId, { name: data.name, propertyId: data.propertyId, items: data.items as any }); setIsQuickCartModalOpen(false); }} properties={properties} />
                 <GlobalCartDrawer isOpen={isCartDrawerOpen} onClose={() => setIsCartDrawerOpen(false)} activeCart={activeCart} carts={carts.filter(c => c.status === 'Draft' || c.status === 'Ready for Review')} onSelectCart={setActiveCart} onUpdateItem={(prod, qty, note) => activeCart && handleUpdateCartItem(activeCart.id, prod, qty, note)} onSubmitForApproval={(cartId) => { handleSubmitCart(cartId); setIsCartDrawerOpen(false); }} onViewFullCart={() => { if (activeCart) { setIsCartDrawerOpen(false); setActiveItem('My Carts'); setSelectedCart(activeCart); setView('detail'); } }} />
                 <OrderDetailsDrawer order={selectedOrder} onClose={() => setSelectedOrder(null)} properties={properties} users={users} threads={threads} messages={messages} currentUser={currentUser} onSendMessage={handleSendMessage} orders={orders} onSelectOrder={setSelectedOrder} onUpdateOrderStatus={handleUpdateOrderStatus} onApprovalDecision={handleApprovalDecision} onProcureOrder={(o) => { setSelectedOrder(null); setOrderForProcurement(o); }} vendors={vendors} />
                 <EditScheduleModal isOpen={isEditScheduleModalOpen} onClose={() => setIsEditScheduleModalOpen(false)} cart={cartForScheduleEdit} onSave={() => { setIsEditScheduleModalOpen(false); }} />

@@ -37,7 +37,8 @@ export type RecurringFrequency = 'Weekly' | 'Bi-weekly' | 'Monthly' | 'Quarterly
 export interface Cart {
   id: string;
   companyId: string; // Multi-tenant
-  name:string;
+  workOrderId: string; // Immutable, globally unique identifier
+  name: string; // User-editable cart name
   type: CartType;
   itemCount: number;
   totalCost: number;
@@ -47,12 +48,12 @@ export interface Cart {
   propertyId: string;
   category?: string;
   // Scheduling fields
-  scheduledDate?: string; 
-  frequency?: RecurringFrequency; 
-  startDate?: string; 
-  dayOfWeek?: number; 
-  dayOfMonth?: number; 
-  lastRunAt?: string; 
+  scheduledDate?: string;
+  frequency?: RecurringFrequency;
+  startDate?: string;
+  dayOfWeek?: number;
+  dayOfMonth?: number;
+  lastRunAt?: string;
 }
 
 export interface Product {
@@ -66,14 +67,14 @@ export interface Product {
   vendorId?: string;
   primaryCategory: string;
   secondaryCategory: string;
-  rating?: number; 
+  rating?: number;
   tags?: string[];
 }
 
 export type ApprovalStatus = 'Pending My Approval' | 'Pending Others' | 'Approved' | 'Rejected';
 
 export interface ApprovalRequest {
-  id:string;
+  id: string;
   cartName: string;
   submittedBy: string;
   submissionDate: string;
@@ -81,13 +82,13 @@ export interface ApprovalRequest {
   status: ApprovalStatus;
 }
 
-export type OrderStatus = 
+export type OrderStatus =
   | 'Draft'
   | 'Ready for Review'
   | 'Submitted'
-  | 'Pending My Approval' 
-  | 'Pending Others' 
-  | 'Approved' 
+  | 'Pending My Approval'
+  | 'Pending Others'
+  | 'Approved'
   | 'Needs Revision'
   | 'Rejected'
   | 'Processing'
@@ -158,9 +159,9 @@ export interface Property {
 }
 
 export interface Unit {
-    id: string;
-    propertyId: string;
-    name: string;
+  id: string;
+  propertyId: string;
+  name: string;
 }
 
 
@@ -176,38 +177,38 @@ export interface AdminUser {
   status: 'Active' | 'Inactive';
 }
 
-export type AppModule = 
-  | 'dashboard' 
-  | 'carts' 
-  | 'orders' 
-  | 'approvals' 
+export type AppModule =
+  | 'dashboard'
+  | 'carts'
+  | 'orders'
+  | 'approvals'
   | 'purchaseOrders'
   | 'receiving'
   | 'transactions'
-  | 'reports' 
-  | 'suppliers' 
+  | 'reports'
+  | 'suppliers'
   | 'properties'
   | 'communications'
   | 'integrations'
   // Settings modules
-  | 'settings' 
-  | 'users' 
+  | 'settings'
+  | 'users'
   | 'roles'
   | 'workflows'
   | 'notifications'
   | 'companyProperties';
 
 
-export type PermissionAction = 
-  | 'view' 
+export type PermissionAction =
+  | 'view'
   | 'view-own'
   | 'view-all'
-  | 'create' 
-  | 'edit' 
+  | 'create'
+  | 'edit'
   | 'edit-own'
   | 'delete'
   | 'delete-own'
-  | 'approve' 
+  | 'approve'
   | 'submit'
   | 'procure'
   | 'impersonate';
@@ -241,49 +242,49 @@ export interface ApprovalRule {
 export type NotificationEvent = 'cartSubmission' | 'approvalRequest' | 'finalApproval' | 'purchase' | 'reception';
 
 export interface NotificationSetting {
-    id: NotificationEvent;
-    label: string;
-    email: boolean;
-    sms: boolean;
-    push: boolean;
+  id: NotificationEvent;
+  label: string;
+  email: boolean;
+  sms: boolean;
+  push: boolean;
 }
 
 // Transactions Page Types
 export type TransactionStatus = 'Completed' | 'Pending' | 'Failed' | 'Approved';
 
 export interface ProcessHistoryEvent {
-    id: string;
-    title: string;
-    description: string;
-    timestamp: string;
-    status: 'completed' | 'pending' | 'in_progress';
+  id: string;
+  title: string;
+  description: string;
+  timestamp: string;
+  status: 'completed' | 'pending' | 'in_progress';
 }
 
 export interface Transaction {
-    id: string;
-    submitter: string;
-    submitterId: string;
-    receiverId: string;
-    documentType: string;
-    documentDate: string;
-    approvalStatus: TransactionStatus;
-    ettn: string;
-    
-    // Detail Panel Info
-    invoiceNumber: string;
-    documentNumber: string;
-    portalLink: string;
-    attachments: { name: string; size: string }[];
-    processHistory: ProcessHistoryEvent[];
+  id: string;
+  submitter: string;
+  submitterId: string;
+  receiverId: string;
+  documentType: string;
+  documentDate: string;
+  approvalStatus: TransactionStatus;
+  ettn: string;
+
+  // Detail Panel Info
+  invoiceNumber: string;
+  documentNumber: string;
+  portalLink: string;
+  attachments: { name: string; size: string }[];
+  processHistory: ProcessHistoryEvent[];
 }
 
 // Communication Types
 export interface Message {
   id: string;
   threadId: string;
-  senderId: string; 
+  senderId: string;
   content: string;
-  timestamp: string; 
+  timestamp: string;
   taggedUserIds?: string[];
 }
 
@@ -291,9 +292,9 @@ export interface CommunicationThread {
   id: string;
   companyId?: string; // Multi-tenant
   subject?: string;
-  participantIds: string[]; 
+  participantIds: string[];
   orderId?: string;
-  lastMessageTimestamp: string; 
+  lastMessageTimestamp: string;
   lastMessageSnippet: string;
   isRead: boolean;
 }
