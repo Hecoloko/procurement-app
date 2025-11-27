@@ -681,7 +681,7 @@ export const App: React.FC = () => {
         // 2. Generate new metadata
         const newCartId = `cart-${Date.now()}`;
         const workOrderId = `WO-${Date.now().toString().slice(-4)}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
-        const newName = `${originalCart.type} Cart - ${currentUser.name} - ${new Date().toISOString().split('T')[0]} - ${workOrderId}`;
+        const newName = `${originalCart.type} Cart - ${currentUser.name} - ${workOrderId}`;
 
         // 3. Create new cart payload (Draft status)
         const dbPayload = {

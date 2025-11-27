@@ -75,7 +75,7 @@ const CartDetailsForm: React.FC<{
 
     const needsCategory = cartType === 'Recurring' || cartType === 'Scheduled';
 
-    const generatedName = `${cartType} Cart - ${userName} - ${new Date().toISOString().split('T')[0]} - ${workOrderId}`;
+    const generatedName = `${cartType} Cart - ${userName} - ${workOrderId}`;
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
