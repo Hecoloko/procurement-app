@@ -39,7 +39,7 @@ const MobileCommunications: React.FC<MobileCommunicationsProps> = (props) => {
         }
         return thread.subject || 'Conversation';
     };
-    
+
     const getTimeAgo = (timestamp: string) => {
         const now = new Date();
         const past = new Date(timestamp);
@@ -75,11 +75,14 @@ const MobileCommunications: React.FC<MobileCommunicationsProps> = (props) => {
     if (selectedThread) {
         const threadMessages = props.messages.filter(m => m.threadId === selectedThread.id);
         return (
-            <MobileChatView 
+            <MobileChatView
                 thread={selectedThread}
                 messages={threadMessages}
+                users={props.users}
+                orders={props.orders}
+                currentUser={props.currentUser}
+                onSendMessage={props.onSendMessage}
                 onBack={() => setSelectedThreadId(null)}
-                {...props}
             />
         )
     }

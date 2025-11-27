@@ -30,7 +30,7 @@ const Toast: React.FC<{ message: string, type: 'success' | 'error', onClose: () 
     return (
         <div className="fixed top-safe-top mt-4 left-4 right-4 z-50 animate-slide-down">
             <div className={`flex items-center gap-3 p-4 rounded-xl shadow-2xl backdrop-blur-md border ${type === 'success' ? 'bg-green-500/90 border-green-400 text-white' : 'bg-red-500/90 border-red-400 text-white'}`}>
-                {type === 'success' ? <CheckCircleIcon className="w-6 h-6"/> : <XMarkIcon className="w-6 h-6"/>}
+                {type === 'success' ? <CheckCircleIcon className="w-6 h-6" /> : <XMarkIcon className="w-6 h-6" />}
                 <p className="font-medium text-sm">{message}</p>
             </div>
         </div>
@@ -54,7 +54,7 @@ interface MobileAppProps {
     onSelectCart: (cart: Cart | null) => void;
     onStartNewThread: (participantIds: string[]) => Promise<string>;
     onNewCart: (type: CartType) => void;
-    
+
     // Extended props for full parity
     vendors: Vendor[];
     units: Unit[];
@@ -87,10 +87,10 @@ const MobileApp: React.FC<MobileAppProps> = (props) => {
     const [isFabOpen, setIsFabOpen] = useState(false);
     const [cartView, setCartView] = useState<'list' | 'add_item' | 'manual_add'>('list');
     const [isInsideMessageView, setIsInsideMessageView] = useState(false);
-    const [toast, setToast] = useState<{message: string, type: 'success'|'error'} | null>(null);
+    const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
     const { can } = usePermissions();
 
-    const showToast = (message: string, type: 'success'|'error' = 'success') => {
+    const showToast = (message: string, type: 'success' | 'error' = 'success') => {
         setToast({ message, type });
         hapticFeedback();
     }
@@ -121,7 +121,7 @@ const MobileApp: React.FC<MobileAppProps> = (props) => {
             </button>
         )
     };
-    
+
     const fabActions = useMemo(() => {
         if (activeView === 'carts' && props.activeCart && can('carts:edit-own')) {
             return [
@@ -129,7 +129,7 @@ const MobileApp: React.FC<MobileAppProps> = (props) => {
                 { label: 'Add Manually', icon: PencilIcon, action: () => { hapticFeedback(); setCartView('manual_add'); setIsFabOpen(false); } }
             ];
         }
-        if(can('carts:create') && activeView === 'carts') {
+        if (can('carts:create') && activeView === 'carts') {
             return [
                 { label: 'New Cart', icon: CartIcon, action: () => { hapticFeedback(); props.onNewCart('Standard'); showToast('New cart created'); setActiveView('carts'); setIsFabOpen(false); } }
             ];
@@ -178,21 +178,21 @@ const MobileApp: React.FC<MobileAppProps> = (props) => {
                 return (
                     <div className="pb-24 animate-slide-in-right">
                         <div className="bg-[#1E1E1E] rounded-2xl p-5 mb-6 shadow-lg border border-white/5">
-                             <div className="flex items-center gap-4 mb-6">
-                                 <img src={props.currentUser.avatarUrl} className="w-16 h-16 rounded-full border-2 border-green-500 shadow-md" alt="Profile" />
-                                 <div>
-                                     <h2 className="text-2xl font-bold text-white tracking-tight">{props.currentUser.name}</h2>
-                                     <p className="text-gray-400 text-sm font-medium">{props.roles.find(r => r.id === props.currentUser.roleId)?.name}</p>
-                                 </div>
-                             </div>
-                             {/* Company Switcher */}
-                             {props.availableCompanies.length > 1 && (
-                                 <div className="mb-6">
-                                     <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 block ml-1">Current Company</label>
-                                     <div className="relative">
-                                        <select 
+                            <div className="flex items-center gap-4 mb-6">
+                                <img src={props.currentUser.avatarUrl} className="w-16 h-16 rounded-full border-2 border-green-500 shadow-md" alt="Profile" />
+                                <div>
+                                    <h2 className="text-2xl font-bold text-white tracking-tight">{props.currentUser.name}</h2>
+                                    <p className="text-gray-400 text-sm font-medium">{props.roles.find(r => r.id === props.currentUser.roleId)?.name}</p>
+                                </div>
+                            </div>
+                            {/* Company Switcher */}
+                            {props.availableCompanies.length > 1 && (
+                                <div className="mb-6">
+                                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 block ml-1">Current Company</label>
+                                    <div className="relative">
+                                        <select
                                             value={props.currentCompanyId}
-                                            onChange={(e) => { props.onSwitchCompany(e.target.value); showToast(`Switched to ${props.availableCompanies.find(c=>c.id===e.target.value)?.name}`); }}
+                                            onChange={(e) => { props.onSwitchCompany(e.target.value); showToast(`Switched to ${props.availableCompanies.find(c => c.id === e.target.value)?.name}`); }}
                                             className="w-full bg-[#2C2C2E] text-white border border-white/10 rounded-xl py-3 px-4 appearance-none focus:outline-none focus:ring-2 focus:ring-green-500/50 font-medium text-sm shadow-inner transition-all"
                                         >
                                             {props.availableCompanies.map(c => (
@@ -200,122 +200,124 @@ const MobileApp: React.FC<MobileAppProps> = (props) => {
                                             ))}
                                         </select>
                                         <BuildingOfficeIcon className="w-5 h-5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                                     </div>
-                                 </div>
-                             )}
-                             <button onClick={() => { hapticFeedback(); props.onLogout(); }} className="w-full py-3 flex items-center justify-center gap-2 bg-red-500/10 text-red-400 rounded-xl font-semibold hover:bg-red-500/20 active:scale-[0.98] transition-all border border-red-500/20">
+                                    </div>
+                                </div>
+                            )}
+                            <button onClick={() => { hapticFeedback(); props.onLogout(); }} className="w-full py-3 flex items-center justify-center gap-2 bg-red-500/10 text-red-400 rounded-xl font-semibold hover:bg-red-500/20 active:scale-[0.98] transition-all border border-red-500/20">
                                 <LogoutIcon className="w-5 h-5" /> Log Out
-                             </button>
+                            </button>
                         </div>
 
                         <h3 className="text-xs font-bold text-gray-500 uppercase mb-4 px-2 tracking-widest">Modules</h3>
                         <div className="grid grid-cols-2 gap-4">
-                             {can('receiving:view') && (
-                                 <button onClick={() => setActiveView('receiving')} className="bg-[#1E1E1E] p-5 rounded-2xl flex flex-col items-center justify-center gap-3 hover:bg-[#252525] active:scale-95 transition-all shadow-md border border-white/5 aspect-square">
-                                     <div className="bg-cyan-500/20 p-4 rounded-full"><ShipmentIcon className="w-7 h-7 text-cyan-400"/></div>
-                                     <span className="font-semibold text-white text-sm">Receiving</span>
-                                 </button>
-                             )}
-                             {can('purchaseOrders:view') && (
-                                 <button onClick={() => setActiveView('purchaseOrders')} className="bg-[#1E1E1E] p-5 rounded-2xl flex flex-col items-center justify-center gap-3 hover:bg-[#252525] active:scale-95 transition-all shadow-md border border-white/5 aspect-square">
-                                     <div className="bg-blue-500/20 p-4 rounded-full"><POIcon className="w-7 h-7 text-blue-400"/></div>
-                                     <span className="font-semibold text-white text-sm">Purchase Orders</span>
-                                 </button>
-                             )}
-                             {can('transactions:view') && (
-                                 <button onClick={() => setActiveView('transactions')} className="bg-[#1E1E1E] p-5 rounded-2xl flex flex-col items-center justify-center gap-3 hover:bg-[#252525] active:scale-95 transition-all shadow-md border border-white/5 aspect-square">
-                                     <div className="bg-yellow-500/20 p-4 rounded-full"><TransactionIcon className="w-7 h-7 text-yellow-400"/></div>
-                                     <span className="font-semibold text-white text-sm">Transactions</span>
-                                 </button>
-                             )}
-                             {can('suppliers:view') && (
-                                 <button onClick={() => setActiveView('suppliers')} className="bg-[#1E1E1E] p-5 rounded-2xl flex flex-col items-center justify-center gap-3 hover:bg-[#252525] active:scale-95 transition-all shadow-md border border-white/5 aspect-square">
-                                     <div className="bg-purple-500/20 p-4 rounded-full"><SupplierIcon className="w-7 h-7 text-purple-400"/></div>
-                                     <span className="font-semibold text-white text-sm">Suppliers</span>
-                                 </button>
-                             )}
-                             {can('settings:view') && (
-                                 <button onClick={() => setActiveView('settings')} className="bg-[#1E1E1E] p-5 rounded-2xl flex flex-col items-center justify-center gap-3 hover:bg-[#252525] active:scale-95 transition-all shadow-md border border-white/5 aspect-square">
-                                     <div className="bg-gray-500/20 p-4 rounded-full"><SettingsIcon className="w-7 h-7 text-gray-300"/></div>
-                                     <span className="font-semibold text-white text-sm">Company Settings</span>
-                                 </button>
-                             )}
+                            {can('receiving:view') && (
+                                <button onClick={() => setActiveView('receiving')} className="bg-[#1E1E1E] p-5 rounded-2xl flex flex-col items-center justify-center gap-3 hover:bg-[#252525] active:scale-95 transition-all shadow-md border border-white/5 aspect-square">
+                                    <div className="bg-cyan-500/20 p-4 rounded-full"><ShipmentIcon className="w-7 h-7 text-cyan-400" /></div>
+                                    <span className="font-semibold text-white text-sm">Receiving</span>
+                                </button>
+                            )}
+                            {can('purchaseOrders:view') && (
+                                <button onClick={() => setActiveView('purchaseOrders')} className="bg-[#1E1E1E] p-5 rounded-2xl flex flex-col items-center justify-center gap-3 hover:bg-[#252525] active:scale-95 transition-all shadow-md border border-white/5 aspect-square">
+                                    <div className="bg-blue-500/20 p-4 rounded-full"><POIcon className="w-7 h-7 text-blue-400" /></div>
+                                    <span className="font-semibold text-white text-sm">Purchase Orders</span>
+                                </button>
+                            )}
+                            {can('transactions:view') && (
+                                <button onClick={() => setActiveView('transactions')} className="bg-[#1E1E1E] p-5 rounded-2xl flex flex-col items-center justify-center gap-3 hover:bg-[#252525] active:scale-95 transition-all shadow-md border border-white/5 aspect-square">
+                                    <div className="bg-yellow-500/20 p-4 rounded-full"><TransactionIcon className="w-7 h-7 text-yellow-400" /></div>
+                                    <span className="font-semibold text-white text-sm">Transactions</span>
+                                </button>
+                            )}
+                            {can('suppliers:view') && (
+                                <button onClick={() => setActiveView('suppliers')} className="bg-[#1E1E1E] p-5 rounded-2xl flex flex-col items-center justify-center gap-3 hover:bg-[#252525] active:scale-95 transition-all shadow-md border border-white/5 aspect-square">
+                                    <div className="bg-purple-500/20 p-4 rounded-full"><SupplierIcon className="w-7 h-7 text-purple-400" /></div>
+                                    <span className="font-semibold text-white text-sm">Suppliers</span>
+                                </button>
+                            )}
+                            {can('settings:view') && (
+                                <button onClick={() => setActiveView('settings')} className="bg-[#1E1E1E] p-5 rounded-2xl flex flex-col items-center justify-center gap-3 hover:bg-[#252525] active:scale-95 transition-all shadow-md border border-white/5 aspect-square">
+                                    <div className="bg-gray-500/20 p-4 rounded-full"><SettingsIcon className="w-7 h-7 text-gray-300" /></div>
+                                    <span className="font-semibold text-white text-sm">Company Settings</span>
+                                </button>
+                            )}
                         </div>
                     </div>
                 );
-                
+
             // --- WRAPPED DESKTOP COMPONENTS ---
             case 'settings':
                 return (
                     <div className="bg-gray-50 min-h-full -m-4 sm:-m-6 p-4 sm:p-6 text-gray-900 pb-32 animate-slide-in-right">
                         <div className="flex items-center gap-3 mb-6 sticky top-0 bg-gray-50/90 backdrop-blur-sm py-2 z-10">
-                            <button onClick={() => { hapticFeedback(); setActiveView('more'); }} className="p-2 bg-white rounded-full shadow-sm text-gray-600 active:bg-gray-100"><XMarkIcon className="w-6 h-6"/></button>
+                            <button onClick={() => { hapticFeedback(); setActiveView('more'); }} className="p-2 bg-white rounded-full shadow-sm text-gray-600 active:bg-gray-100"><XMarkIcon className="w-6 h-6" /></button>
                             <h2 className="font-bold text-xl tracking-tight">Settings</h2>
                         </div>
-                        <AdminSettings 
-                            vendors={props.vendors} 
-                            properties={props.properties} 
-                            units={props.units} 
-                            users={props.users} 
-                            roles={props.roles} 
-                            currentUser={props.currentUser} 
-                            onAddProperty={props.onAddProperty} 
-                            onAddUnit={props.onAddUnit} 
-                            onAddRole={props.onAddRole} 
-                            onUpdateRole={props.onUpdateRole} 
-                            onDeleteRole={props.onDeleteRole} 
-                            onViewAsUser={props.onImpersonate} 
+                        <AdminSettings
+                            vendors={props.vendors}
+                            properties={props.properties}
+                            units={props.units}
+                            users={props.users}
+                            roles={props.roles}
+                            currentUser={props.currentUser}
+                            onAddProperty={props.onAddProperty}
+                            onAddUnit={props.onAddUnit}
+                            onAddRole={props.onAddRole}
+                            onUpdateRole={props.onUpdateRole}
+                            onDeleteRole={props.onDeleteRole}
+                            onViewAsUser={props.onImpersonate}
                             onAddUser={props.onAddUser}
+                            onDeleteUser={() => { }}
+                            onDeleteProperty={() => { }}
                         />
                     </div>
                 );
             case 'receiving':
                 return (
                     <div className="bg-gray-50 min-h-full -m-4 sm:-m-6 p-4 sm:p-6 text-gray-900 pb-32 animate-slide-in-right">
-                         <div className="flex items-center gap-3 mb-6 sticky top-0 bg-gray-50/90 backdrop-blur-sm py-2 z-10">
-                            <button onClick={() => { hapticFeedback(); setActiveView('more'); }} className="p-2 bg-white rounded-full shadow-sm text-gray-600 active:bg-gray-100"><XMarkIcon className="w-6 h-6"/></button>
+                        <div className="flex items-center gap-3 mb-6 sticky top-0 bg-gray-50/90 backdrop-blur-sm py-2 z-10">
+                            <button onClick={() => { hapticFeedback(); setActiveView('more'); }} className="p-2 bg-white rounded-full shadow-sm text-gray-600 active:bg-gray-100"><XMarkIcon className="w-6 h-6" /></button>
                             <h2 className="font-bold text-xl tracking-tight">Receiving</h2>
                         </div>
-                        <Receiving orders={props.orders} vendors={props.vendors} onUpdatePoStatus={props.onUpdatePoStatus} onSelectOrder={() => {}} />
+                        <Receiving orders={props.orders} vendors={props.vendors} onUpdatePoStatus={props.onUpdatePoStatus} onSelectOrder={() => { }} />
                     </div>
                 );
             case 'suppliers':
                 return (
                     <div className="bg-gray-50 min-h-full -m-4 sm:-m-6 p-4 sm:p-6 text-gray-900 pb-32 animate-slide-in-right">
                         <div className="flex items-center gap-3 mb-6 sticky top-0 bg-gray-50/90 backdrop-blur-sm py-2 z-10">
-                            <button onClick={() => { hapticFeedback(); setActiveView('more'); }} className="p-2 bg-white rounded-full shadow-sm text-gray-600 active:bg-gray-100"><XMarkIcon className="w-6 h-6"/></button>
+                            <button onClick={() => { hapticFeedback(); setActiveView('more'); }} className="p-2 bg-white rounded-full shadow-sm text-gray-600 active:bg-gray-100"><XMarkIcon className="w-6 h-6" /></button>
                             <h2 className="font-bold text-xl tracking-tight">Suppliers</h2>
                         </div>
-                        <Suppliers 
-                            vendors={props.vendors} 
-                            products={props.products} 
-                            orders={props.orders} 
-                            properties={props.properties} 
-                            onSelectOrder={() => {}} 
-                            onAddVendor={props.onAddVendor} 
-                            onAddProduct={props.onAddProduct} 
-                            onAddVendorAccount={props.onAddVendorAccount} 
+                        <Suppliers
+                            vendors={props.vendors}
+                            products={props.products}
+                            orders={props.orders}
+                            properties={props.properties}
+                            onSelectOrder={() => { }}
+                            onAddVendor={props.onAddVendor}
+                            onAddProduct={props.onAddProduct}
+                            onAddVendorAccount={props.onAddVendorAccount}
                         />
                     </div>
                 );
-             case 'transactions':
+            case 'transactions':
                 return (
                     <div className="bg-gray-50 min-h-full -m-4 sm:-m-6 p-4 sm:p-6 text-gray-900 pb-32 animate-slide-in-right">
                         <div className="flex items-center gap-3 mb-6 sticky top-0 bg-gray-50/90 backdrop-blur-sm py-2 z-10">
-                            <button onClick={() => { hapticFeedback(); setActiveView('more'); }} className="p-2 bg-white rounded-full shadow-sm text-gray-600 active:bg-gray-100"><XMarkIcon className="w-6 h-6"/></button>
+                            <button onClick={() => { hapticFeedback(); setActiveView('more'); }} className="p-2 bg-white rounded-full shadow-sm text-gray-600 active:bg-gray-100"><XMarkIcon className="w-6 h-6" /></button>
                             <h2 className="font-bold text-xl tracking-tight">Transactions</h2>
                         </div>
                         <Transactions />
                     </div>
                 );
-             case 'purchaseOrders':
+            case 'purchaseOrders':
                 return (
                     <div className="bg-gray-50 min-h-full -m-4 sm:-m-6 p-4 sm:p-6 text-gray-900 pb-32 animate-slide-in-right">
                         <div className="flex items-center gap-3 mb-6 sticky top-0 bg-gray-50/90 backdrop-blur-sm py-2 z-10">
-                            <button onClick={() => { hapticFeedback(); setActiveView('more'); }} className="p-2 bg-white rounded-full shadow-sm text-gray-600 active:bg-gray-100"><XMarkIcon className="w-6 h-6"/></button>
+                            <button onClick={() => { hapticFeedback(); setActiveView('more'); }} className="p-2 bg-white rounded-full shadow-sm text-gray-600 active:bg-gray-100"><XMarkIcon className="w-6 h-6" /></button>
                             <h2 className="font-bold text-xl tracking-tight">Purchase Orders</h2>
                         </div>
-                        <PurchaseOrders orders={props.orders} vendors={props.vendors} onSelectOrder={() => {}} properties={props.properties} />
+                        <PurchaseOrders orders={props.orders} vendors={props.vendors} onSelectOrder={() => { }} properties={props.properties} />
                     </div>
                 );
             default:
@@ -338,7 +340,7 @@ const MobileApp: React.FC<MobileAppProps> = (props) => {
                 `}
             </style>
             {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-            
+
             <div className="fixed inset-0 bg-[#121212] text-white font-sans overflow-hidden flex flex-col">
                 {/* Background accent */}
                 <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[40%] bg-green-600/20 rounded-full blur-[100px] pointer-events-none"></div>
@@ -362,47 +364,47 @@ const MobileApp: React.FC<MobileAppProps> = (props) => {
                         {renderContent()}
                     </div>
                 </main>
-                
+
                 {!isInsideMessageView && (
-                <>
-                    {/* FAB Modal */}
-                    {isFabOpen && (
-                        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 animate-fade-in touch-none" onClick={() => setIsFabOpen(false)}>
-                            <div className="absolute bottom-32 right-1/2 translate-x-1/2 w-full px-10 flex flex-col items-end gap-5 animate-slide-up">
-                                {fabActions.map((action, index) => (
-                                    <div key={action.label} className="flex items-center justify-end gap-4 w-full">
-                                        <span className="bg-white/90 text-gray-900 text-sm font-bold px-4 py-2 rounded-full shadow-xl">{action.label}</span>
-                                        <button onClick={action.action} className="bg-white text-gray-900 rounded-full w-14 h-14 flex items-center justify-center shadow-xl active:scale-90 transition-transform">
-                                            <action.icon className="w-6 h-6" />
+                    <>
+                        {/* FAB Modal */}
+                        {isFabOpen && (
+                            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 animate-fade-in touch-none" onClick={() => setIsFabOpen(false)}>
+                                <div className="absolute bottom-32 right-1/2 translate-x-1/2 w-full px-10 flex flex-col items-end gap-5 animate-slide-up">
+                                    {fabActions.map((action, index) => (
+                                        <div key={action.label} className="flex items-center justify-end gap-4 w-full">
+                                            <span className="bg-white/90 text-gray-900 text-sm font-bold px-4 py-2 rounded-full shadow-xl">{action.label}</span>
+                                            <button onClick={action.action} className="bg-white text-gray-900 rounded-full w-14 h-14 flex items-center justify-center shadow-xl active:scale-90 transition-transform">
+                                                <action.icon className="w-6 h-6" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Bottom Navigation */}
+                        <footer className="fixed bottom-0 left-0 right-0 pb-safe-bottom bg-[#121212]/90 backdrop-blur-xl border-t border-white/5 z-50">
+                            <div className="flex justify-around items-center h-[60px] px-2">
+                                <div className="w-1/5"><NavButton view="approvals" label="Home" icon={ApprovalIcon} permission="approvals:view" /></div>
+                                <div className="w-1/5"><NavButton view="carts" label="Carts" icon={CartIcon} permission="carts:view" /></div>
+
+                                <div className="w-1/5 flex justify-center relative">
+                                    {fabActions.length > 0 && (
+                                        <button
+                                            onClick={() => { hapticFeedback(); setIsFabOpen(!isFabOpen); }}
+                                            className={`absolute -top-6 w-14 h-14 bg-green-500 text-white rounded-full flex items-center justify-center shadow-lg shadow-green-500/30 transition-all duration-300 cubic-bezier(0.68, -0.55, 0.265, 1.55) transform ${isFabOpen ? 'rotate-[135deg] bg-gray-700 scale-90' : 'hover:scale-105 active:scale-95'} border-[4px] border-[#121212]`}
+                                        >
+                                            <PlusIcon className="w-7 h-7" />
                                         </button>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
+                                    )}
+                                </div>
 
-                    {/* Bottom Navigation */}
-                    <footer className="fixed bottom-0 left-0 right-0 pb-safe-bottom bg-[#121212]/90 backdrop-blur-xl border-t border-white/5 z-50">
-                        <div className="flex justify-around items-center h-[60px] px-2">
-                            <div className="w-1/5"><NavButton view="approvals" label="Home" icon={ApprovalIcon} permission="approvals:view" /></div>
-                            <div className="w-1/5"><NavButton view="carts" label="Carts" icon={CartIcon} permission="carts:view" /></div>
-                            
-                            <div className="w-1/5 flex justify-center relative">
-                                {fabActions.length > 0 && (
-                                    <button 
-                                        onClick={() => { hapticFeedback(); setIsFabOpen(!isFabOpen); }}
-                                        className={`absolute -top-6 w-14 h-14 bg-green-500 text-white rounded-full flex items-center justify-center shadow-lg shadow-green-500/30 transition-all duration-300 cubic-bezier(0.68, -0.55, 0.265, 1.55) transform ${isFabOpen ? 'rotate-[135deg] bg-gray-700 scale-90' : 'hover:scale-105 active:scale-95'} border-[4px] border-[#121212]`}
-                                    >
-                                        <PlusIcon className="w-7 h-7"/>
-                                    </button>
-                                )}
+                                <div className="w-1/5"><NavButton view="orders" label="Orders" icon={POIcon} permission="orders:view" /></div>
+                                <div className="w-1/5"><NavButton view="more" label="Menu" icon={Bars3Icon} /></div>
                             </div>
-
-                            <div className="w-1/5"><NavButton view="orders" label="Orders" icon={POIcon} permission="orders:view" /></div>
-                            <div className="w-1/5"><NavButton view="more" label="Menu" icon={Bars3Icon} /></div>
-                        </div>
-                    </footer>
-                </>
+                        </footer>
+                    </>
                 )}
             </div>
         </>
