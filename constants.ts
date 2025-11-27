@@ -139,7 +139,7 @@ export const DUMMY_CARTS: Cart[] = [
     ]
   },
   {
-    id: 'cart-02', companyId: 'comp-1', name: 'New Hire Workstations', type: 'Standard', itemCount: 3, totalCost: 6800.00, status: 'Ready for Review', lastModified: '2024-07-27', propertyId: 'prop-1',
+    id: 'cart-02', companyId: 'comp-1', workOrderId: 'WO-0002-0002', name: 'New Hire Workstations', type: 'Standard', itemCount: 3, totalCost: 6800.00, status: 'Ready for Review', lastModified: '2024-07-27', propertyId: 'prop-1',
     items: [
       { id: 'item-2-1', name: 'Ergonomic Office Chair', sku: 'CHR-ERGO-01', quantity: 4, unitPrice: 350.00, totalPrice: 1400.00, note: 'With extra lumbar support option' },
       { id: 'item-2-2', name: 'Sit-Stand Electric Desk', sku: 'DSK-SST-ELC', quantity: 4, unitPrice: 550.00, totalPrice: 2200.00 },
@@ -147,34 +147,34 @@ export const DUMMY_CARTS: Cart[] = [
     ]
   },
   {
-    id: 'cart-03', companyId: 'comp-1', name: 'Q4 Marketing Event Swag', type: 'Scheduled', itemCount: 2, totalCost: 3200.50, status: 'Draft', lastModified: '2024-07-25', scheduledDate: '2024-10-15', propertyId: 'prop-2', category: 'Marketing',
+    id: 'cart-03', companyId: 'comp-1', workOrderId: 'WO-0003-0003', name: 'Q4 Marketing Event Swag', type: 'Scheduled', itemCount: 2, totalCost: 3200.50, status: 'Draft', lastModified: '2024-07-25', scheduledDate: '2024-10-15', propertyId: 'prop-2', category: 'Marketing',
     items: [
       { id: 'item-3-1', name: 'Branded T-Shirts (Medium)', sku: 'SWG-TS-M', quantity: 150, unitPrice: 10.00, totalPrice: 1500.00 },
       { id: 'item-3-2', name: 'Custom Water Bottles', sku: 'SWG-WTR-BTL', quantity: 200, unitPrice: 8.50, totalPrice: 1700.50, note: 'Logo placement on the side' },
     ]
   },
   {
-    id: 'cart-04', companyId: 'comp-1', name: 'Kitchen Restock', type: 'Standard', itemCount: 1, totalCost: 125.00, status: 'Submitted', lastModified: '2024-07-22', propertyId: 'prop-1',
+    id: 'cart-04', companyId: 'comp-1', workOrderId: 'WO-0004-0004', name: 'Kitchen Restock', type: 'Standard', itemCount: 1, totalCost: 125.00, status: 'Submitted', lastModified: '2024-07-22', propertyId: 'prop-1',
     items: [
       { id: 'item-4-1', name: 'Gourmet Coffee Beans (5lb)', sku: 'COF-GRMT-5LB', quantity: 5, unitPrice: 25.00, totalPrice: 125.00 },
     ]
   },
   {
-    id: 'cart-05', companyId: 'comp-1', name: 'IT Department - Laptops', type: 'Standard', itemCount: 2, totalCost: 9500.00, status: 'Draft', lastModified: '2024-07-29', propertyId: 'prop-1',
+    id: 'cart-05', companyId: 'comp-1', workOrderId: 'WO-0005-0005', name: 'IT Department - Laptops', type: 'Standard', itemCount: 2, totalCost: 9500.00, status: 'Draft', lastModified: '2024-07-29', propertyId: 'prop-1',
     items: [
       { id: 'item-5-1', name: '16" Pro Laptop', sku: 'LAP-PRO-16', quantity: 5, unitPrice: 1800.00, totalPrice: 9000.00 },
       { id: 'item-5-2', name: 'Laptop Docking Station', sku: 'LAP-DOCK-01', quantity: 5, unitPrice: 100.00, totalPrice: 500.00 },
     ]
   },
   {
-    id: 'cart-06', companyId: 'comp-1', name: 'Bi-weekly Fruit Delivery', type: 'Recurring', itemCount: 1, totalCost: 80.00, status: 'Submitted', lastModified: '2024-07-26', propertyId: 'prop-2', category: 'Kitchen & Breakroom',
+    id: 'cart-06', companyId: 'comp-1', workOrderId: 'WO-0006-0006', name: 'Bi-weekly Fruit Delivery', type: 'Recurring', itemCount: 1, totalCost: 80.00, status: 'Submitted', lastModified: '2024-07-26', propertyId: 'prop-2', category: 'Kitchen & Breakroom',
     frequency: 'Bi-weekly', startDate: '2024-08-02', dayOfWeek: 5, // Friday
     items: [
       { id: 'item-6-1', name: 'Office Fruit Basket', sku: 'FRT-BSK-LG', quantity: 1, unitPrice: 80.00, totalPrice: 80.00 },
     ]
   },
   {
-    id: 'cart-07', companyId: 'comp-1', name: 'Office Expansion Furniture', type: 'Scheduled', itemCount: 3, totalCost: 4500.00, status: 'Ready for Review', lastModified: '2024-07-24', scheduledDate: '2024-09-01', propertyId: 'prop-2', category: 'Furniture',
+    id: 'cart-07', companyId: 'comp-1', workOrderId: 'WO-0007-0007', name: 'Office Expansion Furniture', type: 'Scheduled', itemCount: 3, totalCost: 4500.00, status: 'Ready for Review', lastModified: '2024-07-24', scheduledDate: '2024-09-01', propertyId: 'prop-2', category: 'Furniture',
     items: [
       { id: 'item-7-1', name: 'Conference Table', sku: 'TBL-CONF-10P', quantity: 1, unitPrice: 1200.00, totalPrice: 1200.00 },
       { id: 'item-7-2', name: 'Conference Chairs (Set of 10)', sku: 'CHR-CONF-10', quantity: 1, unitPrice: 2500.00, totalPrice: 2500.00 },
@@ -182,7 +182,7 @@ export const DUMMY_CARTS: Cart[] = [
     ]
   },
   {
-    id: 'cart-08', companyId: 'comp-1', name: 'Server Room Upgrade', type: 'Standard', itemCount: 4, totalCost: 25700.00, status: 'Draft', lastModified: '2024-07-30', propertyId: 'prop-1',
+    id: 'cart-08', companyId: 'comp-1', workOrderId: 'WO-0008-0008', name: 'Server Room Upgrade', type: 'Standard', itemCount: 4, totalCost: 25700.00, status: 'Draft', lastModified: '2024-07-30', propertyId: 'prop-1',
     items: [
       { id: 'item-8-1', name: 'Rack Server 2U', sku: 'SRV-RACK-2U', quantity: 4, unitPrice: 5000.00, totalPrice: 20000.00 },
       { id: 'item-8-2', name: '48-Port Network Switch', sku: 'NET-SW-48', quantity: 2, unitPrice: 1500.00, totalPrice: 3000.00 },
