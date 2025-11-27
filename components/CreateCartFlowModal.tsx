@@ -119,26 +119,26 @@ const CartDetailsForm: React.FC<{
             {error && <div className="bg-red-500/20 border border-red-500/50 text-white px-4 py-3 rounded-lg text-sm mb-6 backdrop-blur-md" role="alert">{error}</div>}
 
             <div className="space-y-6">
-                {/* Editable Cart Name */}
-                <div>
-                    <label htmlFor="cartName" className="block text-sm font-medium text-white/90 mb-1">Cart Name *</label>
-                    <input
-                        type="text"
-                        id="cartName"
-                        value={cartName}
-                        onChange={(e) => setCartName(e.target.value)}
-                        placeholder="e.g. Office Supplies - Q1"
-                        required
-                        className="block w-full px-4 py-2.5 bg-white/10 border border-white/10 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-transparent text-white placeholder-white/30 outline-none transition-all"
-                    />
-                </div>
+                {/* Cart Name (left) and Work Order ID (right) - Same Row */}
+                <div className="flex items-center gap-4">
+                    <div className="flex-1">
+                        <label htmlFor="cartName" className="block text-sm font-medium text-white/90 mb-1">Cart Name *</label>
+                        <input
+                            type="text"
+                            id="cartName"
+                            value={cartName}
+                            onChange={(e) => setCartName(e.target.value)}
+                            placeholder="e.g. Office Supplies - Q1"
+                            required
+                            className="block w-full px-4 py-2.5 bg-white/10 border border-white/10 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-transparent text-white placeholder-white/30 outline-none transition-all"
+                        />
+                    </div>
 
-                {/* Read-only Work Order ID Display */}
-                <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-                    <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-1">Work Order ID (Auto-Generated)</label>
-                    <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono text-green-400 bg-green-400/10 px-2 py-1.5 rounded font-bold">{workOrderId}</span>
-                        <span className="text-xs text-white/40">Cannot be edited</span>
+                    <div className="flex-shrink-0 pt-6">
+                        <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3">
+                            <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-1">Work Order</label>
+                            <span className="text-sm font-mono text-green-400 bg-green-400/10 px-2 py-1 rounded font-bold whitespace-nowrap">{workOrderId}</span>
+                        </div>
                     </div>
                 </div>
 
