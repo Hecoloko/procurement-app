@@ -6,7 +6,6 @@ import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import MyCarts from './components/MyCarts';
 import CartDetail from './components/CartDetail';
-import ProductCatalog from './components/ProductCatalog';
 import { Cart, Product, Order, OrderStatus, Vendor, Property, Unit, AdminUser, CommunicationThread, Message, CartType, CartItem, ItemApprovalStatus, Role, PurchaseOrder, Company } from './types';
 import Approvals from './components/Approvals';
 import AllOrders from './components/AllOrders';

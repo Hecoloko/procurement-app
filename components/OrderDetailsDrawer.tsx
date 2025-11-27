@@ -21,7 +21,7 @@ const getTrackingUrl = (carrier: string, trackingNumber: string): string => {
 const PurchaseOrderDetail: React.FC<{ po: PurchaseOrder, vendors: Vendor[] }> = ({ po, vendors }) => {
     const [isExpanded, setIsExpanded] = useState(true);
     const vendor = vendors.find(v => v.id === po.vendorId);
-    
+
     const poTimelineSteps: { key: PurchaseOrderStatus; label: string }[] = [
         { key: 'Issued', label: 'Ordered' },
         { key: 'Purchased', label: 'Purchased' },
@@ -37,7 +37,7 @@ const PurchaseOrderDetail: React.FC<{ po: PurchaseOrder, vendors: Vendor[] }> = 
         // Fallback: Infer history from current status
         const orderedPath: PurchaseOrderStatus[] = ['Issued', 'Purchased', 'In Transit', 'Received'];
         const currentStepIndex = orderedPath.indexOf(po.status);
-        
+
         if (currentStepIndex === -1) return [];
 
         return orderedPath.slice(0, currentStepIndex + 1).map(status => ({
@@ -67,7 +67,7 @@ const PurchaseOrderDetail: React.FC<{ po: PurchaseOrder, vendors: Vendor[] }> = 
                         />
                     </div>
                     <div className="mt-4">
-                         <table className="w-full text-sm">
+                        <table className="w-full text-sm">
                             <thead className="text-xs text-gray-500">
                                 <tr>
                                     <th className="pb-2 text-left font-medium">Product</th>
@@ -86,7 +86,7 @@ const PurchaseOrderDetail: React.FC<{ po: PurchaseOrder, vendors: Vendor[] }> = 
                             </tbody>
                         </table>
                     </div>
-                     {po.carrier && po.trackingNumber && (
+                    {po.carrier && po.trackingNumber && (
                         <div className="mt-4">
                             <h5 className="font-semibold text-gray-700 mb-2 text-xs">Shipment Tracking</h5>
                             <div className="bg-gray-50 p-3 rounded-lg border flex flex-wrap items-center justify-between gap-4">
@@ -122,8 +122,8 @@ const getStatusTheme = (status: ItemApprovalStatus) => {
     }
 };
 
-const DetailsTab: React.FC<{ 
-    order: Order; 
+const DetailsTab: React.FC<{
+    order: Order;
     properties: Property[];
     vendors: Vendor[];
     itemDecisions: Map<string, { status: 'Approved' | 'Rejected'; reason?: string }>;
@@ -134,10 +134,10 @@ const DetailsTab: React.FC<{
     onProcure: () => void;
 }> = ({ order, properties, vendors, itemDecisions, onDecisionChange, onApproveAll, onRejectAll, canProcure, onProcure }) => {
     const isApproverView = order?.status === 'Pending My Approval';
-     const [rejectionReasons, setRejectionReasons] = useState<Record<string, string>>({});
+    const [rejectionReasons, setRejectionReasons] = useState<Record<string, string>>({});
 
     const handleReasonChange = (itemId: string, reason: string) => {
-        setRejectionReasons(prev => ({...prev, [itemId]: reason}));
+        setRejectionReasons(prev => ({ ...prev, [itemId]: reason }));
     };
 
     const handleRejectWithReason = (itemId: string) => {
@@ -156,21 +156,21 @@ const DetailsTab: React.FC<{
 
         return order.items.filter(item => !assignedItemIds.has(item.id));
     }, [order]);
-    
+
     const isPreProcessing = useMemo(() => {
-        const preProcessingStatuses: OrderStatus[] = [ 'Draft', 'Ready for Review', 'Submitted', 'Pending My Approval', 'Pending Others', 'Rejected', 'Needs Revision' ];
+        const preProcessingStatuses: OrderStatus[] = ['Draft', 'Ready for Review', 'Submitted', 'Pending My Approval', 'Pending Others', 'Rejected', 'Needs Revision'];
         return preProcessingStatuses.includes(order.status);
     }, [order]);
 
     // Updated to match the requested flow
-    const orderTimelineSteps: { key: string, label: string }[] = [ 
-        { key: 'Submitted', label: 'Pending Approval' }, 
-        { key: 'Approved', label: 'Awaiting Purchase' }, 
-        { key: 'Processing', label: 'In Progress Purchase' }, 
-        { key: 'Shipped', label: 'In Transit' }, 
-        { key: 'Completed', label: 'Completed' }, 
+    const orderTimelineSteps: { key: string, label: string }[] = [
+        { key: 'Submitted', label: 'Pending Approval' },
+        { key: 'Approved', label: 'Awaiting Purchase' },
+        { key: 'Processing', label: 'In Progress Purchase' },
+        { key: 'Shipped', label: 'In Transit' },
+        { key: 'Completed', label: 'Completed' },
     ];
-    
+
     const getOrderStatusHistoryForTimeline = (order: Order | null): { status: string; date: string; }[] => {
         if (!order) return [];
         if (order.statusHistory && order.statusHistory.length > 0) {
@@ -186,7 +186,7 @@ const DetailsTab: React.FC<{
                 }
 
                 if (milestone && !milestoneDates.has(milestone)) {
-                  milestoneDates.set(milestone, h.date);
+                    milestoneDates.set(milestone, h.date);
                 }
             });
             return Array.from(milestoneDates.entries()).map(([status, date]) => ({ status, date }));
@@ -197,7 +197,7 @@ const DetailsTab: React.FC<{
         if (typeof currentStepIndex !== 'number') return [];
         return orderedPath.slice(0, currentStepIndex + 1).map(status => ({ status, date: order.submissionDate }));
     };
-    
+
     const timelineHistory = getOrderStatusHistoryForTimeline(order);
     return (
         <div className="space-y-6 pb-24">
@@ -205,10 +205,10 @@ const DetailsTab: React.FC<{
                 <h3 className="font-semibold text-gray-800 mb-2 text-base px-2">Order Status</h3>
                 <StatusTimeline steps={orderTimelineSteps} history={timelineHistory} />
             </div>
-            
-             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+
+            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
                 <h3 className="font-semibold text-gray-800 mb-4 text-base">Order Summary</h3>
-                 <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
                     <div className="text-gray-500">Submitted By:</div><div className="font-semibold text-gray-800">{order?.submittedBy}</div>
                     <div className="text-gray-500">Property:</div><div className="font-semibold text-gray-800">{properties.find(p => p.id === order?.propertyId)?.name || 'N/A'}</div>
                     <div className="text-gray-500">Date:</div><div className="font-semibold text-gray-800">{order?.submissionDate}</div>
@@ -219,10 +219,10 @@ const DetailsTab: React.FC<{
 
             {isPreProcessing ? (
                 order?.items && order.items.length > 0 && (
-                   <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                         <div className="p-4 border-b flex justify-between items-center">
                             <h3 className="font-semibold text-gray-700">Items for Approval</h3>
-                             {isApproverView && (
+                            {isApproverView && (
                                 <div className="flex items-center gap-2">
                                     <button onClick={onApproveAll} className="text-xs font-bold bg-green-100 text-green-700 hover:bg-green-200 px-4 py-1.5 rounded-full transition-colors">Approve All</button>
                                     <button onClick={onRejectAll} className="text-xs font-bold bg-red-100 text-red-700 hover:bg-red-200 px-4 py-1.5 rounded-full transition-colors">Reject All</button>
@@ -236,35 +236,36 @@ const DetailsTab: React.FC<{
                                 const reason = decision?.reason || item.rejectionReason;
                                 const isPendingForApproval = (item.approvalStatus || 'Pending') === 'Pending';
                                 return (
-                                <div key={item.id} className="p-4 hover:bg-gray-50 transition-colors">
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <p className="font-semibold text-gray-800 text-base">{item.name}</p>
-                                            <p className="text-sm text-gray-500 mt-1">{item.quantity} x ${item.unitPrice.toFixed(2)} = <span className="font-semibold text-gray-700">${item.totalPrice.toFixed(2)}</span></p>
+                                    <div key={item.id} className="p-4 hover:bg-gray-50 transition-colors">
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <p className="font-semibold text-gray-800 text-base">{item.name}</p>
+                                                <p className="text-sm text-gray-500 mt-1">{item.quantity} x ${item.unitPrice.toFixed(2)} = <span className="font-semibold text-gray-700">${item.totalPrice.toFixed(2)}</span></p>
+                                            </div>
+                                            <span className={`px-3 py-1 text-xs font-bold rounded-full uppercase tracking-wide ${getStatusTheme(status)}`}>{status}</span>
                                         </div>
-                                        <span className={`px-3 py-1 text-xs font-bold rounded-full uppercase tracking-wide ${getStatusTheme(status)}`}>{status}</span>
+                                        {status === 'Rejected' && reason && <p className="mt-3 text-sm text-red-600 bg-red-50 p-2 rounded-md border border-red-100">Reason: {reason}</p>}
+
+                                        {isApproverView && isPendingForApproval && !decision && (
+                                            <div className="mt-4 flex items-center gap-4">
+                                                <button onClick={() => onDecisionChange(item.id, { status: 'Approved' })} className="text-sm font-semibold text-green-600 hover:text-green-800 hover:bg-green-50 px-2 py-1 rounded">Approve</button>
+                                                <div className="w-px h-4 bg-gray-300"></div>
+                                                <button onClick={() => setRejectionReasons(prev => ({ ...prev, [item.id]: '' }))} className="text-sm font-semibold text-red-600 hover:text-red-800 hover:bg-red-50 px-2 py-1 rounded">Reject</button>
+                                            </div>
+                                        )}
+                                        {isApproverView && isPendingForApproval && rejectionReasons[item.id] !== undefined && !decision && (
+                                            <div className="mt-3 flex items-center gap-2">
+                                                <input type="text" placeholder="Reason for rejection (optional)" value={rejectionReasons[item.id]} onChange={e => handleReasonChange(item.id, e.target.value)} className="flex-grow text-sm border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500 p-1.5" autoFocus />
+                                                <button onClick={() => handleRejectWithReason(item.id)} className="px-3 py-1.5 text-sm font-bold bg-red-500 text-white rounded-md hover:bg-red-600">Confirm Reject</button>
+                                                <button onClick={() => { const newReasons = { ...rejectionReasons }; delete newReasons[item.id]; setRejectionReasons(newReasons); }} className="text-xs text-gray-500 underline">Cancel</button>
+                                            </div>
+                                        )}
+                                        {isApproverView && decision && (
+                                            <button onClick={() => onDecisionChange(item.id, undefined as any)} className="mt-2 text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline">Undo Decision</button>
+                                        )}
                                     </div>
-                                    {status === 'Rejected' && reason && <p className="mt-3 text-sm text-red-600 bg-red-50 p-2 rounded-md border border-red-100">Reason: {reason}</p>}
-                                    
-                                    {isApproverView && isPendingForApproval && !decision && (
-                                        <div className="mt-4 flex items-center gap-4">
-                                            <button onClick={() => onDecisionChange(item.id, { status: 'Approved' })} className="text-sm font-semibold text-green-600 hover:text-green-800 hover:bg-green-50 px-2 py-1 rounded">Approve</button>
-                                            <div className="w-px h-4 bg-gray-300"></div>
-                                            <button onClick={() => setRejectionReasons(prev => ({...prev, [item.id]: ''}))} className="text-sm font-semibold text-red-600 hover:text-red-800 hover:bg-red-50 px-2 py-1 rounded">Reject</button>
-                                        </div>
-                                    )}
-                                    {isApproverView && isPendingForApproval && rejectionReasons[item.id] !== undefined && !decision && (
-                                        <div className="mt-3 flex items-center gap-2">
-                                            <input type="text" placeholder="Reason for rejection (optional)" value={rejectionReasons[item.id]} onChange={e => handleReasonChange(item.id, e.target.value)} className="flex-grow text-sm border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500 p-1.5" autoFocus />
-                                            <button onClick={() => handleRejectWithReason(item.id)} className="px-3 py-1.5 text-sm font-bold bg-red-500 text-white rounded-md hover:bg-red-600">Confirm Reject</button>
-                                            <button onClick={() => { const newReasons = {...rejectionReasons}; delete newReasons[item.id]; setRejectionReasons(newReasons); }} className="text-xs text-gray-500 underline">Cancel</button>
-                                        </div>
-                                    )}
-                                    {isApproverView && decision && (
-                                        <button onClick={() => onDecisionChange(item.id, undefined as any)} className="mt-2 text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline">Undo Decision</button>
-                                    )}
-                                </div>
-                            )})}
+                                )
+                            })}
                         </div>
                     </div>
                 )
@@ -272,7 +273,7 @@ const DetailsTab: React.FC<{
                 <>
                     {unassignedItems.length > 0 && (
                         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                           <div className="p-4 border-b flex justify-between items-center">
+                            <div className="p-4 border-b flex justify-between items-center">
                                 <h3 className="font-semibold text-gray-700">Items Awaiting Purchase</h3>
                                 {canProcure && (
                                     <button onClick={onProcure} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-3 text-xs rounded-lg transition-colors">
@@ -280,26 +281,26 @@ const DetailsTab: React.FC<{
                                     </button>
                                 )}
                             </div>
-                           <table className="w-full text-sm">
+                            <table className="w-full text-sm">
                                 <tbody className="divide-y divide-gray-100">
                                     {unassignedItems.map(item => (
-                                    <tr key={item.id}>
-                                        <td className="p-3 text-gray-800">{item.name}</td>
-                                        <td className="p-3 text-center text-gray-600">{item.quantity}</td>
-                                        <td className="p-3 text-right font-semibold text-gray-800">${item.totalPrice.toFixed(2)}</td>
-                                    </tr>
+                                        <tr key={item.id}>
+                                            <td className="p-3 text-gray-800">{item.name}</td>
+                                            <td className="p-3 text-center text-gray-600">{item.quantity}</td>
+                                            <td className="p-3 text-right font-semibold text-gray-800">${item.totalPrice.toFixed(2)}</td>
+                                        </tr>
                                     ))}
                                 </tbody>
                             </table>
                         </div>
                     )}
                     <div>
-                         <h3 className="font-semibold text-gray-700 mb-3">Purchase Orders</h3>
-                         {order?.purchaseOrders && order.purchaseOrders.length > 0 ? (
+                        <h3 className="font-semibold text-gray-700 mb-3">Purchase Orders</h3>
+                        {order?.purchaseOrders && order.purchaseOrders.length > 0 ? (
                             <div className="space-y-4">{order.purchaseOrders.map(po => <PurchaseOrderDetail key={po.id} po={po} vendors={vendors} />)}</div>
-                         ) : (
+                        ) : (
                             <div className="text-center text-sm text-gray-500 bg-white p-6 rounded-lg border-2 border-dashed border-gray-200">No purchase orders have been generated.</div>
-                         )}
+                        )}
                     </div>
                 </>
             )}
@@ -338,13 +339,13 @@ const OrderDetailsDrawer: React.FC<OrderDetailsDrawerProps> = ({ order, onClose,
 
     const threadMessages = useMemo(() => {
         if (!orderThread) return [];
-        return messages.filter(m => m.threadId === orderThread.id).sort((a,b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+        return messages.filter(m => m.threadId === orderThread.id).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     }, [orderThread, messages]);
 
     useEffect(() => {
         setItemDecisions(new Map());
     }, [order]);
-    
+
     const handleDecisionChange = (itemId: string, decision: { status: 'Approved' | 'Rejected'; reason?: string } | undefined) => {
         setItemDecisions(prev => {
             const newMap = new Map(prev);
@@ -356,7 +357,7 @@ const OrderDetailsDrawer: React.FC<OrderDetailsDrawerProps> = ({ order, onClose,
             return newMap;
         });
     };
-    
+
     const handleProcure = () => {
         if (order) {
             onClose();
@@ -365,7 +366,7 @@ const OrderDetailsDrawer: React.FC<OrderDetailsDrawerProps> = ({ order, onClose,
     };
 
     const pendingItems = useMemo(() => order?.items?.filter(i => (i.approvalStatus || 'Pending') === 'Pending') || [], [order]);
-    
+
     const handleApproveAll = () => {
         setItemDecisions(prev => {
             const newMap = new Map(prev);
@@ -375,7 +376,7 @@ const OrderDetailsDrawer: React.FC<OrderDetailsDrawerProps> = ({ order, onClose,
     };
 
     const handleRejectAll = () => {
-         setItemDecisions(prev => {
+        setItemDecisions(prev => {
             const newMap = new Map(prev);
             pendingItems.forEach(item => newMap.set(item.id, { status: 'Rejected', reason: 'Rejected as part of bulk action' }));
             return newMap;
@@ -388,13 +389,13 @@ const OrderDetailsDrawer: React.FC<OrderDetailsDrawerProps> = ({ order, onClose,
             onClose();
         }
     };
-    
+
     // Logic to enable submit: if there are pending items, they must all be decided. 
     // If there are NO pending items (e.g., re-approving or stuck state), allow submit to potentially clear status.
     const allPendingDecided = pendingItems.length === 0 || pendingItems.every(i => itemDecisions.has(i.id));
 
     return (
-         <div className={`fixed inset-0 z-40 transition-all duration-300 ${isOpen ? 'visible' : 'invisible'}`}>
+        <div className={`fixed inset-0 z-40 transition-all duration-300 ${isOpen ? 'visible' : 'invisible'}`}>
             <div
                 className={`absolute inset-0 bg-black/30 transition-opacity ${isOpen ? 'opacity-100' : 'opacity-0'}`}
                 onClick={onClose}
@@ -404,7 +405,7 @@ const OrderDetailsDrawer: React.FC<OrderDetailsDrawerProps> = ({ order, onClose,
             >
                 <div className="flex flex-col h-full">
                     <div className="p-6 border-b bg-white flex justify-between items-start">
-                         <div>
+                        <div>
                             <h2 className="font-bold text-xl text-gray-900">{order?.cartName}</h2>
                             <p className="text-sm text-gray-500 mt-1">ORD: {order?.id}</p>
                         </div>
@@ -412,11 +413,11 @@ const OrderDetailsDrawer: React.FC<OrderDetailsDrawerProps> = ({ order, onClose,
                             <XMarkIcon className="w-6 h-6" />
                         </button>
                     </div>
-                    
+
                     <div className="border-b bg-white">
                         <nav className="-mb-px flex space-x-6 px-6">
                             <button onClick={() => setActiveTab('details')} className={`py-3 px-1 border-b-2 font-semibold text-sm ${activeTab === 'details' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Details</button>
-                            <button onClick={() => setActiveTab('communication')} className={`py-3 px-1 border-b-2 font-semibold text-sm flex items-center gap-2 ${activeTab === 'communication' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}><CommunicationIcon className="w-5 h-5"/>Communication</button>
+                            <button onClick={() => setActiveTab('communication')} className={`py-3 px-1 border-b-2 font-semibold text-sm flex items-center gap-2 ${activeTab === 'communication' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}><CommunicationIcon className="w-5 h-5" />Communication</button>
                         </nav>
                     </div>
 
@@ -425,7 +426,7 @@ const OrderDetailsDrawer: React.FC<OrderDetailsDrawerProps> = ({ order, onClose,
                         {order && activeTab === 'communication' && (
                             <OrderCommunication
                                 order={order}
-                                thread={orderThread}
+                                thread={orderThread || null}
                                 messages={threadMessages}
                                 users={users}
                                 currentUser={currentUser}
@@ -435,9 +436,9 @@ const OrderDetailsDrawer: React.FC<OrderDetailsDrawerProps> = ({ order, onClose,
                             />
                         )}
                     </div>
-                    
+
                     {order?.status === 'Pending My Approval' && onApprovalDecision && activeTab === 'details' && (
-                         <div className="p-4 bg-white border-t border-gray-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-10">
+                        <div className="p-4 bg-white border-t border-gray-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-10">
                             <div className="flex justify-between items-center">
                                 <div className="text-sm text-gray-500 font-medium">
                                     {itemDecisions.size} decision{itemDecisions.size !== 1 && 's'} made
