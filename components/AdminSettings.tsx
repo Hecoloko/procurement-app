@@ -1,8 +1,8 @@
 
 // ... (imports remain unchanged)
 import React, { useState, useMemo, useEffect } from 'react';
-import { AdminUser, Role, ApprovalRule, NotificationSetting, AppModule, PermissionAction, Permission, Vendor, Property, Unit, PermissionSet, Company } from '../types';
-import { UserGroupIcon, ShieldCheckIcon, ArrowPathIcon, BellIcon, PlusIcon, TrashIcon, PencilIcon, BuildingOfficeIcon, XMarkIcon, ArrowUpTrayIcon, EyeIcon, SunIcon } from './Icons';
+import { AdminUser, Role, ApprovalRule, NotificationSetting, AppModule, PermissionAction, Permission, Vendor, Property, Unit, PermissionSet, Company, Product } from '../types';
+import { UserGroupIcon, ShieldCheckIcon, ArrowPathIcon, BellIcon, PlusIcon, TrashIcon, PencilIcon, BuildingOfficeIcon, XMarkIcon, ArrowUpTrayIcon, EyeIcon, SunIcon, CheckBadgeIcon } from './Icons';
 import CreateRoleModal from './CreateRoleModal';
 import AddUserModal from './AddUserModal';
 import AddCompanyModal from './AddCompanyModal';
@@ -644,6 +644,130 @@ const CompanySettings: React.FC<{
 }
 
 
+interface DataManagementSettingsProps {
+    products: Product[];
+    vendors: Vendor[];
+    onUpdateProduct: (product: Product) => void;
+}
+
+const DataManagementSettings: React.FC<DataManagementSettingsProps> = ({ products, vendors, onUpdateProduct }) => {
+    const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
+    const [selectedVendorId, setSelectedVendorId] = useState<string>('');
+    const [isAssigning, setIsAssigning] = useState(false);
+
+    const unassignedProducts = useMemo(() => products.filter(p => !p.vendorId), [products]);
+
+    const handleToggleSelect = (id: string) => {
+        const newSet = new Set(selectedProductIds);
+        if (newSet.has(id)) newSet.delete(id);
+        else newSet.add(id);
+        setSelectedProductIds(newSet);
+    };
+
+    const handleSelectAll = () => {
+        if (unassignedProducts.length === 0) return; // No products to select
+        if (selectedProductIds.size === unassignedProducts.length) {
+            setSelectedProductIds(new Set());
+        } else {
+            setSelectedProductIds(new Set(unassignedProducts.map(p => p.id)));
+        }
+    };
+
+    const handleBulkAssign = async () => {
+        if (!selectedVendorId || selectedProductIds.size === 0) return;
+        setIsAssigning(true);
+
+        // Process updates sequentially to ensure state stability
+        for (const productId of selectedProductIds) {
+            const product = products.find(p => p.id === productId);
+            if (product) {
+                await onUpdateProduct({ ...product, vendorId: selectedVendorId });
+            }
+        }
+
+        setIsAssigning(false);
+        setSelectedProductIds(new Set());
+        setSelectedVendorId('');
+        alert(`Successfully assigned ${selectedProductIds.size} products to vendor.`);
+    };
+
+    return (
+        <div>
+            <h2 className="text-2xl font-bold text-foreground mb-6">Data Management</h2>
+
+            <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl shadow-lg border border-border mb-8">
+                <h3 className="text-lg font-bold text-foreground mb-4">Bulk Assign Vendors</h3>
+                <p className="text-sm text-muted-foreground mb-6">Found {unassignedProducts.length} products without an assigned vendor. Select products and a vendor to bulk assign.</p>
+
+                <div className="flex flex-col md:flex-row gap-4 items-end mb-6">
+                    <div className="w-full md:w-64">
+                        <label className="block text-sm font-medium mb-1 text-foreground">Assign to Vendor</label>
+                        <select
+                            value={selectedVendorId}
+                            onChange={(e) => setSelectedVendorId(e.target.value)}
+                            className="block w-full px-4 py-2.5 bg-background border border-border rounded-lg shadow-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+                        >
+                            <option value="">Select a vendor...</option>
+                            {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                        </select>
+                    </div>
+                    <button
+                        onClick={handleBulkAssign}
+                        disabled={!selectedVendorId || selectedProductIds.size === 0 || isAssigning}
+                        className="bg-primary hover:opacity-90 text-primary-foreground font-bold py-2.5 px-6 rounded-xl shadow-lg transition-all duration-200 active:scale-95 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed"
+                    >
+                        {isAssigning ? 'Assigning...' : `Assign to ${selectedProductIds.size} Products`}
+                    </button>
+                </div>
+
+                <div className="bg-background rounded-xl border border-border overflow-hidden max-h-[500px] overflow-y-auto">
+                    <table className="w-full text-sm">
+                        <thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-b border-border sticky top-0 z-10 backdrop-blur-md">
+                            <tr>
+                                <th className="px-6 py-3 text-center w-16">
+                                    <input
+                                        type="checkbox"
+                                        checked={unassignedProducts.length > 0 && selectedProductIds.size === unassignedProducts.length}
+                                        onChange={handleSelectAll}
+                                        className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
+                                    />
+                                </th>
+                                <th className="px-6 py-3 text-left">Product Name</th>
+                                <th className="px-6 py-3 text-left">SKU</th>
+                                <th className="px-6 py-3 text-left">Category</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                            {unassignedProducts.length > 0 ? unassignedProducts.map(product => (
+                                <tr key={product.id} className="hover:bg-muted/50 transition-colors">
+                                    <td className="px-6 py-4 text-center">
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedProductIds.has(product.id)}
+                                            onChange={() => handleToggleSelect(product.id)}
+                                            className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
+                                        />
+                                    </td>
+                                    <td className="px-6 py-4 font-medium text-foreground">{product.name}</td>
+                                    <td className="px-6 py-4 text-muted-foreground font-mono text-xs">{product.sku}</td>
+                                    <td className="px-6 py-4 text-muted-foreground">{product.primaryCategory}</td>
+                                </tr>
+                            )) : (
+                                <tr>
+                                    <td colSpan={4} className="px-6 py-12 text-center text-muted-foreground">
+                                        <CheckBadgeIcon className="w-12 h-12 mx-auto mb-3 text-green-500/50" />
+                                        <p>All products have assigned vendors!</p>
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 interface AdminSettingsProps {
     vendors: Vendor[];
     properties: Property[];
@@ -662,9 +786,11 @@ interface AdminSettingsProps {
     onAddCompany?: (companyData: { name: string }, userData: { name: string; email: string; password: string; roleId: string }) => void;
     onDeleteUser: (userId: string) => void;
     onDeleteProperty: (propertyId: string) => void;
+    products?: Product[];
+    onUpdateProduct?: (product: Product) => void;
 }
 
-const AdminSettings: React.FC<AdminSettingsProps> = ({ vendors, properties, units, users, onAddProperty, onAddUnit, roles, currentUser, onAddRole, onUpdateRole, onDeleteRole, onViewAsUser, onAddUser, companies, onAddCompany, onDeleteUser, onDeleteProperty }) => {
+const AdminSettings: React.FC<AdminSettingsProps> = ({ vendors, properties, units, users, onAddProperty, onAddUnit, roles, currentUser, onAddRole, onUpdateRole, onDeleteRole, onViewAsUser, onAddUser, companies, onAddCompany, onDeleteUser, onDeleteProperty, products, onUpdateProduct }) => {
     const [activeTab, setActiveTab] = useState('users');
     const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
 
@@ -678,6 +804,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ vendors, properties, unit
         { id: 'notifications', label: 'Notifications', icon: BellIcon, permission: 'notifications:view' },
         { id: 'properties', label: 'Properties & Units', icon: BuildingOfficeIcon, permission: 'companyProperties:view' },
         { id: 'appearance', label: 'Appearance', icon: SunIcon, permission: 'settings:view' },
+        { id: 'data', label: 'Data Management', icon: ArrowUpTrayIcon, permission: 'settings:view' },
     ];
 
     const tabs = useMemo(() => {
@@ -709,6 +836,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ vendors, properties, unit
             case 'properties': return <PropertiesSettings properties={properties} units={units} onAddProperty={onAddProperty} onAddUnit={onAddUnit} users={users} onDeleteProperty={onDeleteProperty} />;
             case 'companies': return companies && onAddCompany ? <CompanySettings companies={companies} onAddCompany={onAddCompany} roles={roles} /> : null;
             case 'appearance': return <ThemeSwitcher />;
+            case 'data': return products && onUpdateProduct ? <DataManagementSettings products={products} vendors={vendors} onUpdateProduct={onUpdateProduct} /> : <div className="p-8 text-center text-muted-foreground">Data management features unavailable.</div>;
             default: return null;
         }
     };

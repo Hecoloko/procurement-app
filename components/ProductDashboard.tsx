@@ -234,7 +234,7 @@ const ProductCard = ({ product, viewMode, cartItem, onUpdateItem }: { product: P
                     </span>
                 </div>
 
-                {/* Overlay on hover (or always visible if items in cart) */}
+                {/* Overlay on hover */}
                 <div className={`absolute inset-0 bg-black/40 transition-opacity duration-300 flex items-center justify-center gap-2 ${quantity > 0 ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                     {onUpdateItem ? (
                         quantity === 0 ? (
@@ -255,6 +255,7 @@ const ProductCard = ({ product, viewMode, cartItem, onUpdateItem }: { product: P
                     )}
                 </div>
             </div>
+
             <div className="p-5 flex-1 flex flex-col">
                 <div className="flex justify-between items-start mb-2">
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{product.tags?.[0] || 'Vendor'}</p>

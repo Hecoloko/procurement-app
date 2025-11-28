@@ -11,7 +11,7 @@ interface CartDetailProps {
   onOpenCatalog: () => void;
   onManualAdd: (itemData: { name: string; sku: string; quantity: number; unitPrice: number; note?: string; }) => void;
   onUpdateCartName: (cartId: string, newName: string) => void;
-  onUpdateCartItem: (product: { sku: string; name: string; unitPrice: number; }, newQuantity: number, note?: string) => void;
+  onUpdateCartItem: (product: { sku: string; name: string; unitPrice: number; vendorId?: string }, newQuantity: number, note?: string) => void;
   onSubmitForApproval: (cartId: string) => void;
   onRevertToDraft: (cartId: string) => void;
   properties: Property[];
@@ -21,7 +21,7 @@ interface CartDetailProps {
 
 const EditableNote: React.FC<{
   item: CartItem;
-  onUpdateCartItem: (product: { sku: string; name: string; unitPrice: number; }, newQuantity: number, note?: string) => void;
+  onUpdateCartItem: (product: { sku: string; name: string; unitPrice: number; vendorId?: string }, newQuantity: number, note?: string) => void;
 }> = ({ item, onUpdateCartItem }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [note, setNote] = useState(item.note || '');
@@ -31,7 +31,7 @@ const EditableNote: React.FC<{
   const handleSave = () => {
     if (note.trim() !== (item.note || '')) {
       onUpdateCartItem(
-        { sku: item.sku, name: item.name, unitPrice: item.unitPrice },
+        { sku: item.sku, name: item.name, unitPrice: item.unitPrice, vendorId: item.vendorId },
         item.quantity,
         note.trim()
       );
@@ -194,7 +194,7 @@ const CartDetail: React.FC<CartDetailProps> = ({ cart, onBack, onOpenCatalog, on
 
   const handleItemDelete = (item: CartItem) => {
     if (window.confirm(`Are you sure you want to remove "${item.name}" from the cart?`)) {
-      const productInfo = { sku: item.sku, name: item.name, unitPrice: item.unitPrice };
+      const productInfo = { sku: item.sku, name: item.name, unitPrice: item.unitPrice, vendorId: item.vendorId };
       onUpdateCartItem(productInfo, 0, item.note);
     }
   };
@@ -294,17 +294,17 @@ const CartDetail: React.FC<CartDetailProps> = ({ cart, onBack, onOpenCatalog, on
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <button
               onClick={onOpenCatalog}
-              className="w-full text-left bg-gray-50 hover:bg-gray-100 p-4 rounded-lg border border-gray-200 transition-colors duration-200"
+              className="w-full text-left bg-gray-50 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 p-4 rounded-lg border border-gray-200 dark:border-white/10 transition-colors duration-200"
             >
               <p className="font-semibold text-gray-800 dark:text-gray-100">Add from Catalog</p>
-              <p className="text-sm text-gray-500">Browse approved items and add to cart.</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Browse approved items and add to cart.</p>
             </button>
             <button
               onClick={() => setIsModalOpen(true)}
-              className="w-full text-left bg-gray-50 hover:bg-gray-100 p-4 rounded-lg border border-gray-200 transition-colors duration-200"
+              className="w-full text-left bg-gray-50 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 p-4 rounded-lg border border-gray-200 dark:border-white/10 transition-colors duration-200"
             >
               <p className="font-semibold text-gray-800 dark:text-gray-100">Add Manually</p>
-              <p className="text-sm text-gray-500">For one-off items not in the catalog.</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">For one-off items not in the catalog.</p>
             </button>
           </div>
         </div>

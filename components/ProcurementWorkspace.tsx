@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
-import { Order, CartItem, PurchaseOrder, PurchaseOrderStatus, Vendor } from '../types';
+import { Order, CartItem, PurchaseOrder, PurchaseOrderStatus, Vendor, Product } from '../types';
 import { ChevronLeftIcon, CheckBadgeIcon, CameraIcon, ShipmentIcon, TransactionIcon, PaperClipIcon, ArrowUpTrayIcon } from './Icons';
 import { CustomSelect } from './ui/CustomSelect';
 import { usePermissions } from '../contexts/PermissionsContext';
@@ -9,6 +8,7 @@ import { generatePOId } from '../utils/idGenerator';
 interface ProcurementWorkspaceProps {
   order: Order;
   vendors: Vendor[];
+  products: Product[];
   onBack: (updatedOrder?: Order) => void;
   onOrderComplete: (completedOrder: Order) => void;
 }
@@ -24,7 +24,7 @@ const getPOStatusTheme = (status: PurchaseOrderStatus) => {
 
 const assignmentCache: Record<string, Record<string, string>> = {};
 
-const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vendors, onBack, onOrderComplete }) => {
+const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vendors, products, onBack, onOrderComplete }) => {
   const [localOrder, setLocalOrder] = useState<Order>(order);
   const [activeTab, setActiveTab] = useState<'assign' | 'manage'>(() => {
     // Default to manage if POs exist, otherwise assign
@@ -54,13 +54,7 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
   }, [itemVendorAssignments, order.id]);
 
   // Only set initial tab when order ID changes (new order loaded)
-  useEffect(() => {
-    if (order.purchaseOrders && order.purchaseOrders.length > 0) {
-      setActiveTab('manage');
-    } else {
-      setActiveTab('assign');
-    }
-  }, [order.id]);
+  // REMOVED: Handled by key prop in App.tsx forcing remount
 
   useEffect(() => {
     if (activeTab === 'manage' && localOrder.purchaseOrders) {
@@ -87,9 +81,8 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
   const initializedItems = React.useRef<Set<string>>(new Set());
 
   // Reset initialized items when order ID changes
-  useEffect(() => {
-    initializedItems.current.clear();
-  }, [order.id]);
+  // Reset initialized items when order ID changes
+  // REMOVED: Handled by key prop
 
   useEffect(() => {
     if (itemsToAssign.length > 0) {
@@ -98,9 +91,12 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
         let hasChanges = false;
         itemsToAssign.forEach(item => {
           if (!initializedItems.current.has(item.id)) {
-            // Only pre-fill if NOT already assigned (e.g. from cache)
-            if (item.vendorId && !next[item.id]) {
-              next[item.id] = item.vendorId;
+            // Check product data first, then item snapshot. Match by SKU since CartItem doesn't have productId.
+            const product = products.find(p => p.sku === item.sku);
+            const effectiveVendorId = product?.vendorId || item.vendorId;
+
+            if (effectiveVendorId && !next[item.id]) {
+              next[item.id] = effectiveVendorId;
               hasChanges = true;
             }
             initializedItems.current.add(item.id);
@@ -109,7 +105,7 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
         return hasChanges ? next : prev;
       });
     }
-  }, [itemsToAssign]);
+  }, [itemsToAssign, products]);
 
   const handleVendorSelect = (itemId: string, vendorId: string) => {
     setItemVendorAssignments(prev => ({ ...prev, [itemId]: vendorId }));
@@ -128,8 +124,11 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
     const assignedItemIds = Object.keys(itemVendorAssignments);
 
     itemsToAssign.forEach(item => {
-      if (assignedItemIds.includes(item.id)) {
-        const vendorId = itemVendorAssignments[item.id];
+      // Use direct lookup to be safe against potential type mismatches (string vs number)
+      // and to avoid O(N*M) complexity (though N is small here)
+      const vendorId = itemVendorAssignments[item.id];
+
+      if (vendorId) {
         if (!posByVendor[vendorId]) {
           posByVendor[vendorId] = [];
         }
@@ -203,7 +202,7 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
               <th className="px-6 py-3 text-center font-bold">Qty</th>
               <th className="px-6 py-3 text-right font-bold">Unit Price</th>
               <th className="px-6 py-3 text-right font-bold">Total Price</th>
-              <th className="px-6 py-3 text-left font-bold rounded-tr-2xl">Assign Vendor</th>
+              <th className="px-6 py-3 text-left font-bold rounded-tr-2xl">Vendor</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 dark:divide-white/5 text-gray-600 dark:text-gray-300">
@@ -211,6 +210,11 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
               const isLast = index === itemsToAssign.length - 1;
               const currentUnitPrice = itemPriceOverrides[item.id] ?? item.unitPrice;
               const currentTotalPrice = currentUnitPrice * item.quantity;
+
+              // Determine effective vendor from live product data or item snapshot. Match by SKU.
+              const product = products.find(p => p.sku === item.sku);
+              const effectiveVendorId = product?.vendorId || item.vendorId;
+
               return (
                 <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
                   <td className={`px-6 py-4 font-bold text-gray-900 dark:text-white ${isLast ? 'rounded-bl-2xl' : ''}`}>{item.name}</td>
@@ -230,24 +234,33 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
                   </td>
                   <td className="px-6 py-4 text-right font-medium">${currentTotalPrice.toFixed(2)}</td>
                   <td className={`px-6 py-4 ${isLast ? 'rounded-br-2xl' : ''}`}>
-                    <CustomSelect
-                      value={itemVendorAssignments[item.id] || ''}
-                      onChange={(val) => {
-                        setItemVendorAssignments(prev => {
-                          const next = { ...prev };
-                          if (val) {
-                            next[item.id] = val;
-                          } else {
-                            delete next[item.id];
-                          }
-                          return next;
-                        });
-                      }}
-                      options={vendors.map(v => ({ value: v.id, label: v.name }))}
-                      placeholder="Select a vendor..."
-                      className="w-full max-w-xs bg-gray-50 dark:bg-white/10 border-gray-300 dark:border-white/20 text-gray-900 dark:text-white"
-                      disabled={!canCreatePOs}
-                    />
+                    {effectiveVendorId ? (
+                      <div className="flex items-center">
+                        <span className="px-3 py-1.5 bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 rounded-lg border border-gray-200 dark:border-white/10 font-medium text-sm flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                          {vendors.find(v => v.id === effectiveVendorId)?.name || 'Unknown Vendor'}
+                        </span>
+                      </div>
+                    ) : (
+                      <CustomSelect
+                        value={itemVendorAssignments[item.id] || ''}
+                        onChange={(val) => {
+                          setItemVendorAssignments(prev => {
+                            const next = { ...prev };
+                            if (val) {
+                              next[item.id] = val;
+                            } else {
+                              delete next[item.id];
+                            }
+                            return next;
+                          });
+                        }}
+                        options={vendors.map(v => ({ value: v.id, label: v.name }))}
+                        placeholder="Select a vendor..."
+                        className="w-full max-w-xs bg-gray-50 dark:bg-white/10 border-gray-300 dark:border-white/20 text-gray-900 dark:text-white"
+                        disabled={!canCreatePOs}
+                      />
+                    )}
                   </td>
                 </tr>
               )
@@ -352,10 +365,13 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
               )}
               {po.status === 'Purchased' && canEditPOs && (
                 <div className="relative group">
-                  <button onClick={() => updatePo(po.id, { status: 'In Transit' })} disabled={!po.carrier?.trim() || !po.trackingNumber?.trim() || !po.eta} className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2 px-4 rounded-lg text-sm transition-all shadow-lg shadow-cyan-600/20 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none">
+                  <button onClick={() => {
+                    const trackingNum = po.trackingNumber?.trim() || Math.floor(10000000 + Math.random() * 90000000).toString();
+                    updatePo(po.id, { status: 'In Transit', trackingNumber: trackingNum });
+                  }} disabled={!po.eta} className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2 px-4 rounded-lg text-sm transition-all shadow-lg shadow-cyan-600/20 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none">
                     <ShipmentIcon className="w-5 h-5" />Mark In Transit
                   </button>
-                  {(!po.carrier?.trim() || !po.trackingNumber?.trim() || !po.eta) && <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded-md shadow-lg opacity-0 group-hover:opacity-100 whitespace-nowrap z-50 border border-gray-700">Enter Carrier, Tracking # & ETA first.</div>}
+                  {(!po.eta) && <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded-md shadow-lg opacity-0 group-hover:opacity-100 whitespace-nowrap z-50 border border-gray-700">Enter ETA first.</div>}
                 </div>
               )}
             </div>

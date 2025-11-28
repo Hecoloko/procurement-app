@@ -746,7 +746,8 @@ export const App: React.FC = () => {
                 sku: item.sku,
                 quantity: item.quantity,
                 unit_price: item.unitPrice,
-                note: item.note
+                note: item.note,
+                vendor_id: item.vendorId
             }));
             await supabase.from('cart_items').insert(itemsPayload);
         }
@@ -823,7 +824,8 @@ export const App: React.FC = () => {
                 sku: item.sku,
                 quantity: item.quantity,
                 unit_price: item.unit_price,
-                note: item.note
+                note: item.note,
+                vendor_id: item.vendor_id
             }));
             await supabase.from('cart_items').insert(itemsPayload);
         }
@@ -840,7 +842,7 @@ export const App: React.FC = () => {
         }
     };
 
-    const handleUpdateCartItem = async (cartId: string, product: { sku: string; name: string; unitPrice: number }, quantity: number, note?: string) => {
+    const handleUpdateCartItem = async (cartId: string, product: { sku: string; name: string; unitPrice: number; vendorId?: string }, quantity: number, note?: string) => {
         const currentCart = carts.find(c => c.id === cartId);
         if (!currentCart) return;
         const existingItem = currentCart.items.find(i => i.sku === product.sku);
@@ -848,7 +850,9 @@ export const App: React.FC = () => {
         if (quantity <= 0) {
             if (existingItem) await supabase.from('cart_items').delete().eq('id', existingItem.id);
         } else {
-            const itemPayload = { cart_id: cartId, name: product.name, sku: product.sku, unit_price: product.unitPrice, quantity: quantity, note: note };
+            const itemPayload: any = { cart_id: cartId, name: product.name, sku: product.sku, unit_price: product.unitPrice, quantity: quantity, note: note };
+            if (product.vendorId) itemPayload.vendor_id = product.vendorId;
+
             if (existingItem) await supabase.from('cart_items').update(itemPayload).eq('id', existingItem.id);
             else await supabase.from('cart_items').insert(itemPayload);
         }
@@ -1346,6 +1350,25 @@ export const App: React.FC = () => {
         if (newProd) setProducts(prev => [...prev, mapProduct(newProd)]);
     };
 
+    const handleUpdateProduct = async (product: Product) => {
+        const payload = {
+            name: product.name,
+            sku: product.sku,
+            description: product.description,
+            unit_price: product.unitPrice,
+            image_url: product.imageUrl,
+            vendor_id: product.vendorId,
+            primary_category: product.primaryCategory,
+            secondary_category: product.secondaryCategory,
+            rating: product.rating,
+            tags: product.tags
+        };
+        const { data: updatedProd } = await supabase.from('products').update(payload).eq('id', product.id).select().single();
+        if (updatedProd) {
+            setProducts(prev => prev.map(p => p.id === product.id ? mapProduct(updatedProd) : p));
+        }
+    };
+
     const handleAddVendorAccount = async (vendorId: string, accountData: { propertyId: string, accountNumber: string }) => {
         const id = `vacc-${Date.now()}`;
         const { data: newAcc } = await supabase.from('vendor_accounts').insert({ id, vendor_id: vendorId, property_id: accountData.propertyId, account_number: accountData.accountNumber }).select().single();
@@ -1499,7 +1522,7 @@ export const App: React.FC = () => {
     };
 
     const renderContent = () => {
-        if (orderForProcurement) return <ProcurementWorkspace order={orderForProcurement} vendors={vendors} onBack={(updated) => { setOrderForProcurement(null); if (updated) handleSaveOrder(updated); }} onOrderComplete={handleSaveOrder} />;
+        if (orderForProcurement) return <ProcurementWorkspace key={orderForProcurement.id} order={orderForProcurement} vendors={vendors} products={products} onBack={(updated) => { setOrderForProcurement(null); if (updated) handleSaveOrder(updated); }} onOrderComplete={handleSaveOrder} />;
 
         if (activeItem === 'My Carts' || activeItem === 'Carts to Submit') {
             if (view === 'detail' && selectedCart) {
@@ -1516,7 +1539,7 @@ export const App: React.FC = () => {
         if (activeItem === 'Approvals') return <Approvals orders={orders} onUpdateOrderStatus={handleUpdateOrderStatus} onSelectOrder={(o) => { setSelectedOrder(o); }} users={users} properties={properties} />;
         if (activeItem === 'Receiving') return <Receiving orders={orders} vendors={vendors} onUpdatePoStatus={handleUpdatePoStatus} onSelectOrder={(o) => setSelectedOrder(o)} />;
         if (activeItem === 'Communications') return <CommunicationCenter threads={threads} messages={messages} users={users} orders={orders} currentUser={currentUser} onSendMessage={handleSendMessage} onStartNewThread={handleStartThread} onSelectOrder={setSelectedOrder} />;
-        if (activeItem === 'Company Settings') return <AdminSettings vendors={vendors} properties={properties} units={units} users={users} roles={roles} companies={availableCompanies} currentUser={currentUser} onAddProperty={handleAddProperty} onDeleteProperty={handleDeleteProperty} onAddUnit={handleAddUnit} onAddRole={handleAddRole} onUpdateRole={handleUpdateRole} onDeleteRole={handleDeleteRole} onViewAsUser={setImpersonatingUser} onAddUser={handleAddUser} onAddCompany={handleAddCompany} onDeleteUser={handleDeleteUser} />;
+        if (activeItem === 'Company Settings') return <AdminSettings vendors={vendors} properties={properties} units={units} users={users} roles={roles} companies={availableCompanies} currentUser={currentUser} onAddProperty={handleAddProperty} onDeleteProperty={handleDeleteProperty} onAddUnit={handleAddUnit} onAddRole={handleAddRole} onUpdateRole={handleUpdateRole} onDeleteRole={handleDeleteRole} onViewAsUser={setImpersonatingUser} onAddUser={handleAddUser} onAddCompany={handleAddCompany} onDeleteUser={handleDeleteUser} products={products} onUpdateProduct={handleUpdateProduct} />;
         if (activeItem === 'Suppliers') return <Suppliers vendors={vendors} products={products} orders={orders} properties={properties} companies={availableCompanies} currentCompanyId={viewingCompanyId || currentUser?.companyId || ''} onSwitchCompany={currentUser?.roleId === 'role-0' ? handleSwitchCompany : undefined} onSelectOrder={(o) => { setSelectedOrder(o); }} onAddVendor={handleAddVendor} onAddProduct={handleAddProduct} onAddVendorAccount={handleAddVendorAccount} />;
         if (activeItem === 'Chart of Accounts') return <ChartOfAccounts accounts={accounts} onAddAccount={handleAddAccount} onUpdateAccount={handleUpdateAccount} onDeleteAccount={handleDeleteAccount} />;
         if (activeItem === 'Transactions') return <Transactions orders={orders} vendors={vendors} onUpdatePoPaymentStatus={handleUpdatePoPaymentStatus} />;
