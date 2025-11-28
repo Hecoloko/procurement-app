@@ -2,12 +2,13 @@
 import React, { useState, useEffect } from 'react';
 import { Cart, RecurringFrequency } from '../types';
 import { XMarkIcon } from './Icons';
+import { Select } from './ui/Select';
 
 interface EditScheduleModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSave: (cartId: string, scheduleData: Partial<Cart>) => void;
-  cart: Cart | null;
+    isOpen: boolean;
+    onClose: () => void;
+    onSave: (cartId: string, scheduleData: Partial<Cart>) => void;
+    cart: Cart | null;
 }
 
 const EditScheduleModal: React.FC<EditScheduleModalProps> = ({ isOpen, onClose, onSave, cart }) => {
@@ -35,7 +36,7 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({ isOpen, onClose, 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
-        
+
         const scheduleData: Partial<Cart> = {};
 
         if (cart.type === 'Scheduled') {
@@ -49,7 +50,7 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({ isOpen, onClose, 
             scheduleData.dayOfWeek = (frequency === 'Weekly' || frequency === 'Bi-weekly') ? dayOfWeek : undefined;
             scheduleData.dayOfMonth = frequency === 'Monthly' ? dayOfMonth : undefined;
         }
-        
+
         onSave(cart.id, scheduleData);
     };
 
@@ -68,44 +69,44 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({ isOpen, onClose, 
                 <form onSubmit={handleSubmit}>
                     <div className="p-6 space-y-6">
                         {error && <div className="bg-red-500/20 border border-red-500/50 text-white px-4 py-3 rounded-lg text-sm backdrop-blur-md" role="alert">{error}</div>}
-                        
+
                         {cart.type === 'Scheduled' && (
                             <div>
                                 <label htmlFor="editScheduledDate" className="block text-sm font-medium text-white/90 mb-1">Scheduled Date *</label>
-                                <input 
-                                    type="date" 
-                                    id="editScheduledDate" 
-                                    value={scheduledDate} 
-                                    onChange={e => setScheduledDate(e.target.value)} 
-                                    required 
+                                <input
+                                    type="date"
+                                    id="editScheduledDate"
+                                    value={scheduledDate}
+                                    onChange={e => setScheduledDate(e.target.value)}
+                                    required
                                     className="block w-full px-4 py-2.5 bg-white/10 border border-white/10 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-transparent text-white outline-none transition-all"
                                 />
                             </div>
                         )}
-                        
+
                         {cart.type === 'Recurring' && (
                             <div className="space-y-6">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label htmlFor="editFrequency" className="block text-sm font-medium text-white/90 mb-1">Frequency *</label>
-                                        <select 
-                                            id="editFrequency" 
-                                            value={frequency} 
-                                            onChange={e => setFrequency(e.target.value as RecurringFrequency)} 
-                                            required 
-                                            className="block w-full px-4 py-2.5 bg-white/10 border border-white/10 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-transparent text-white outline-none appearance-none cursor-pointer"
+                                        <Select
+                                            id="editFrequency"
+                                            value={frequency}
+                                            onChange={e => setFrequency(e.target.value as RecurringFrequency)}
+                                            required
+                                            className="bg-white/10 text-white border-white/10 focus:ring-green-500"
                                         >
                                             {(['Weekly', 'Bi-weekly', 'Monthly', 'Quarterly'] as RecurringFrequency[]).map(f => <option key={f} value={f} className="bg-gray-900 text-white">{f}</option>)}
-                                        </select>
+                                        </Select>
                                     </div>
                                     <div>
                                         <label htmlFor="editStartDate" className="block text-sm font-medium text-white/90 mb-1">Start Date *</label>
-                                        <input 
-                                            type="date" 
-                                            id="editStartDate" 
-                                            value={startDate} 
-                                            onChange={e => setStartDate(e.target.value)} 
-                                            required 
+                                        <input
+                                            type="date"
+                                            id="editStartDate"
+                                            value={startDate}
+                                            onChange={e => setStartDate(e.target.value)}
+                                            required
                                             className="block w-full px-4 py-2.5 bg-white/10 border border-white/10 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-transparent text-white outline-none transition-all"
                                         />
                                     </div>
@@ -113,28 +114,28 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({ isOpen, onClose, 
                                 {(frequency === 'Weekly' || frequency === 'Bi-weekly') && (
                                     <div>
                                         <label htmlFor="editDayOfWeek" className="block text-sm font-medium text-white/90 mb-1">Day of Week *</label>
-                                        <select 
-                                            id="editDayOfWeek" 
-                                            value={dayOfWeek} 
-                                            onChange={e => setDayOfWeek(Number(e.target.value))} 
-                                            required 
-                                            className="block w-full px-4 py-2.5 bg-white/10 border border-white/10 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-transparent text-white outline-none appearance-none cursor-pointer"
+                                        <Select
+                                            id="editDayOfWeek"
+                                            value={dayOfWeek}
+                                            onChange={e => setDayOfWeek(Number(e.target.value))}
+                                            required
+                                            className="bg-white/10 text-white border-white/10 focus:ring-green-500"
                                         >
                                             {daysOfWeek.map((day, i) => <option key={i} value={i} className="bg-gray-900 text-white">{day}</option>)}
-                                        </select>
+                                        </Select>
                                     </div>
                                 )}
                                 {frequency === 'Monthly' && (
                                     <div>
                                         <label htmlFor="editDayOfMonth" className="block text-sm font-medium text-white/90 mb-1">Day of Month *</label>
-                                        <input 
-                                            type="number" 
-                                            id="editDayOfMonth" 
-                                            value={dayOfMonth} 
-                                            onChange={e => setDayOfMonth(Number(e.target.value))} 
-                                            min="1" 
-                                            max="31" 
-                                            required 
+                                        <input
+                                            type="number"
+                                            id="editDayOfMonth"
+                                            value={dayOfMonth}
+                                            onChange={e => setDayOfMonth(Number(e.target.value))}
+                                            min="1"
+                                            max="31"
+                                            required
                                             className="block w-full px-4 py-2.5 bg-white/10 border border-white/10 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-transparent text-white outline-none transition-all"
                                         />
                                     </div>
@@ -142,18 +143,18 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({ isOpen, onClose, 
                             </div>
                         )}
                     </div>
-                    
+
                     {/* Footer */}
                     <div className="p-6 border-t border-white/10 bg-black/20 flex justify-end gap-3 rounded-b-2xl">
-                        <button 
-                            type="button" 
-                            onClick={onClose} 
+                        <button
+                            type="button"
+                            onClick={onClose}
                             className="px-5 py-2.5 bg-transparent hover:bg-white/10 text-white font-semibold rounded-xl border border-white/20 transition-all duration-200 text-sm"
                         >
                             Cancel
                         </button>
-                        <button 
-                            type="submit" 
+                        <button
+                            type="submit"
                             className="px-5 py-2.5 bg-green-500 hover:bg-green-400 text-white font-bold rounded-xl shadow-lg shadow-green-500/30 transition-all duration-200 transform active:scale-95 text-sm border border-transparent"
                         >
                             Save Schedule

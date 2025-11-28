@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { Product, Company, Cart, CartItem } from '../types';
 import { MagnifyingGlassIcon, FunnelIcon, Squares2X2Icon, ListBulletIcon, StarIcon, TagIcon, ShoppingCartIcon, PlusIcon, MinusIcon, ChevronLeftIcon } from '@heroicons/react/24/outline';
+import { Select } from './ui/Select';
 
 interface ProductDashboardProps {
     products: Product[];
@@ -81,15 +82,17 @@ const ProductDashboard: React.FC<ProductDashboardProps> = ({ products, companies
                 {onSwitchCompany && (
                     <div className="flex items-center gap-2 bg-card p-1.5 rounded-lg border border-border shadow-sm">
                         <span className="text-xs font-medium text-muted-foreground px-2 uppercase tracking-wider">Viewing:</span>
-                        <select
+                        <Select
                             value={currentCompanyId}
                             onChange={(e) => onSwitchCompany(e.target.value)}
-                            className="bg-transparent text-sm font-semibold text-foreground focus:outline-none cursor-pointer"
+                            className="bg-transparent border-none shadow-none focus:ring-0 px-0 py-0 h-auto text-sm font-semibold text-foreground w-auto min-w-[150px]"
+                            containerClassName="w-auto"
+                            icon={null}
                         >
                             {companies.map(c => (
                                 <option key={c.id} value={c.id}>{c.name}</option>
                             ))}
-                        </select>
+                        </Select>
                     </div>
                 )}
             </div>
@@ -116,13 +119,13 @@ const ProductDashboard: React.FC<ProductDashboardProps> = ({ products, companies
                 </div>
 
                 <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
-                    <select
+                    <Select
                         value={selectedCategory}
                         onChange={(e) => setSelectedCategory(e.target.value)}
-                        className="px-4 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none hover:bg-accent transition-colors cursor-pointer"
+                        className="w-48"
                     >
                         {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
+                    </Select>
 
                     <div className="flex bg-background border border-border rounded-lg p-1">
                         <button

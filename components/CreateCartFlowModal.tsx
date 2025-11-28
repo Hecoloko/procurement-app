@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Cart, CartType, Property, RecurringFrequency } from '../types';
 import { XMarkIcon, CartIcon, RefreshIcon, CalendarIcon, ChevronLeftIcon } from './Icons';
+import { Select } from './ui/Select';
 import { CART_CATEGORIES } from '../constants';
 
 interface CreateCartFlowModalProps {
@@ -149,29 +150,29 @@ const CartDetailsForm: React.FC<{
 
                 <div>
                     <label htmlFor="property" className="block text-sm font-medium text-white/90 mb-1">Property *</label>
-                    <select
+                    <Select
                         id="property"
                         value={propertyId}
                         onChange={e => setPropertyId(e.target.value)}
                         required
-                        className="block w-full px-4 py-2.5 bg-white/10 border border-white/10 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-transparent text-white outline-none transition-all appearance-none cursor-pointer"
+                        className="bg-white/10 text-white border-white/10 focus:ring-green-500"
                     >
                         {properties.map(prop => <option key={prop.id} value={prop.id} className="bg-gray-900 text-white">{prop.name}</option>)}
-                    </select>
+                    </Select>
                 </div>
                 {needsCategory && (
                     <div>
                         <label htmlFor="category" className="block text-sm font-medium text-white/90 mb-1">Category *</label>
-                        <select
+                        <Select
                             id="category"
                             value={category}
                             onChange={e => setCategory(e.target.value)}
                             required
-                            className="block w-full px-4 py-2.5 bg-white/10 border border-white/10 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-transparent text-white outline-none transition-all appearance-none cursor-pointer"
+                            className="bg-white/10 text-white border-white/10 focus:ring-green-500"
                         >
                             <option value="" disabled className="bg-gray-900 text-gray-400">Select a category</option>
                             {CART_CATEGORIES.map(cat => <option key={cat} value={cat} className="bg-gray-900 text-white">{cat}</option>)}
-                        </select>
+                        </Select>
                         <p className="text-xs text-white/50 mt-1 ml-1">Only one active {cartType.toLowerCase()} cart is allowed per property and category.</p>
                     </div>
                 )}
@@ -196,15 +197,15 @@ const CartDetailsForm: React.FC<{
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label htmlFor="frequency" className="block text-xs font-medium text-white/70 mb-1">Frequency *</label>
-                                <select
+                                <Select
                                     id="frequency"
                                     value={frequency}
                                     onChange={e => setFrequency(e.target.value as RecurringFrequency)}
                                     required
-                                    className="block w-full px-3 py-2 bg-white/10 border border-white/10 rounded-lg text-sm focus:ring-green-500 text-white outline-none appearance-none cursor-pointer"
+                                    className="bg-white/10 text-white border-white/10 focus:ring-green-500"
                                 >
                                     {(['Weekly', 'Bi-weekly', 'Monthly', 'Quarterly'] as RecurringFrequency[]).map(f => <option key={f} value={f} className="bg-gray-900 text-white">{f}</option>)}
-                                </select>
+                                </Select>
                             </div>
                             <div>
                                 <label htmlFor="startDate" className="block text-xs font-medium text-white/70 mb-1">Start Date *</label>
@@ -221,15 +222,15 @@ const CartDetailsForm: React.FC<{
                         {(frequency === 'Weekly' || frequency === 'Bi-weekly') && (
                             <div>
                                 <label htmlFor="dayOfWeek" className="block text-xs font-medium text-white/70 mb-1">Day of Week *</label>
-                                <select
+                                <Select
                                     id="dayOfWeek"
                                     value={dayOfWeek}
                                     onChange={e => setDayOfWeek(Number(e.target.value))}
                                     required
-                                    className="block w-full px-3 py-2 bg-white/10 border border-white/10 rounded-lg text-sm focus:ring-green-500 text-white outline-none appearance-none cursor-pointer"
+                                    className="bg-white/10 text-white border-white/10 focus:ring-green-500"
                                 >
                                     {daysOfWeek.map((day, i) => <option key={i} value={i} className="bg-gray-900 text-white">{day}</option>)}
-                                </select>
+                                </Select>
                             </div>
                         )}
                         {frequency === 'Monthly' && (

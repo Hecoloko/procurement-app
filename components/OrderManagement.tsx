@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Order, PurchaseOrder, PurchaseOrderStatus, Vendor, Property } from '../types';
 import { SearchIcon, ChevronRightIcon, BuildingOfficeIcon } from './Icons';
+import { Select } from './ui/Select';
 
 const getPOStatusTheme = (status: PurchaseOrderStatus) => {
     switch (status) {
@@ -105,27 +106,27 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({ orders, vendors, onSele
                     </div>
                     <div>
                         <label htmlFor="statusFilter" className="block text-sm font-medium text-foreground mb-1">Status</label>
-                        <select
+                        <Select
                             id="statusFilter"
                             name="statusFilter"
-                            className="block w-full pl-3 pr-10 py-2 text-base border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-primary focus:border-primary sm:text-sm cursor-pointer"
+                            className="w-full"
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value as any)}
                         >
                             {poStatuses.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
+                        </Select>
                     </div>
                     <div>
                         <label htmlFor="vendorFilter" className="block text-sm font-medium text-foreground mb-1">Vendor</label>
-                        <select
+                        <Select
                             id="vendorFilter"
                             name="vendorFilter"
-                            className="block w-full pl-3 pr-10 py-2 text-base border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-primary focus:border-primary sm:text-sm cursor-pointer"
+                            className="w-full"
                             value={vendorFilter}
                             onChange={(e) => setVendorFilter(e.target.value as any)}
                         >
                             {vendorOptions.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
-                        </select>
+                        </Select>
                     </div>
                 </div>
             </div>

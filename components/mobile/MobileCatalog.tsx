@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { Product, Cart } from '../../types';
 import { PlusIcon, MinusIcon, SearchIcon } from '../Icons';
+import { Select } from '../../components/ui/Select';
 
 interface MobileCatalogProps {
     products: Product[];
@@ -50,11 +51,11 @@ const MobileCatalog: React.FC<MobileCatalogProps> = ({ products, carts, activeCa
                 </div>
                 <div>
                     <label htmlFor="cart-selector-catalog" className="text-xs font-medium text-gray-600 dark:text-gray-400">Adding to cart:</label>
-                    <select
+                    <Select
                         id="cart-selector-catalog"
                         value={activeCart?.id || ''}
                         onChange={handleCartChange}
-                        className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                        className="mt-1"
                     >
                         {openCarts.length === 0 ? (
                             <option value="" disabled>No Open Carts</option>
@@ -63,7 +64,7 @@ const MobileCatalog: React.FC<MobileCatalogProps> = ({ products, carts, activeCa
                                 <option key={cart.id} value={cart.id}>{cart.name}</option>
                             ))
                         )}
-                    </select>
+                    </Select>
                 </div>
             </div>
 

@@ -18,6 +18,7 @@ import OrderDetailsDrawer from './components/OrderDetailsDrawer';
 import QuickCartModal from './components/QuickCartModal';
 import CreateCartFlowModal from './components/CreateCartFlowModal';
 import Properties from './components/Properties';
+import Integrations from './components/Integrations';
 
 import { Cart, Product, Order, OrderStatus, Vendor, Property, Unit, AdminUser, CommunicationThread, Message, CartType, CartItem, ItemApprovalStatus, Role, PurchaseOrder, Company, Account } from './types';
 import ProductDashboard from './components/ProductDashboard';
@@ -1510,7 +1511,7 @@ export const App: React.FC = () => {
             return <MyCarts carts={carts} setCarts={setCarts} onSelectCart={(c) => { const freshCart = carts.find(cart => cart.id === c.id) || c; setSelectedCart(freshCart); setView('detail'); }} onOpenCreateCartModal={() => setIsCreateCartModalOpen(true)} onBulkSubmit={handleBulkSubmit} properties={properties} initialStatusFilter={activeItem === 'Carts to Submit' ? 'Needs Attention' : 'All'} orders={orders} onDeleteCart={handleDeleteCart} onDeleteOrder={handleDeleteOrder} onBulkDeleteCarts={handleBulkDeleteCarts} onReuseCart={handleReuseCart} />;
         }
 
-        if (activeItem === 'All Orders') return <AllOrders orders={orders} onProcureOrder={(o) => setOrderForProcurement(o)} onSelectOrder={(o) => { setSelectedOrder(o); }} properties={properties} />;
+        if (activeItem === 'All Orders') return <AllOrders orders={orders} onProcureOrder={(o) => setOrderForProcurement(o)} onSelectOrder={(o) => { setSelectedOrder(o); }} properties={properties} onDeleteOrder={handleDeleteOrder} users={users} />;
         if (activeItem === 'Purchase Orders') return <PurchaseOrders orders={orders} vendors={vendors} onSelectOrder={(o) => { setSelectedOrder(o); }} properties={properties} />;
         if (activeItem === 'Approvals') return <Approvals orders={orders} onUpdateOrderStatus={handleUpdateOrderStatus} onSelectOrder={(o) => { setSelectedOrder(o); }} users={users} properties={properties} />;
         if (activeItem === 'Receiving') return <Receiving orders={orders} vendors={vendors} onUpdatePoStatus={handleUpdatePoStatus} onSelectOrder={(o) => setSelectedOrder(o)} />;
@@ -1520,6 +1521,7 @@ export const App: React.FC = () => {
         if (activeItem === 'Chart of Accounts') return <ChartOfAccounts accounts={accounts} onAddAccount={handleAddAccount} onUpdateAccount={handleUpdateAccount} onDeleteAccount={handleDeleteAccount} />;
         if (activeItem === 'Transactions') return <Transactions orders={orders} vendors={vendors} onUpdatePoPaymentStatus={handleUpdatePoPaymentStatus} />;
         if (activeItem === 'Reports') return <Reports orders={orders} vendors={vendors} products={products} />;
+        if (activeItem === 'Integrations') return <Integrations />;
         if (activeItem === 'Properties') return <Properties properties={properties} units={units} orders={orders} users={users} onSelectOrder={setSelectedOrder} />;
         if (activeItem === 'Product Dashboard') return <ProductDashboard products={products} companies={availableCompanies} currentCompanyId={viewingCompanyId || currentUser?.companyId || ''} onSwitchCompany={currentUser?.roleId === 'role-0' ? handleSwitchCompany : undefined} />;
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Order, OrderStatus, CartType, Property, AdminUser } from '../types';
 import { SearchIcon, ChevronRightIcon, BuildingOfficeIcon } from './Icons';
+import { Select } from './ui/Select';
 import { usePermissions } from '../contexts/PermissionsContext';
 import DeleteModal from './DeleteModal';
 
@@ -112,27 +113,25 @@ const AllOrders: React.FC<AllOrdersProps> = ({ orders, onProcureOrder, onSelectO
                     </div>
                     <div>
                         <label htmlFor="statusFilter" className="block text-sm font-medium text-foreground mb-1">Status</label>
-                        <select
+                        <Select
                             id="statusFilter"
                             name="statusFilter"
-                            className="block w-full pl-3 pr-10 py-2 text-base border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-primary focus:border-primary sm:text-sm cursor-pointer"
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value as any)}
                         >
                             {orderStatuses.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
+                        </Select>
                     </div>
                     <div>
                         <label htmlFor="typeFilter" className="block text-sm font-medium text-foreground mb-1">Type</label>
-                        <select
+                        <Select
                             id="typeFilter"
                             name="typeFilter"
-                            className="block w-full pl-3 pr-10 py-2 text-base border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-primary focus:border-primary sm:text-sm cursor-pointer"
                             value={typeFilter}
                             onChange={(e) => setTypeFilter(e.target.value as any)}
                         >
                             {cartTypes.map(t => <option key={t} value={t}>{t}</option>)}
-                        </select>
+                        </Select>
                     </div>
                 </div>
             </div>

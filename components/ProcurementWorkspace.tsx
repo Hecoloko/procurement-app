@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Order, CartItem, PurchaseOrder, PurchaseOrderStatus, Vendor } from '../types';
 import { ChevronLeftIcon, CheckBadgeIcon, CameraIcon, ShipmentIcon, TransactionIcon, PaperClipIcon, ArrowUpTrayIcon } from './Icons';
+import { CustomSelect } from './ui/CustomSelect';
 import { usePermissions } from '../contexts/PermissionsContext';
 import { generatePOId } from '../utils/idGenerator';
 
@@ -194,24 +195,25 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
 
   const AssignItemsView = (
     <div>
-      <div className="bg-white dark:bg-white/5 backdrop-blur-md rounded-2xl shadow-lg border border-gray-200 dark:border-white/10 overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white dark:bg-white/5 backdrop-blur-md rounded-2xl shadow-lg border border-gray-200 dark:border-white/10">
+        <table className="w-full text-sm border-collapse">
           <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-50 dark:bg-white/5">
             <tr>
-              <th className="px-6 py-3 text-left font-bold">Product</th>
+              <th className="px-6 py-3 text-left font-bold rounded-tl-2xl">Product</th>
               <th className="px-6 py-3 text-center font-bold">Qty</th>
               <th className="px-6 py-3 text-right font-bold">Unit Price</th>
               <th className="px-6 py-3 text-right font-bold">Total Price</th>
-              <th className="px-6 py-3 text-left font-bold">Assign Vendor</th>
+              <th className="px-6 py-3 text-left font-bold rounded-tr-2xl">Assign Vendor</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 dark:divide-white/5 text-gray-600 dark:text-gray-300">
-            {itemsToAssign.map(item => {
+            {itemsToAssign.map((item, index) => {
+              const isLast = index === itemsToAssign.length - 1;
               const currentUnitPrice = itemPriceOverrides[item.id] ?? item.unitPrice;
               const currentTotalPrice = currentUnitPrice * item.quantity;
               return (
                 <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
-                  <td className="px-6 py-4 font-bold text-gray-900 dark:text-white">{item.name}</td>
+                  <td className={`px-6 py-4 font-bold text-gray-900 dark:text-white ${isLast ? 'rounded-bl-2xl' : ''}`}>{item.name}</td>
                   <td className="px-6 py-4 text-center font-medium">{item.quantity}</td>
                   <td className="px-6 py-4 text-right font-medium">
                     <div className="flex items-center justify-end gap-1">
@@ -227,11 +229,10 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
                     </div>
                   </td>
                   <td className="px-6 py-4 text-right font-medium">${currentTotalPrice.toFixed(2)}</td>
-                  <td className="px-6 py-4">
-                    <select
+                  <td className={`px-6 py-4 ${isLast ? 'rounded-br-2xl' : ''}`}>
+                    <CustomSelect
                       value={itemVendorAssignments[item.id] || ''}
-                      onChange={(e) => {
-                        const val = e.target.value;
+                      onChange={(val) => {
                         setItemVendorAssignments(prev => {
                           const next = { ...prev };
                           if (val) {
@@ -242,12 +243,11 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
                           return next;
                         });
                       }}
-                      className="block w-full max-w-xs pl-3 pr-10 py-2 text-base border-gray-300 dark:border-white/20 bg-gray-50 dark:bg-white/10 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm cursor-pointer [&>option]:bg-white dark:[&>option]:bg-gray-900"
+                      options={vendors.map(v => ({ value: v.id, label: v.name }))}
+                      placeholder="Select a vendor..."
+                      className="w-full max-w-xs bg-gray-50 dark:bg-white/10 border-gray-300 dark:border-white/20 text-gray-900 dark:text-white"
                       disabled={!canCreatePOs}
-                    >
-                      <option value="" className="text-gray-500">Select a vendor...</option>
-                      {vendors.map(v => <option key={v.id} value={v.id} className="text-gray-900 dark:text-white">{v.name}</option>)}
-                    </select>
+                    />
                   </td>
                 </tr>
               )

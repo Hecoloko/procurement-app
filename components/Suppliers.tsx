@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Vendor, Order, PurchaseOrder, Product, VendorAccount, Property } from '../types';
 import { ChevronRightIcon, SparklesIcon, PlusIcon, ArrowUpTrayIcon, Squares2X2Icon, Bars3Icon, XMarkIcon, SearchIcon, UserGroupIcon, SupplierIcon } from './Icons';
+import { Select } from './ui/Select';
 import { GoogleGenAI } from "@google/genai";
 import AddProductModal from './AddProductModal';
 import { usePermissions } from '../contexts/PermissionsContext';
@@ -149,16 +150,16 @@ const AddAccountModal: React.FC<{
                 <div className="p-6 space-y-4">
                     <div>
                         <label htmlFor="property" className="block text-sm font-medium mb-1">Property *</label>
-                        <select
+                        <Select
                             id="property"
                             value={propertyId}
                             onChange={e => setPropertyId(e.target.value)}
                             required
-                            className="block w-full px-4 py-2.5 bg-background border border-border rounded-lg shadow-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all appearance-none cursor-pointer"
+                            className="w-full"
                         >
                             <option value="" disabled>Select a property</option>
                             {properties.map(prop => <option key={prop.id} value={prop.id}>{prop.name}</option>)}
-                        </select>
+                        </Select>
                     </div>
                     <div>
                         <label htmlFor="accountNumber" className="block text-sm font-medium mb-1">Account Number *</label>
@@ -442,9 +443,9 @@ const Suppliers: React.FC<SuppliersProps> = ({ vendors, products, orders, onSele
                                                 {unfilteredVendorCatalog.length > 0 && (
                                                     <div className="flex items-center gap-2">
                                                         <input type="text" placeholder="Search catalog..." value={catalogSearchTerm} onChange={e => setCatalogSearchTerm(e.target.value)} className="w-48 px-3 py-1.5 text-sm border border-border bg-background text-foreground rounded-md focus:ring-primary focus:border-primary placeholder-muted-foreground" />
-                                                        <select value={catalogCategoryFilter} onChange={e => setCatalogCategoryFilter(e.target.value)} className="px-3 py-1.5 text-sm border border-border bg-background text-foreground rounded-md focus:ring-primary focus:border-primary cursor-pointer">
+                                                        <Select value={catalogCategoryFilter} onChange={e => setCatalogCategoryFilter(e.target.value)} className="w-40">
                                                             {vendorCatalogCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                                                        </select>
+                                                        </Select>
                                                         <div className="flex items-center bg-muted/50 p-1 rounded-lg border border-border">
                                                             <button onClick={() => setCatalogView('card')} className={`p-1.5 rounded-md transition-colors ${catalogView === 'card' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}><Squares2X2Icon className="w-5 h-5" /></button>
                                                             <button onClick={() => setCatalogView('list')} className={`p-1.5 rounded-md transition-colors ${catalogView === 'list' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}><Bars3Icon className="w-5 h-5" /></button>

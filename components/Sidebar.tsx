@@ -5,6 +5,7 @@ import { AdminUser, NavItem, Role, Company } from '../types';
 import { ChevronLeftIcon, ChevronRightIcon, ProcureProLogoIcon, BuildingOfficeIcon, LogoutIcon } from './Icons';
 import { usePermissions } from '../contexts/PermissionsContext';
 import { Permission } from '../types';
+import { CustomSelect } from './ui/CustomSelect';
 
 interface SidebarProps {
   activeItem: string;
@@ -137,18 +138,13 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, setActiveItem, isCollapse
           <div className="w-full mb-2">
             <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 block">Viewing Company</label>
             <div className="relative">
-              <select
-                value={currentCompanyId}
-                onChange={(e) => onSwitchCompany(e.target.value)}
-                className="w-full appearance-none bg-background text-foreground border border-border rounded-lg py-2 pl-3 pr-8 text-sm focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer hover:bg-accent transition-colors"
-              >
-                {companies.map(c => (
-                  <option key={c.id} value={c.id} className="bg-popover text-popover-foreground">{c.name}</option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-muted-foreground">
-                <BuildingOfficeIcon className="w-4 h-4" />
-              </div>
+              <CustomSelect
+                value={currentCompanyId || ''}
+                onChange={(val) => onSwitchCompany(val)}
+                icon={<BuildingOfficeIcon className="w-4 h-4" />}
+                options={companies.map(c => ({ value: c.id, label: c.name }))}
+                className="bg-background"
+              />
             </div>
           </div>
         )}

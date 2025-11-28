@@ -3,6 +3,7 @@
 import React from 'react';
 import { Cart, CartItem } from '../types';
 import { XMarkIcon, PlusIcon, MinusIcon, TrashIcon, ChevronRightIcon } from './Icons';
+import { Select } from './ui/Select';
 
 interface GlobalCartDrawerProps {
   isOpen: boolean;
@@ -54,11 +55,11 @@ const GlobalCartDrawer: React.FC<GlobalCartDrawerProps> = ({ isOpen, onClose, ac
 
         <div className="p-4 border-b dark:border-gray-700">
           <label htmlFor="cart-selector" className="text-sm font-medium text-gray-700 dark:text-gray-300">Select a Cart:</label>
-          <select
+          <Select
             id="cart-selector"
             value={activeCart?.id || ''}
             onChange={handleCartChange}
-            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+            className="mt-1"
           >
             {carts.length === 0 ? (
               <option value="" disabled>No Draft Carts Available</option>
@@ -67,7 +68,7 @@ const GlobalCartDrawer: React.FC<GlobalCartDrawerProps> = ({ isOpen, onClose, ac
                 <option key={cart.id} value={cart.id}>{cart.name}</option>
               ))
             )}
-          </select>
+          </Select>
         </div>
 
         {activeCart ? (

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Account } from '../types';
 import { PlusIcon, SearchIcon, EditIcon, TrashIcon, FilterIcon } from './Icons';
+import { Select } from './ui/Select';
 
 interface ChartOfAccountsProps {
     accounts: Account[];
@@ -120,15 +121,15 @@ const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({ accounts, onAddAccoun
                         />
                     </div>
                     <div className="flex items-center gap-2 w-full sm:w-auto">
-                        <FilterIcon className="w-4 h-4 text-muted-foreground" />
-                        <select
+                        <Select
                             value={filterType}
                             onChange={(e) => setFilterType(e.target.value)}
-                            className="bg-background border border-input rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary w-full sm:w-auto"
+                            className="w-full sm:w-40"
+                            icon={<FilterIcon className="w-4 h-4" />}
                         >
                             <option value="All">All Types</option>
                             {accountTypes.map(t => <option key={t} value={t}>{t}</option>)}
-                        </select>
+                        </Select>
                     </div>
                 </div>
 
@@ -217,19 +218,18 @@ const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({ accounts, onAddAccoun
                                         required
                                         value={formData.code || ''}
                                         onChange={e => setFormData({ ...formData, code: e.target.value })}
-                                        className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                                         placeholder="e.g. 1000"
                                     />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-foreground mb-1.5">Account Type</label>
-                                    <select
+                                    <Select
                                         value={formData.type}
                                         onChange={e => setFormData({ ...formData, type: e.target.value as any })}
-                                        className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                                        className="w-full"
                                     >
                                         {accountTypes.map(t => <option key={t} value={t}>{t}</option>)}
-                                    </select>
+                                    </Select>
                                 </div>
                             </div>
 

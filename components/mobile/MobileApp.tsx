@@ -11,6 +11,7 @@ import Suppliers from '../Suppliers';
 import Transactions from '../Transactions';
 import PurchaseOrders from '../OrderManagement';
 import { ApprovalIcon, CartIcon, POIcon, CommunicationIcon, PlusIcon, XMarkIcon, SearchIcon, PencilIcon, Bars3Icon, BuildingOfficeIcon, SettingsIcon, ShipmentIcon, TransactionIcon, SupplierIcon, LogoutIcon, CheckCircleIcon } from '../Icons';
+import { Select } from '../../components/ui/Select';
 import { usePermissions } from '../../contexts/PermissionsContext';
 
 // --- NATIVE FEEL UTILS ---
@@ -190,15 +191,16 @@ const MobileApp: React.FC<MobileAppProps> = (props) => {
                                 <div className="mb-6">
                                     <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 block ml-1">Current Company</label>
                                     <div className="relative">
-                                        <select
+                                        <Select
                                             value={props.currentCompanyId}
                                             onChange={(e) => { props.onSwitchCompany(e.target.value); showToast(`Switched to ${props.availableCompanies?.find(c => c.id === e.target.value)?.name}`); }}
-                                            className="w-full bg-[#2C2C2E] text-white border border-white/10 rounded-xl py-3 px-4 appearance-none focus:outline-none focus:ring-2 focus:ring-green-500/50 font-medium text-sm shadow-inner transition-all"
+                                            className="bg-[#2C2C2E] text-white border-white/10 focus:ring-green-500/50"
+                                            icon={null}
                                         >
                                             {props.availableCompanies.map(c => (
                                                 <option key={c.id} value={c.id}>{c.name}</option>
                                             ))}
-                                        </select>
+                                        </Select>
                                         <BuildingOfficeIcon className="w-5 h-5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                                     </div>
                                 </div>

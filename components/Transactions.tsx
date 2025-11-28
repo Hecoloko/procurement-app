@@ -1,6 +1,8 @@
+
 import React, { useState, useMemo } from 'react';
 import { Order, PurchaseOrder, Vendor } from '../types';
-import { SearchIcon, FilterIcon, CheckCircleIcon, XCircleIcon, ClockIcon, DocumentDuplicateIcon, PaperClipIcon } from './Icons';
+import { TransactionIcon, FilterIcon, SearchIcon, XCircleIcon, PaperClipIcon } from './Icons';
+import { Select } from './ui/Select';
 
 interface TransactionsProps {
     orders: Order[];
@@ -129,19 +131,19 @@ const Transactions: React.FC<TransactionsProps> = ({ orders, vendors, onUpdatePo
                 <div className="flex items-center bg-muted p-1 rounded-lg border border-border">
                     <button
                         onClick={() => setView('Bills')}
-                        className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-all duration-200 ${view === 'Bills' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                        className={`px - 4 py - 1.5 text - sm font - semibold rounded - md transition - all duration - 200 ${view === 'Bills' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'} `}
                     >
                         Bills to Pay
                     </button>
                     <button
                         onClick={() => setView('Payments')}
-                        className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-all duration-200 ${view === 'Payments' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                        className={`px - 4 py - 1.5 text - sm font - semibold rounded - md transition - all duration - 200 ${view === 'Payments' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'} `}
                     >
                         Ready for Payment
                     </button>
                     <button
                         onClick={() => setView('History')}
-                        className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-all duration-200 ${view === 'History' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                        className={`px - 4 py - 1.5 text - sm font - semibold rounded - md transition - all duration - 200 ${view === 'History' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'} `}
                     >
                         History
                     </button>
@@ -199,10 +201,10 @@ const Transactions: React.FC<TransactionsProps> = ({ orders, vendors, onUpdatePo
                                             ${(item.po.amountDue || total).toLocaleString()}
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${item.po.paymentStatus === 'Paid' ? 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700/50' :
+                                            <span className={`inline - flex items - center px - 2.5 py - 0.5 rounded - full text - xs font - medium border ${item.po.paymentStatus === 'Paid' ? 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700/50' :
                                                 item.po.paymentStatus === 'Billed' ? 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700/50' :
                                                     'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-700/50'
-                                                }`}>
+                                                } `}>
                                                 {item.po.paymentStatus || 'Unbilled'}
                                             </span>
                                         </td>
@@ -312,16 +314,16 @@ const Transactions: React.FC<TransactionsProps> = ({ orders, vendors, onUpdatePo
                                 <>
                                     <div>
                                         <label className="block text-sm font-medium text-foreground mb-1">Payment Method</label>
-                                        <select
-                                            className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                                        <Select
                                             value={paymentMethod}
                                             onChange={(e) => setPaymentMethod(e.target.value)}
+                                            className="w-full"
                                         >
                                             <option value="ACH">ACH Transfer</option>
                                             <option value="Check">Check</option>
                                             <option value="Credit Card">Credit Card</option>
                                             <option value="Wire">Wire Transfer</option>
-                                        </select>
+                                        </Select>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-foreground mb-1">Payment Date</label>
