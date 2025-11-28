@@ -7,7 +7,7 @@ import { CART_CATEGORIES } from '../constants';
 interface CreateCartFlowModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (data: Partial<Cart> & { type: CartType, propertyId: string }) => { success: boolean; message?: string };
+    onSave: (data: Partial<Cart> & { type: CartType, propertyId: string }) => { success: boolean; message?: string } | Promise<{ success: boolean; message?: string }>;
     properties: Property[];
     userName: string;
 }
@@ -42,7 +42,7 @@ const CartTypeSelection: React.FC<{ onSelect: (type: CartType) => void }> = ({ o
 const CartDetailsForm: React.FC<{
     cartType: CartType;
     properties: Property[];
-    onSubmit: (data: Partial<Cart> & { propertyId: string, category?: string, name: string }) => { success: boolean; message?: string };
+    onSubmit: (data: Partial<Cart> & { propertyId: string, category?: string, name: string }) => { success: boolean; message?: string } | Promise<{ success: boolean; message?: string }>;
     onBack: () => void;
     userName: string;
 }> = ({ cartType, properties, onSubmit, onBack, userName }) => {
@@ -77,9 +77,11 @@ const CartDetailsForm: React.FC<{
 
     const generatedName = `${cartType} Cart - ${userName} - ${workOrderId}`;
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
+        console.log('[CreateCartFlowModal] handleSubmit called', { propertyId, needsCategory, category, cartName });
+
         if (!propertyId || (needsCategory && !category)) {
             setError('Please fill in all required fields.');
             return;
@@ -98,9 +100,12 @@ const CartDetailsForm: React.FC<{
             if (frequency === 'Monthly') scheduleData.dayOfMonth = dayOfMonth;
         }
 
-        const result = onSubmit({ propertyId, ...(needsCategory && { category }), ...scheduleData, name: cartName.trim() || `${cartType} Cart` });
+        console.log('[CreateCartFlowModal] About to call onSubmit with data:', { propertyId, category, scheduleData, name: cartName.trim() || `${cartType} Cart` });
+        const result = await onSubmit({ propertyId, ...(needsCategory && { category }), ...scheduleData, name: cartName.trim() || `${cartType} Cart` });
+        console.log('[CreateCartFlowModal] onSubmit result:', result);
 
         if (result && !result.success) {
+            console.error('[CreateCartFlowModal] Error from onSubmit:', result.message);
             setError(result.message || 'An unknown error occurred.');
         }
     };
@@ -272,8 +277,8 @@ const CreateCartFlowModal: React.FC<CreateCartFlowModalProps> = ({ isOpen, onClo
         setTimeout(() => setStep('select_type'), 300);
     };
 
-    const handleSaveDetails = (data: Partial<Cart> & { propertyId: string; category?: string; }) => {
-        const result = onSave({ type: selectedType, ...data });
+    const handleSaveDetails = async (data: Partial<Cart> & { propertyId: string; category?: string; }) => {
+        const result = await onSave({ type: selectedType, ...data });
         if (result.success) {
             handleClose();
         }

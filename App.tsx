@@ -357,208 +357,203 @@ export const App: React.FC = () => {
         setLoadingProgress(5);
         setDataError(null);
 
-        // Clear existing data to prevent stale state during switch
-        setCarts([]);
-        setOrders([]);
-        setProducts([]);
-        setVendors([]);
-        setProperties([]);
-        setUnits([]);
-        setUsers([]);
-        setThreads([]);
-        setMessages([]);
+        const loadData = async () => {
+            // Clear existing data to prevent stale state during switch
+            setCarts([]);
+            setOrders([]);
+            setProducts([]);
+            setVendors([]);
+            setProperties([]);
+            setUnits([]);
+            let profile = await getCurrentProfile();
+            setLoadingProgress(10);
+
+            if (!profile) {
+                try {
+                    profile = await createDefaultProfile();
+                } catch (createErr: any) {
+                    console.error("Failed to create default profile", createErr);
+                    // If we can't create a profile, we can't proceed.
+                    throw new Error("Failed to setup user profile.");
+                }
+            }
+            setLoadingProgress(15);
+
+            if (!profile) throw new Error("No profile found.");
+
+            // Map and set the current user profile immediately
+            const mappedProfile: AdminUser = {
+                id: profile.id,
+                companyId: profile.company_id,
+                name: profile.full_name || profile.email?.split('@')[0] || 'User',
+                email: profile.email || currentSession.user.email || '',
+                roleId: profile.role_id || 'role-2',
+                propertyIds: profile.property_ids || [],
+                avatarUrl: profile.avatar_url || 'https://via.placeholder.com/150',
+                status: profile.status === 'Inactive' ? 'Inactive' : 'Active'
+            };
+            setUserProfile(mappedProfile);
+
+            const isOwner = profile.role_id === 'role-0';
+            let targetCompanyId = viewingCompanyId || profile.company_id;
+
+            if (isOwner) {
+                const { data: companiesData } = await supabase.from('companies').select('*');
+                if (companiesData) {
+                    setAvailableCompanies(companiesData);
+                    if (!targetCompanyId && companiesData.length > 0) {
+                        targetCompanyId = companiesData[0].id;
+                        setViewingCompanyId(targetCompanyId);
+                    }
+                }
+            }
+            setLoadingProgress(20);
+
+            if (!targetCompanyId) {
+                // If no company, we can't load data.
+                return;
+            }
+
+            console.log("DEBUG: Fetching data for company:", targetCompanyId);
+
+            const { data: companyData } = await supabase.from('companies').select('name').eq('id', targetCompanyId).single();
+            if (companyData) {
+                setCurrentCompanyName(companyData.name);
+            } else {
+                setCurrentCompanyName('ProcurePro');
+            }
+
+            const requests = [
+                supabase.from('carts').select('*, cart_items(*)').eq('company_id', targetCompanyId).order('created_at', { ascending: false }).limit(100),
+                supabase.from('orders').select('*, cart:carts(cart_items(*)), purchase_orders(*), order_status_history(*)').eq('company_id', targetCompanyId).order('created_at', { ascending: false }).limit(100),
+                supabase.from('products').select('*').eq('company_id', targetCompanyId).limit(500),
+                supabase.from('vendors').select('*, vendor_accounts(*)').eq('company_id', targetCompanyId),
+                supabase.from('properties').select('*').eq('company_id', targetCompanyId),
+                supabase.from('profiles').select('*').eq('company_id', targetCompanyId),
+                supabase.from('roles').select('*'),
+                supabase.from('units').select('*'),
+                supabase.from('communication_threads').select('*').eq('company_id', targetCompanyId).limit(100),
+                supabase.from('messages').select('*').limit(500)
+            ];
+
+            let completedCount = 0;
+            const totalRequests = requests.length;
+            const baseProgress = 25;
+            const remainingProgress = 75;
+
+            const trackedPromises = requests.map(req =>
+                req.then(res => {
+                    completedCount++;
+                    const currentProgress = baseProgress + Math.round((completedCount / totalRequests) * remainingProgress);
+                    setLoadingProgress(currentProgress);
+                    return res;
+                })
+            );
+
+            const [
+                cartsData,
+                ordersData,
+                productsData,
+                vendorsData,
+                propsData,
+                usersData,
+                rolesData,
+                unitsData,
+                threadsData,
+                messagesData
+            ] = await Promise.all(trackedPromises);
+
+            if (cartsData.error) throw cartsData.error;
+            if (ordersData.error) throw ordersData.error;
+
+            const mappedProducts = (productsData.data || []).map(mapProduct);
+            setProducts(mappedProducts);
+            console.log("DEBUG: Products loaded:", mappedProducts.length);
+
+            if (cartsData.data) {
+                const mappedCarts = cartsData.data.map(mapCart);
+                setCarts(mappedCarts);
+
+                try {
+                    const hasNewGeneratedCarts = await processRecurringCarts(mappedCarts, targetCompanyId);
+                    if (hasNewGeneratedCarts) {
+                        const { data: refreshedCarts } = await supabase.from('carts').select('*, cart_items(*)').eq('company_id', targetCompanyId).order('created_at', { ascending: false }).limit(100);
+                        if (refreshedCarts) {
+                            const remappedCarts = refreshedCarts.map(mapCart);
+                            setCarts(remappedCarts);
+                            if (!activeCart && remappedCarts.length > 0) {
+                                const draft = remappedCarts.find(c => c.status === 'Draft');
+                                if (draft) setActiveCart(draft);
+                            }
+                        }
+                    }
+                } catch (recurringErr) {
+                    console.error("Error processing recurring carts:", recurringErr);
+                    // Don't block the app load for this
+                }
+
+                // Fallback if no recurring update or error
+                if ((!activeCart || activeCart.companyId !== targetCompanyId) && mappedCarts.length > 0) {
+                    const draft = mappedCarts.find(c => c.status === 'Draft');
+                    if (draft) setActiveCart(draft);
+                    else setActiveCart(null);
+                } else if (mappedCarts.length === 0) {
+                    setActiveCart(null);
+                }
+            }
+            if (ordersData.data) {
+                setOrders(ordersData.data.map((o: any) => mapOrder(o, mappedProducts)));
+            }
+            setVendors((vendorsData.data || []).map(mapVendor));
+
+            setProperties((propsData.data || []).map((p: any) => ({ id: p.id, companyId: p.company_id, name: p.name, address: p.address })));
+
+            if (unitsData.data) {
+                const validPropIds = new Set((propsData.data || []).map((p: any) => p.id));
+                const filteredUnits = unitsData.data.filter((u: any) => validPropIds.has(u.property_id));
+                setUnits(filteredUnits.map((u: any) => ({ id: u.id, propertyId: u.property_id, name: u.name })));
+            }
+
+            if (threadsData.data) setThreads(threadsData.data.map(mapThread));
+            if (messagesData.data) setMessages(messagesData.data.map(mapMessage));
+
+            if (rolesData.data) setRoles(rolesData.data as Role[]);
+
+            if (usersData.data) {
+                const mappedUsers: AdminUser[] = usersData.data.map((p: any) => {
+                    let finalName = p.full_name;
+                    if (p.role_id === 'role-0') {
+                        finalName = 'Procure Pro Owner';
+                    }
+                    else {
+                        if (!finalName || finalName.trim() === '') {
+                            finalName = p.email ? p.email.split('@')[0] : 'New User';
+                        }
+                    }
+
+                    return {
+                        id: p.id,
+                        companyId: p.company_id,
+                        name: finalName,
+                        email: p.email || '',
+                        roleId: p.role_id || 'role-2',
+                        propertyIds: p.property_ids || [],
+                        avatarUrl: p.avatar_url || 'https://via.placeholder.com/150',
+                        status: p.status === 'Inactive' ? 'Inactive' : 'Active'
+                    };
+                });
+                setUsers(mappedUsers);
+            }
+            setLoadingProgress(100);
+        };
 
         // Safety timeout to prevent infinite loading
         const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Data fetch timed out')), 15000)
+            setTimeout(() => reject(new Error('Data fetch timed out')), 30000)
         );
 
         try {
-            if (!currentSession?.user) throw new Error("No user in session");
-
-            const loadData = async () => {
-                let profile = await getCurrentProfile();
-                setLoadingProgress(10);
-
-                if (!profile) {
-                    try {
-                        profile = await createDefaultProfile();
-                    } catch (createErr: any) {
-                        console.error("Failed to create default profile", createErr);
-                        // If we can't create a profile, we can't proceed.
-                        throw new Error("Failed to setup user profile.");
-                    }
-                }
-                setLoadingProgress(15);
-
-                if (!profile) throw new Error("No profile found.");
-
-                // Map and set the current user profile immediately
-                const mappedProfile: AdminUser = {
-                    id: profile.id,
-                    companyId: profile.company_id,
-                    name: profile.full_name || profile.email?.split('@')[0] || 'User',
-                    email: profile.email || currentSession.user.email || '',
-                    roleId: profile.role_id || 'role-2',
-                    propertyIds: profile.property_ids || [],
-                    avatarUrl: profile.avatar_url || 'https://via.placeholder.com/150',
-                    status: profile.status === 'Inactive' ? 'Inactive' : 'Active'
-                };
-                setUserProfile(mappedProfile);
-
-                const isOwner = profile.role_id === 'role-0';
-                let targetCompanyId = viewingCompanyId || profile.company_id;
-
-                if (isOwner) {
-                    const { data: companiesData } = await supabase.from('companies').select('*');
-                    if (companiesData) {
-                        setAvailableCompanies(companiesData);
-                        if (!targetCompanyId && companiesData.length > 0) {
-                            targetCompanyId = companiesData[0].id;
-                            setViewingCompanyId(targetCompanyId);
-                        }
-                    }
-                }
-                setLoadingProgress(20);
-
-                if (!targetCompanyId) {
-                    // If no company, we can't load data.
-                    return;
-                }
-
-                const { data: companyData } = await supabase.from('companies').select('name').eq('id', targetCompanyId).single();
-                if (companyData) {
-                    setCurrentCompanyName(companyData.name);
-                } else {
-                    setCurrentCompanyName('ProcurePro');
-                }
-
-                const requests = [
-                    supabase.from('carts').select('*, cart_items(*)').eq('company_id', targetCompanyId).order('created_at', { ascending: false }).limit(100),
-                    supabase.from('orders').select('*, cart:carts(cart_items(*)), purchase_orders(*), order_status_history(*)').eq('company_id', targetCompanyId).order('created_at', { ascending: false }).limit(100),
-                    supabase.from('products').select('*').eq('company_id', targetCompanyId).limit(500),
-                    supabase.from('vendors').select('*, vendor_accounts(*)').eq('company_id', targetCompanyId),
-                    supabase.from('properties').select('*').eq('company_id', targetCompanyId),
-                    supabase.from('profiles').select('*').eq('company_id', targetCompanyId),
-                    supabase.from('roles').select('*'),
-                    supabase.from('units').select('*'),
-                    supabase.from('communication_threads').select('*').eq('company_id', targetCompanyId).limit(100),
-                    supabase.from('messages').select('*').limit(500)
-                ];
-
-                let completedCount = 0;
-                const totalRequests = requests.length;
-                const baseProgress = 25;
-                const remainingProgress = 75;
-
-                const trackedPromises = requests.map(req =>
-                    req.then(res => {
-                        completedCount++;
-                        const currentProgress = baseProgress + Math.round((completedCount / totalRequests) * remainingProgress);
-                        setLoadingProgress(currentProgress);
-                        return res;
-                    })
-                );
-
-                const [
-                    cartsData,
-                    ordersData,
-                    productsData,
-                    vendorsData,
-                    propsData,
-                    usersData,
-                    rolesData,
-                    unitsData,
-                    threadsData,
-                    messagesData
-                ] = await Promise.all(trackedPromises);
-
-                if (cartsData.error) throw cartsData.error;
-                if (ordersData.error) throw ordersData.error;
-
-                const mappedProducts = (productsData.data || []).map(mapProduct);
-                setProducts(mappedProducts);
-
-                if (cartsData.data) {
-                    const mappedCarts = cartsData.data.map(mapCart);
-                    setCarts(mappedCarts);
-
-                    try {
-                        const hasNewGeneratedCarts = await processRecurringCarts(mappedCarts, targetCompanyId);
-                        if (hasNewGeneratedCarts) {
-                            const { data: refreshedCarts } = await supabase.from('carts').select('*, cart_items(*)').eq('company_id', targetCompanyId).order('created_at', { ascending: false }).limit(100);
-                            if (refreshedCarts) {
-                                const remappedCarts = refreshedCarts.map(mapCart);
-                                setCarts(remappedCarts);
-                                if (!activeCart && remappedCarts.length > 0) {
-                                    const draft = remappedCarts.find(c => c.status === 'Draft');
-                                    if (draft) setActiveCart(draft);
-                                }
-                            }
-                        }
-                    } catch (recurringErr) {
-                        console.error("Error processing recurring carts:", recurringErr);
-                        // Don't block the app load for this
-                    }
-
-                    // Fallback if no recurring update or error
-                    if ((!activeCart || activeCart.companyId !== targetCompanyId) && mappedCarts.length > 0) {
-                        const draft = mappedCarts.find(c => c.status === 'Draft');
-                        if (draft) setActiveCart(draft);
-                        else setActiveCart(null);
-                    } else if (mappedCarts.length === 0) {
-                        setActiveCart(null);
-                    }
-                }
-                if (ordersData.data) {
-                    setOrders(ordersData.data.map((o: any) => mapOrder(o, mappedProducts)));
-                }
-                setVendors((vendorsData.data || []).map(mapVendor));
-
-                setProperties((propsData.data || []).map((p: any) => ({ id: p.id, companyId: p.company_id, name: p.name, address: p.address })));
-
-                if (unitsData.data) {
-                    const validPropIds = new Set((propsData.data || []).map((p: any) => p.id));
-                    const filteredUnits = unitsData.data.filter((u: any) => validPropIds.has(u.property_id));
-                    setUnits(filteredUnits.map((u: any) => ({ id: u.id, propertyId: u.property_id, name: u.name })));
-                }
-
-                if (threadsData.data) setThreads(threadsData.data.map(mapThread));
-                if (messagesData.data) setMessages(messagesData.data.map(mapMessage));
-
-                if (rolesData.data) setRoles(rolesData.data as Role[]);
-
-                if (usersData.data) {
-                    const mappedUsers: AdminUser[] = usersData.data.map((p: any) => {
-                        let finalName = p.full_name;
-                        if (p.role_id === 'role-0') {
-                            finalName = 'Procure Pro Owner';
-                        }
-                        else {
-                            if (!finalName || finalName.trim() === '') {
-                                finalName = p.email ? p.email.split('@')[0] : 'New User';
-                            }
-                        }
-
-                        return {
-                            id: p.id,
-                            companyId: p.company_id,
-                            name: finalName,
-                            email: p.email || '',
-                            roleId: p.role_id || 'role-2',
-                            propertyIds: p.property_ids || [],
-                            avatarUrl: p.avatar_url || 'https://via.placeholder.com/150',
-                            status: p.status === 'Inactive' ? 'Inactive' : 'Active'
-                        };
-                    });
-                    setUsers(mappedUsers);
-                }
-                setLoadingProgress(100);
-            };
-
-            // Race the load process against the timeout
             await Promise.race([loadData(), timeoutPromise]);
-
         } catch (error: any) {
             console.error("Error fetching data:", error);
 
@@ -1387,6 +1382,27 @@ export const App: React.FC = () => {
         }
     };
 
+    const handleUpdatePoPaymentStatus = async (orderId: string, poId: string, updates: Partial<PurchaseOrder>) => {
+        const dbUpdates: any = {};
+        if (updates.paymentStatus) dbUpdates.payment_status = updates.paymentStatus;
+        if (updates.invoiceNumber) dbUpdates.invoice_number = updates.invoiceNumber;
+        if (updates.invoiceDate) dbUpdates.invoice_date = updates.invoiceDate;
+        if (updates.dueDate) dbUpdates.due_date = updates.dueDate;
+        if (updates.amountDue) dbUpdates.amount_due = updates.amountDue;
+        if (updates.paymentDate) dbUpdates.payment_date = updates.paymentDate;
+        if (updates.paymentMethod) dbUpdates.payment_method = updates.paymentMethod;
+
+        await supabase.from('purchase_orders').update(dbUpdates).eq('id', poId);
+
+        const { data: freshOrderData } = await supabase.from('orders').select('*, cart:carts(cart_items(*)), purchase_orders(*), order_status_history(*)').eq('id', orderId).single();
+
+        if (freshOrderData && freshOrderData.purchase_orders) {
+            const freshOrder = mapOrder(freshOrderData, products);
+            setOrders(prev => prev.map(o => o.id === orderId ? freshOrder : o));
+            if (selectedOrder?.id === orderId) setSelectedOrder(freshOrder);
+        }
+    };
+
     const renderContent = () => {
         if (orderForProcurement) return <ProcurementWorkspace order={orderForProcurement} vendors={vendors} onBack={(updated) => { setOrderForProcurement(null); if (updated) handleSaveOrder(updated); }} onOrderComplete={handleSaveOrder} />;
 
@@ -1407,8 +1423,8 @@ export const App: React.FC = () => {
         if (activeItem === 'Communications') return <CommunicationCenter threads={threads} messages={messages} users={users} orders={orders} currentUser={currentUser} onSendMessage={handleSendMessage} onStartNewThread={handleStartThread} onSelectOrder={setSelectedOrder} />;
 
         if (activeItem === 'Company Settings') return <AdminSettings vendors={vendors} properties={properties} units={units} users={users} roles={roles} companies={availableCompanies} currentUser={currentUser} onAddProperty={handleAddProperty} onDeleteProperty={handleDeleteProperty} onAddUnit={handleAddUnit} onAddRole={handleAddRole} onUpdateRole={handleUpdateRole} onDeleteRole={handleDeleteRole} onViewAsUser={setImpersonatingUser} onAddUser={handleAddUser} onAddCompany={handleAddCompany} onDeleteUser={handleDeleteUser} />;
-        if (activeItem === 'Suppliers') return <Suppliers vendors={vendors} products={products} orders={orders} properties={properties} onSelectOrder={(o) => { setSelectedOrder(o); }} onAddVendor={handleAddVendor} onAddProduct={handleAddProduct} onAddVendorAccount={handleAddVendorAccount} />;
-        if (activeItem === 'Transactions') return <Transactions />;
+        if (activeItem === 'Suppliers') return <Suppliers vendors={vendors} products={products} orders={orders} properties={properties} companies={availableCompanies} currentCompanyId={viewingCompanyId || currentUser?.companyId || ''} onSwitchCompany={currentUser?.roleId === 'role-0' ? handleSwitchCompany : undefined} onSelectOrder={(o) => { setSelectedOrder(o); }} onAddVendor={handleAddVendor} onAddProduct={handleAddProduct} onAddVendorAccount={handleAddVendorAccount} />;
+        if (activeItem === 'Transactions') return <Transactions orders={orders} vendors={vendors} onUpdatePoPaymentStatus={handleUpdatePoPaymentStatus} />;
         if (activeItem === 'Properties') return <Properties properties={properties} units={units} orders={orders} users={users} onSelectOrder={setSelectedOrder} />;
         if (activeItem === 'Product Dashboard') return <ProductDashboard products={products} companies={availableCompanies} currentCompanyId={viewingCompanyId || currentUser?.companyId || ''} onSwitchCompany={currentUser?.roleId === 'role-0' ? handleSwitchCompany : undefined} />;
 

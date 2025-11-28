@@ -29,8 +29,8 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, sender, isCurrentUse
                 const order = orders.find(o => o.id === orderId);
                 if (order) {
                     return (
-                        <button 
-                            key={index} 
+                        <button
+                            key={index}
                             onClick={() => onSelectOrder(order)}
                             className="text-indigo-500 font-semibold hover:underline"
                         >
@@ -45,19 +45,15 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, sender, isCurrentUse
 
     const bubbleClasses = isCurrentUser
         ? 'bg-green-500 text-white rounded-br-lg'
-        : (theme === 'dark' 
-            ? 'bg-[#2C2C2E] text-white rounded-bl-lg' 
-            : 'bg-gray-200 text-gray-800 rounded-bl-lg');
+        : 'bg-gray-200 text-gray-800 dark:bg-[#2C2C2E] dark:text-white rounded-bl-lg';
 
-    const senderNameClasses = theme === 'dark'
-        ? 'text-xs font-bold mb-1 text-gray-400'
-        : 'text-xs font-bold mb-1 opacity-70';
+    const senderNameClasses = 'text-xs font-bold mb-1 opacity-70 dark:text-gray-400 dark:opacity-100';
 
     return (
         <div className={`flex items-start gap-3 ${isCurrentUser ? 'justify-end' : ''}`}>
             {!isCurrentUser && <img src={sender.avatarUrl} alt={sender.name} className="w-8 h-8 rounded-full flex-shrink-0" />}
             <div className={`max-w-md p-3 rounded-2xl ${bubbleClasses}`}>
-                 {!isCurrentUser && <p className={senderNameClasses}>{sender.name}</p>}
+                {!isCurrentUser && <p className={senderNameClasses}>{sender.name}</p>}
                 <p className="text-sm whitespace-pre-wrap">{renderContent(message.content)}</p>
             </div>
         </div>

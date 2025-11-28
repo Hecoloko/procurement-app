@@ -21,7 +21,6 @@ export const NAVIGATION_DATA: NavSection[] = [
     title: 'OPERATIONAL',
     items: [
       { name: 'Dashboard', icon: DashboardIcon },
-      { name: 'Product Dashboard', icon: PropertiesIcon }, // Reusing PropertiesIcon for now or find a better one
       { name: 'My Carts', icon: CartIcon },
       { name: 'Properties', icon: PropertiesIcon },
       { name: 'Communications', icon: CommunicationIcon },
@@ -42,6 +41,7 @@ export const NAVIGATION_DATA: NavSection[] = [
       { name: 'Transactions', icon: TransactionIcon },
       { name: 'Reports', icon: DocumentReportIcon },
       { name: 'Suppliers', icon: SupplierIcon },
+      { name: 'Chart of Accounts', icon: DocumentReportIcon },
     ],
   },
   {
@@ -271,7 +271,7 @@ export const DUMMY_ROLES: Role[] = [
       'orders:procure', 'purchaseOrders:create', 'purchaseOrders:edit', 'receiving:edit', 'approvals:approve',
       'suppliers:create', 'suppliers:edit', 'users:view', 'users:create', 'users:edit', 'users:delete', 'users:impersonate',
       'roles:view', 'roles:create', 'roles:edit', 'roles:delete', 'workflows:view', 'workflows:edit',
-      'notifications:view', 'notifications:edit', 'companyProperties:view', 'companyProperties:edit'
+      'notifications:view', 'notifications:edit', 'companyProperties:view', 'companyProperties:edit', 'orders:delete'
     ]
   },
   {
@@ -285,7 +285,7 @@ export const DUMMY_ROLES: Role[] = [
       'orders:procure', 'purchaseOrders:create', 'purchaseOrders:edit', 'receiving:edit', 'approvals:approve',
       'suppliers:create', 'suppliers:edit', 'users:view', 'users:create', 'users:edit', 'users:delete', 'users:impersonate',
       'roles:view', 'roles:create', 'roles:edit', 'roles:delete', 'workflows:view', 'workflows:edit',
-      'notifications:view', 'notifications:edit', 'companyProperties:view', 'companyProperties:edit'
+      'notifications:view', 'notifications:edit', 'companyProperties:view', 'companyProperties:edit', 'orders:delete'
     ]
   },
   {

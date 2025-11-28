@@ -231,13 +231,13 @@ const CartDetail: React.FC<CartDetailProps> = ({ cart, onBack, onOpenCatalog, on
                   }
                 }}
                 onBlur={handleNameSave}
-                className="text-3xl md:text-4xl font-bold text-gray-800 tracking-tight bg-white border-b-2 border-green-500 focus:outline-none p-0"
+                className="text-3xl md:text-4xl font-bold text-gray-800 dark:text-gray-100 tracking-tight bg-white dark:bg-gray-800 border-b-2 border-green-500 focus:outline-none p-0"
                 autoFocus
               />
             ) : (
               <h1
                 onClick={() => canEditCart && setIsEditingName(true)}
-                className={`text-3xl md:text-4xl font-bold text-gray-800 tracking-tight flex items-center gap-2 group ${canEditCart ? 'cursor-pointer' : 'cursor-default'}`}
+                className={`text-3xl md:text-4xl font-bold text-gray-800 dark:text-gray-100 tracking-tight flex items-center gap-2 group ${canEditCart ? 'cursor-pointer' : 'cursor-default'}`}
                 title={canEditCart ? "Click to edit name" : ""}
               >
                 {baseName}
@@ -289,21 +289,21 @@ const CartDetail: React.FC<CartDetailProps> = ({ cart, onBack, onOpenCatalog, on
 
       {/* Add Item actions */}
       {canEditCart && (
-        <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-200 mb-8">
-          <h2 className="text-xl font-semibold text-gray-700 mb-4">Add Items</h2>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700 mb-8">
+          <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Add Items</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <button
               onClick={onOpenCatalog}
               className="w-full text-left bg-gray-50 hover:bg-gray-100 p-4 rounded-lg border border-gray-200 transition-colors duration-200"
             >
-              <p className="font-semibold text-gray-800">Add from Catalog</p>
+              <p className="font-semibold text-gray-800 dark:text-gray-100">Add from Catalog</p>
               <p className="text-sm text-gray-500">Browse approved items and add to cart.</p>
             </button>
             <button
               onClick={() => setIsModalOpen(true)}
               className="w-full text-left bg-gray-50 hover:bg-gray-100 p-4 rounded-lg border border-gray-200 transition-colors duration-200"
             >
-              <p className="font-semibold text-gray-800">Add Manually</p>
+              <p className="font-semibold text-gray-800 dark:text-gray-100">Add Manually</p>
               <p className="text-sm text-gray-500">For one-off items not in the catalog.</p>
             </button>
           </div>
@@ -311,9 +311,9 @@ const CartDetail: React.FC<CartDetailProps> = ({ cart, onBack, onOpenCatalog, on
       )}
 
       {/* Items Table */}
-      <div className="bg-white rounded-2xl shadow-md border border-gray-200 overflow-x-auto">
-        <table className="w-full text-sm text-left text-gray-500">
-          <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700 overflow-x-auto">
+        <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+          <thead className="text-xs text-gray-700 dark:text-gray-300 uppercase bg-gray-50 dark:bg-gray-700/50">
             <tr>
               <th scope="col" className="px-6 py-3">Product</th>
               <th scope="col" className="px-6 py-3">SKU</th>
@@ -325,15 +325,15 @@ const CartDetail: React.FC<CartDetailProps> = ({ cart, onBack, onOpenCatalog, on
           </thead>
           <tbody>
             {cart.items.map((item: CartItem) => (
-              <tr key={item.id} className="bg-white border-b hover:bg-gray-50">
-                <th scope="row" className="px-6 py-4 font-medium text-gray-900 align-top">
+              <tr key={item.id} className="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                <th scope="row" className="px-6 py-4 font-medium text-gray-900 dark:text-gray-100 align-top">
                   <div>{item.name}</div>
                   <EditableNote item={item} onUpdateCartItem={onUpdateCartItem} />
                 </th>
                 <td className="px-6 py-4 align-top">{item.sku}</td>
                 <td className="px-6 py-4 text-center align-top">{item.quantity}</td>
                 <td className="px-6 py-4 text-right align-top">${item.unitPrice.toFixed(2)}</td>
-                <td className="px-6 py-4 text-right font-semibold text-gray-800 align-top">${item.totalPrice.toFixed(2)}</td>
+                <td className="px-6 py-4 text-right font-semibold text-gray-800 dark:text-gray-100 align-top">${item.totalPrice.toFixed(2)}</td>
                 <td className="px-6 py-4 text-center align-top">
                   <div className="flex justify-center items-center space-x-2">
                     {canDeleteItems && (
@@ -353,7 +353,7 @@ const CartDetail: React.FC<CartDetailProps> = ({ cart, onBack, onOpenCatalog, on
         </table>
         {cart.items.length === 0 && (
           <div className="text-center py-12">
-            <h3 className="text-lg font-semibold text-gray-700">This cart is empty</h3>
+            <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200">This cart is empty</h3>
             <p className="mt-1 text-gray-500">Get started by adding items above.</p>
           </div>
         )}
@@ -362,25 +362,25 @@ const CartDetail: React.FC<CartDetailProps> = ({ cart, onBack, onOpenCatalog, on
       {/* Summary */}
       <div className="flex justify-end mt-8 items-start gap-8">
         {scheduleDetails.length > 0 && (
-          <div className="w-full max-w-sm p-6 bg-white rounded-2xl shadow-md border border-gray-200">
+          <div className="w-full max-w-sm p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-800">Schedule Details</h3>
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Schedule Details</h3>
               {canEditCart && <button onClick={() => onOpenEditSchedule(cart)} className="text-sm font-semibold text-green-600 hover:text-green-800">Edit</button>}
             </div>
             <div className="space-y-2">
               {scheduleDetails.map((detail, index) => (
                 <div key={index} className="flex justify-between text-gray-600 text-sm">
                   <span className="flex items-center gap-2"><detail.icon className="w-4 h-4 text-gray-400" /> {detail.label}</span>
-                  <span className="font-medium text-gray-800">{detail.value}</span>
+                  <span className="font-medium text-gray-800 dark:text-gray-100">{detail.value}</span>
                 </div>
               ))}
             </div>
           </div>
         )}
-        <div className="w-full max-w-sm p-6 bg-white rounded-2xl shadow-md border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Cart Summary</h3>
+        <div className="w-full max-w-sm p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Cart Summary</h3>
           <div className="space-y-2">
-            <div className="flex justify-between text-gray-600">
+            <div className="flex justify-between text-gray-600 dark:text-gray-400">
               <span>Subtotal</span>
               <span>${subtotal.toFixed(2)}</span>
             </div>
@@ -388,8 +388,8 @@ const CartDetail: React.FC<CartDetailProps> = ({ cart, onBack, onOpenCatalog, on
               <span>Est. Tax (8%)</span>
               <span>${estimatedTax.toFixed(2)}</span>
             </div>
-            <hr className="my-2 border-gray-200" />
-            <div className="flex justify-between text-gray-900 font-bold text-lg">
+            <hr className="my-2 border-gray-200 dark:border-gray-700" />
+            <div className="flex justify-between text-gray-900 dark:text-gray-100 font-bold text-lg">
               <span>Grand Total</span>
               <span>${grandTotal.toFixed(2)}</span>
             </div>

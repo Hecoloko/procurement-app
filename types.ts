@@ -30,6 +30,7 @@ export interface CartItem {
   note?: string;
   approvalStatus?: ItemApprovalStatus;
   rejectionReason?: string;
+  vendorId?: string;
 }
 
 export type RecurringFrequency = 'Weekly' | 'Bi-weekly' | 'Monthly' | 'Quarterly';
@@ -93,7 +94,8 @@ export type OrderStatus =
   | 'Rejected'
   | 'Processing'
   | 'Shipped'
-  | 'Completed';
+  | 'Completed'
+  | 'Scheduled';
 
 export interface Order {
   id: string;
@@ -143,7 +145,41 @@ export interface PurchaseOrder {
   vendorConfirmationNumber?: string;
   invoiceNumber?: string;
   invoiceUrl?: string;
+  paymentStatus?: 'Unbilled' | 'Billed' | 'Paid';
+  invoiceDate?: string;
+  dueDate?: string;
+  paymentDate?: string;
+  paymentMethod?: string;
+  amountDue?: number;
   statusHistory?: { status: PurchaseOrderStatus; date: string }[];
+}
+
+export interface Account {
+  id: string;
+  companyId: string;
+  code: string;
+  name: string;
+  type: 'Asset' | 'Liability' | 'Equity' | 'Income' | 'Expense';
+  subtype?: string;
+  isActive: boolean;
+  balance?: number; // Calculated field
+}
+
+export interface JournalEntry {
+  id: string;
+  companyId: string;
+  transactionDate: string;
+  description: string;
+  referenceId?: string;
+  lines: JournalLine[];
+}
+
+export interface JournalLine {
+  id: string;
+  journalEntryId: string;
+  accountId: string;
+  debit: number;
+  credit: number;
 }
 
 export interface Property {

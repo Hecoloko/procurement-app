@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
-import { Order, OrderStatus, CartType, CartItem, Property } from '../types';
+import { Order, OrderStatus, CartType, Property, AdminUser } from '../types';
 import { SearchIcon, ChevronRightIcon, BuildingOfficeIcon } from './Icons';
 import { usePermissions } from '../contexts/PermissionsContext';
-
+import DeleteModal from './DeleteModal';
 
 const getComprehensiveStatusTheme = (status: OrderStatus) => {
     switch (status) {
@@ -18,26 +17,31 @@ const getComprehensiveStatusTheme = (status: OrderStatus) => {
         case 'Draft': return 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border border-gray-200 dark:border-gray-700';
         case 'Ready for Review': return 'bg-yellow-50 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400 border border-yellow-100 dark:border-yellow-900/30';
         case 'Submitted': return 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30';
+        case 'Scheduled': return 'bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400 border border-purple-100 dark:border-purple-900/30';
         default: return 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300';
     }
-}
+};
 
 interface AllOrdersProps {
-  orders: Order[];
-  onProcureOrder: (order: Order) => void;
-  onSelectOrder: (order: Order) => void;
-  initialStatusFilter?: OrderStatus | 'All';
-  properties: Property[];
+    orders: Order[];
+    onProcureOrder: (order: Order) => void;
+    onSelectOrder: (order: Order) => void;
+    onDeleteOrder: (orderId: string) => void;
+    initialStatusFilter?: OrderStatus | 'All';
+    properties: Property[];
+    users: AdminUser[];
 }
 
-const AllOrders: React.FC<AllOrdersProps> = ({ orders, onProcureOrder, onSelectOrder, initialStatusFilter, properties }) => {
+const AllOrders: React.FC<AllOrdersProps> = ({ orders, onProcureOrder, onSelectOrder, onDeleteOrder, initialStatusFilter, properties, users }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<OrderStatus | 'All'>(initialStatusFilter || 'All');
     const [typeFilter, setTypeFilter] = useState<CartType | 'All'>('All');
     const { can, user } = usePermissions();
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
 
     useEffect(() => {
-        if(initialStatusFilter) {
+        if (initialStatusFilter) {
             setStatusFilter(initialStatusFilter);
         }
     }, [initialStatusFilter]);
@@ -57,23 +61,23 @@ const AllOrders: React.FC<AllOrdersProps> = ({ orders, onProcureOrder, onSelectO
 
             // Search Filter
             const lowerSearchTerm = searchTerm.toLowerCase();
-            const matchesSearch = order.cartName.toLowerCase().includes(lowerSearchTerm) || 
-                                  order.submittedBy.toLowerCase().includes(lowerSearchTerm) ||
-                                  order.id.toLowerCase().includes(lowerSearchTerm) ||
-                                  order.cartId.toLowerCase().includes(lowerSearchTerm) ||
-                                  (order.purchaseOrders && order.purchaseOrders.some(po => po.id.toLowerCase().includes(lowerSearchTerm)));
-            
+            const matchesSearch = order.cartName.toLowerCase().includes(lowerSearchTerm) ||
+                order.submittedBy.toLowerCase().includes(lowerSearchTerm) ||
+                order.id.toLowerCase().includes(lowerSearchTerm) ||
+                order.cartId.toLowerCase().includes(lowerSearchTerm) ||
+                (order.purchaseOrders && order.purchaseOrders.some(po => po.id.toLowerCase().includes(lowerSearchTerm)));
+
             // Status Filter
             const matchesStatus = statusFilter === 'All' || order.status === statusFilter;
-            
+
             // Type Filter
             const matchesType = typeFilter === 'All' || order.type === typeFilter;
-            
+
             return matchesSearch && matchesStatus && matchesType;
         });
     }, [orders, searchTerm, statusFilter, typeFilter, can, user?.id]);
-    
-    const orderStatuses: (OrderStatus | 'All')[] = ['All', 'Draft', 'Submitted', 'Pending My Approval', 'Pending Others', 'Approved', 'Needs Revision', 'Rejected', 'Processing', 'Shipped', 'Completed'];
+
+    const orderStatuses: (OrderStatus | 'All')[] = ['All', 'Draft', 'Submitted', 'Pending My Approval', 'Pending Others', 'Approved', 'Needs Revision', 'Rejected', 'Processing', 'Shipped', 'Completed', 'Scheduled'];
     const cartTypes: (CartType | 'All')[] = ['All', 'Standard', 'Recurring', 'Scheduled'];
 
     const handleProcureClick = (e: React.MouseEvent, order: Order) => {
@@ -127,7 +131,7 @@ const AllOrders: React.FC<AllOrdersProps> = ({ orders, onProcureOrder, onSelectO
                             value={typeFilter}
                             onChange={(e) => setTypeFilter(e.target.value as any)}
                         >
-                             {cartTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                            {cartTypes.map(t => <option key={t} value={t}>{t}</option>)}
                         </select>
                     </div>
                 </div>
@@ -151,11 +155,11 @@ const AllOrders: React.FC<AllOrdersProps> = ({ orders, onProcureOrder, onSelectO
                         </thead>
                         <tbody className="divide-y divide-border">
                             {filteredOrders.length > 0 ? filteredOrders.map(order => (
-                            <tr key={order.id} className="hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => onSelectOrder(order)}>
-                                <td className="px-6 py-4">
+                                <tr key={order.id} className="hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => onSelectOrder(order)}>
+                                    <td className="px-6 py-4">
                                         <div className="font-bold text-foreground">{order.cartName}</div>
                                         <div className="text-xs text-muted-foreground mt-1 space-x-2 flex items-center flex-wrap">
-                                            <span className="flex items-center gap-1.5"><BuildingOfficeIcon className="w-3 h-3"/> {properties.find(p => p.id === order.propertyId)?.name || 'N/A'}</span>
+                                            <span className="flex items-center gap-1.5"><BuildingOfficeIcon className="w-3 h-3" /> {properties.find(p => p.id === order.propertyId)?.name || 'N/A'}</span>
                                             <span className="text-border">|</span>
                                             <span>ORD: <span className="font-mono font-medium text-primary">{order.id}</span></span>
                                             {order.purchaseOrders && order.purchaseOrders.length > 0 && (
@@ -165,19 +169,19 @@ const AllOrders: React.FC<AllOrdersProps> = ({ orders, onProcureOrder, onSelectO
                                                 </>
                                             )}
                                         </div>
-                                </td>
-                                <td className="px-6 py-4 text-foreground">{order.submittedBy}</td>
-                                <td className="px-6 py-4 text-muted-foreground">{order.submissionDate}</td>
-                                <td className="px-6 py-4 text-right font-bold text-foreground">${order.totalCost.toFixed(2)}</td>
-                                <td className="px-6 py-4 text-center">
-                                    <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getComprehensiveStatusTheme(order.status)}`}>
+                                    </td>
+                                    <td className="px-6 py-4 text-foreground">{users.find(u => u.id === order.submittedBy)?.name || order.submittedBy || 'Unknown'}</td>
+                                    <td className="px-6 py-4 text-muted-foreground">{order.submissionDate}</td>
+                                    <td className="px-6 py-4 text-right font-bold text-foreground">${order.totalCost.toFixed(2)}</td>
+                                    <td className="px-6 py-4 text-center">
+                                        <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getComprehensiveStatusTheme(order.status)}`}>
                                             {order.status}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 text-center">
-                                    <span className="px-3 py-1 text-xs font-semibold rounded-full bg-muted text-muted-foreground border border-border">
-                                        {order.type}
-                                    </span>
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-center">
+                                        <span className="px-3 py-1 text-xs font-semibold rounded-full bg-muted text-muted-foreground border border-border">
+                                            {order.type}
+                                        </span>
                                     </td>
                                     <td className="px-6 py-4 text-center">
                                         {order.status === 'Approved' && can('orders:procure') && (
@@ -187,12 +191,26 @@ const AllOrders: React.FC<AllOrdersProps> = ({ orders, onProcureOrder, onSelectO
                                             >
                                                 Start Procurement
                                             </button>
+
+                                        )}
+                                        {can('orders:delete') && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setOrderToDelete(order.id);
+                                                    setIsDeleteModalOpen(true);
+                                                }}
+                                                className="ml-2 text-red-500 hover:text-red-700 font-bold py-2 px-3 text-xs rounded-lg transition-colors duration-200 active:scale-95 whitespace-nowrap"
+                                                title="Delete Order"
+                                            >
+                                                Delete
+                                            </button>
                                         )}
                                     </td>
                                     <td className="px-4 py-4">
-                                        <ChevronRightIcon className="w-5 h-5 text-muted-foreground"/>
+                                        <ChevronRightIcon className="w-5 h-5 text-muted-foreground" />
                                     </td>
-                            </tr>
+                                </tr>
                             )) : (
                                 <tr>
                                     <td colSpan={8} className="text-center py-12 text-muted-foreground">
@@ -205,6 +223,21 @@ const AllOrders: React.FC<AllOrdersProps> = ({ orders, onProcureOrder, onSelectO
                     </table>
                 </div>
             </div>
+
+            <DeleteModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => {
+                    setIsDeleteModalOpen(false);
+                    setOrderToDelete(null);
+                }}
+                onConfirm={() => {
+                    if (orderToDelete) {
+                        onDeleteOrder(orderToDelete);
+                    }
+                }}
+                title="Delete Order"
+                message="Are you sure you want to delete this order? This action cannot be undone."
+            />
         </>
     );
 };

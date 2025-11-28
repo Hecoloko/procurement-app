@@ -1,253 +1,346 @@
+import React, { useState, useMemo } from 'react';
+import { Order, PurchaseOrder, Vendor } from '../types';
+import { SearchIcon, FilterIcon, CheckCircleIcon, XCircleIcon, ClockIcon, DocumentDuplicateIcon } from './Icons';
 
-import React, { useState, Fragment } from 'react';
-import { Transaction, TransactionStatus, ProcessHistoryEvent } from '../types';
-import { 
-    SearchIcon, FilterIcon, EllipsisHorizontalIcon, DocumentDuplicateIcon, LinkIcon,
-    PaperClipIcon, ArrowDownTrayIcon, XMarkIcon, CheckCircleIcon, ClockIcon,
-    TransactionIcon, ChevronRightIcon
-} from './Icons';
+interface TransactionsProps {
+    orders: Order[];
+    vendors: Vendor[];
+    onUpdatePoPaymentStatus: (orderId: string, poId: string, updates: Partial<PurchaseOrder>) => Promise<void>;
+}
 
-// Dummy Data
-const dummyTransactions: Transaction[] = [
-    {
-        id: '#QARUdtDipNBJkGgbFBMP',
-        submitter: 'Victoria Kerts',
-        submitterId: 'OB20240000250058',
-        receiverId: '5432109876',
-        documentType: 'Bill',
-        documentDate: '22/12/2024',
-        approvalStatus: 'Pending',
-        ettn: 'a1b2c3d-e4f5-33gh-77h3-g',
-        invoiceNumber: '4566891256',
-        documentNumber: 'QARUdtDipNBJkGgbFBMP',
-        portalLink: '#',
-        attachments: [
-            { name: 'invoiceiwei.pdf', size: '4mb' },
-            { name: 'paiddoct5.pdf', size: '4mb' },
-        ],
-        processHistory: [
-            { id: 'hist-1-3', title: 'Invoice Approved', description: 'The invoice was approved by the authorized person.', timestamp: 'Jan,4 2025 ∙ 23:59:42', status: 'in_progress' },
-            { id: 'hist-1-2', title: 'Signature Process Completed', description: 'The invoice was successfully signed.', timestamp: 'Jan,4 2025 ∙ 23:59:42', status: 'in_progress' },
-            { id: 'hist-1-1', title: 'Invoice Created', description: 'Invoice successfully created and saved in the system.', timestamp: 'Jan,4 2025 ∙ 23:59:41', status: 'completed' },
-        ]
-    },
-    {
-        id: '#e8c67b0-c78e-11ef-95d1-e',
-        submitter: 'Emma Thompson',
-        submitterId: 'OB202400000150023',
-        receiverId: '1234567890',
-        documentType: 'Receipt',
-        documentDate: '18/12/2024',
-        approvalStatus: 'Failed',
-        ettn: 'e8c67b0-c78e-11ef-95d1-e',
-        invoiceNumber: '9876543210',
-        documentNumber: 'e8c67b0-c78e-11ef-95d1-e',
-        portalLink: '#',
-        attachments: [],
-        processHistory: [
-            { id: 'hist-2-1', title: 'Approval Failed', description: 'Missing required documentation.', timestamp: 'Dec,19 2024 ∙ 10:30:00', status: 'completed' }
-        ]
-    },
-    {
-        id: '#q1w2e3r-t4y5-s5k-99j5-L',
-        submitter: 'Lucas Santos',
-        submitterId: 'OB202400000645789',
-        receiverId: '8901234567',
-        documentType: 'Bill',
-        documentDate: '29/12/2024',
-        approvalStatus: 'Completed',
-        ettn: 'q1w2e3r-t4y5-s5k-99j5-L',
-        invoiceNumber: '1122334455',
-        documentNumber: 'q1w2e3r-t4y5-s5k-99j5-L',
-        portalLink: '#',
-        attachments: [{ name: 'final_invoice.pdf', size: '2.1mb' }],
-        processHistory: [
-            { id: 'hist-3-2', title: 'Payment Sent', description: 'Payment processed via bank transfer.', timestamp: 'Jan,5 2025 ∙ 14:00:00', status: 'completed' },
-            { id: 'hist-3-1', title: 'Invoice Approved', description: 'Approved by management.', timestamp: 'Jan,2 2025 ∙ 11:00:00', status: 'completed' }
-        ]
-    },
-];
+const Transactions: React.FC<TransactionsProps> = ({ orders, vendors, onUpdatePoPaymentStatus }) => {
+    const [view, setView] = useState<'Bills' | 'Payments' | 'History'>('Bills');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedPo, setSelectedPo] = useState<{ orderId: string, po: PurchaseOrder, vendorName: string } | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [modalType, setModalType] = useState<'Invoice' | 'Payment'>('Invoice');
 
-const StatusBadge: React.FC<{ status: TransactionStatus }> = ({ status }) => {
-    const themes = {
-        Completed: { bg: 'bg-green-100 dark:bg-green-500/20', text: 'text-green-800 dark:text-green-300', dot: 'bg-green-500' },
-        Pending: { bg: 'bg-yellow-100 dark:bg-yellow-500/20', text: 'text-yellow-800 dark:text-yellow-300', dot: 'bg-yellow-500' },
-        Failed: { bg: 'bg-red-100 dark:bg-red-500/20', text: 'text-red-800 dark:text-red-300', dot: 'bg-red-500' },
-        Approved: { bg: 'bg-green-100 dark:bg-green-500/20', text: 'text-green-800 dark:text-green-300', dot: 'bg-green-500' },
-    };
-    const theme = themes[status] || themes.Pending;
+    // Form State
+    const [invoiceNumber, setInvoiceNumber] = useState('');
+    const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
+    const [dueDate, setDueDate] = useState('');
+    const [amountDue, setAmountDue] = useState<number>(0);
+    const [paymentMethod, setPaymentMethod] = useState('ACH');
+    const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
 
-    return (
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border border-border ${theme.bg} ${theme.text}`}>
-            <span className={`w-2 h-2 mr-1.5 rounded-full ${theme.dot}`}></span>
-            {status}
-        </span>
-    );
-};
+    const allPurchaseOrders = useMemo(() => {
+        const pos: { orderId: string, po: PurchaseOrder, vendorName: string }[] = [];
+        orders.forEach(order => {
+            if (order.purchaseOrders) {
+                order.purchaseOrders.forEach(po => {
+                    const vendor = vendors.find(v => v.id === po.vendorId);
+                    pos.push({
+                        orderId: order.id,
+                        po,
+                        vendorName: vendor?.name || 'Unknown Vendor'
+                    });
+                });
+            }
+        });
+        return pos;
+    }, [orders, vendors]);
 
+    const filteredPos = useMemo(() => {
+        let filtered = allPurchaseOrders;
 
-const TransactionCard: React.FC<{ transaction: Transaction, onSelect: () => void }> = ({ transaction, onSelect }) => (
-    <div onClick={onSelect} className="bg-card p-5 rounded-2xl border border-border shadow-sm cursor-pointer transition-all duration-300 hover:shadow-md hover:bg-muted/40 hover:scale-[1.02]">
-        <div className="flex justify-between items-start">
-            <div>
-                <p className="font-bold text-foreground">{transaction.submitter}</p>
-                <p className="text-xs text-muted-foreground">ID: {transaction.submitterId}</p>
-            </div>
-            <button className="text-muted-foreground hover:text-foreground transition-colors">
-                <EllipsisHorizontalIcon className="w-5 h-5" />
-            </button>
-        </div>
-        <div className="mt-4 space-y-2 text-sm">
-            <div className="flex justify-between">
-                <span className="text-muted-foreground">Receiver ID</span>
-                <span className="font-medium text-foreground">{transaction.receiverId}</span>
-            </div>
-            <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Document Type</span>
-                <span className="font-medium text-foreground bg-muted px-2 py-0.5 rounded border border-border">{transaction.documentType}</span>
-            </div>
-            <div className="flex justify-between">
-                <span className="text-muted-foreground">Document Date</span>
-                <span className="font-medium text-foreground">{transaction.documentDate}</span>
-            </div>
-            <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Approval Status</span>
-                <StatusBadge status={transaction.approvalStatus} />
-            </div>
-        </div>
-        <div className="mt-4 pt-3 border-t border-border flex justify-between items-center">
-            <p className="text-xs text-muted-foreground font-mono truncate">{transaction.ettn}</p>
-            <DocumentDuplicateIcon className="w-4 h-4 text-muted-foreground hover:text-foreground cursor-pointer transition-colors"/>
-        </div>
-    </div>
-);
-
-const TransactionDetailDrawer: React.FC<{ transaction: Transaction | null; onClose: () => void }> = ({ transaction, onClose }) => {
-    if (!transaction) return null;
-
-    const getHistoryIcon = (status: ProcessHistoryEvent['status']) => {
-        switch(status) {
-            case 'completed': return <CheckCircleIcon className="w-5 h-5 text-white bg-green-500 rounded-full p-0.5 shadow-sm" />;
-            case 'in_progress': return <div className="w-5 h-5 bg-blue-500 rounded-full p-1"><div className="w-full h-full bg-white rounded-full animate-pulse"></div></div>;
-            default: return <ClockIcon className="w-5 h-5 text-muted-foreground" />;
+        if (view === 'Bills') {
+            // Show POs that are Received but not yet Billed (or are Unbilled)
+            filtered = filtered.filter(item =>
+                item.po.status === 'Received' &&
+                (!item.po.paymentStatus || item.po.paymentStatus === 'Unbilled')
+            );
+        } else if (view === 'Payments') {
+            // Show POs that are Billed but not Paid
+            filtered = filtered.filter(item => item.po.paymentStatus === 'Billed');
+        } else if (view === 'History') {
+            // Show Paid POs
+            filtered = filtered.filter(item => item.po.paymentStatus === 'Paid');
         }
+
+        if (searchTerm) {
+            const lower = searchTerm.toLowerCase();
+            filtered = filtered.filter(item =>
+                item.vendorName.toLowerCase().includes(lower) ||
+                item.po.id.toLowerCase().includes(lower) ||
+                (item.po.invoiceNumber && item.po.invoiceNumber.toLowerCase().includes(lower))
+            );
+        }
+
+        return filtered;
+    }, [allPurchaseOrders, view, searchTerm]);
+
+    const handleOpenInvoiceModal = (item: { orderId: string, po: PurchaseOrder, vendorName: string }) => {
+        setSelectedPo(item);
+        setModalType('Invoice');
+        setInvoiceNumber('');
+        setInvoiceDate(new Date().toISOString().split('T')[0]);
+        // Default due date to 30 days from now
+        const next30 = new Date();
+        next30.setDate(next30.getDate() + 30);
+        setDueDate(next30.toISOString().split('T')[0]);
+
+        // Calculate total from items
+        const total = (item.po.items || []).reduce((sum, i) => sum + (i.totalPrice || 0), 0);
+        setAmountDue(total);
+
+        setIsModalOpen(true);
     };
-    
+
+    const handleOpenPaymentModal = (item: { orderId: string, po: PurchaseOrder, vendorName: string }) => {
+        setSelectedPo(item);
+        setModalType('Payment');
+        setPaymentMethod('ACH');
+        setPaymentDate(new Date().toISOString().split('T')[0]);
+        setIsModalOpen(true);
+    };
+
+    const handleSubmit = async () => {
+        if (!selectedPo) return;
+
+        if (modalType === 'Invoice') {
+            await onUpdatePoPaymentStatus(selectedPo.orderId, selectedPo.po.id, {
+                paymentStatus: 'Billed',
+                invoiceNumber,
+                invoiceDate,
+                dueDate,
+                amountDue
+            });
+        } else {
+            await onUpdatePoPaymentStatus(selectedPo.orderId, selectedPo.po.id, {
+                paymentStatus: 'Paid',
+                paymentDate,
+                paymentMethod
+            });
+        }
+        setIsModalOpen(false);
+    };
+
     return (
-        <div className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-50 transition-opacity duration-300 ${transaction ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={onClose}>
-            <div 
-                onClick={(e) => e.stopPropagation()}
-                className={`fixed top-0 right-0 h-full w-full max-w-lg bg-card border-l border-border shadow-2xl transform transition-transform duration-300 ease-in-out ${transaction ? 'translate-x-0' : 'translate-x-full'}`}
-            >
-                <div className="flex flex-col h-full text-foreground">
-                    {/* Header */}
-                    <div className="p-6 border-b border-border bg-muted/10">
-                        <div className="flex justify-between items-center mb-2">
-                            <h2 className="font-bold text-xl text-foreground truncate" title={transaction.id}>{transaction.id}</h2>
-                            <div className="flex items-center space-x-2">
-                                <button className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"><ArrowDownTrayIcon className="w-5 h-5" /></button>
-                                <button className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"><EllipsisHorizontalIcon className="w-5 h-5" /></button>
-                                <button onClick={onClose} className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"><XMarkIcon className="w-5 h-5" /></button>
-                            </div>
-                        </div>
-                        <p className="text-sm text-muted-foreground">{transaction.submitter} ∙ {new Date(transaction.documentDate.split('/').reverse().join('-')).toLocaleDateString('en-US', {year: 'numeric', month: '2-digit', day: '2-digit' })}</p>
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex-1 p-6 overflow-y-auto space-y-8">
-                        {/* Invoice Detail */}
-                        <section>
-                            <h3 className="text-xs font-bold uppercase text-muted-foreground mb-4 tracking-wider">Invoice Detail</h3>
-                            <div className="space-y-4 text-sm bg-muted/20 p-4 rounded-xl border border-border">
-                                <div className="flex justify-between items-center"><span className="text-muted-foreground flex items-center gap-2"><TransactionIcon className="w-4 h-4"/>Invoice Number</span> <span className="font-medium text-foreground">{transaction.invoiceNumber}</span></div>
-                                <div className="flex justify-between items-center"><span className="text-muted-foreground flex items-center gap-2"><DocumentDuplicateIcon className="w-4 h-4"/>Document Number</span> <span className="font-medium text-foreground flex items-center group cursor-pointer">{transaction.documentNumber.substring(0, 10)}... <DocumentDuplicateIcon className="w-3 h-3 ml-2 opacity-0 group-hover:opacity-100 transition-opacity"/></span></div>
-                                <div className="flex justify-between items-center"><span className="text-muted-foreground flex items-center gap-2"><ClockIcon className="w-4 h-4"/>Status</span> <StatusBadge status={transaction.approvalStatus} /></div>
-                                <div className="flex justify-between items-center"><span className="text-muted-foreground flex items-center gap-2"><EllipsisHorizontalIcon className="w-4 h-4"/>ETTN</span> <span className="font-medium text-foreground flex items-center group cursor-pointer">{transaction.ettn.substring(0, 10)}... <DocumentDuplicateIcon className="w-3 h-3 ml-2 opacity-0 group-hover:opacity-100 transition-opacity"/></span></div>
-                                <div className="flex justify-between items-center"><span className="text-muted-foreground flex items-center gap-2"><LinkIcon className="w-4 h-4"/>Links</span> <a href={transaction.portalLink} className="font-medium text-blue-500 hover:text-blue-400 hover:underline flex items-center transition-colors">View in Portal <ChevronRightIcon className="w-3 h-3 ml-1"/></a></div>
-                            </div>
-                        </section>
-                        
-                        {/* Attachments */}
-                        <section>
-                            <h3 className="text-xs font-bold uppercase text-muted-foreground mb-4 tracking-wider">Attachments</h3>
-                            <div className="flex flex-wrap gap-3">
-                                {transaction.attachments.map(att => (
-                                    <button key={att.name} className="flex items-center bg-muted hover:bg-muted/80 border border-border transition-all text-foreground text-sm font-medium px-4 py-2 rounded-lg">
-                                        <PaperClipIcon className="w-4 h-4 mr-2 text-muted-foreground"/>
-                                        {att.name} <span className="text-muted-foreground ml-2 text-xs">({att.size})</span>
-                                    </button>
-                                ))}
-                                {transaction.attachments.length === 0 && <span className="text-muted-foreground text-sm italic">No attachments.</span>}
-                            </div>
-                        </section>
-
-                        {/* Process History */}
-                        <section>
-                            <h3 className="text-xs font-bold uppercase text-muted-foreground mb-4 tracking-wider">Process History</h3>
-                            <div className="relative pl-2">
-                                {transaction.processHistory.map((event, index) => (
-                                    <div key={event.id} className="flex items-start mb-8 last:mb-0 relative">
-                                         {/* Line */}
-                                         {index < transaction.processHistory.length - 1 && (
-                                            <div className="absolute left-[9px] top-6 bottom-[-32px] w-[2px] bg-border"></div>
-                                        )}
-                                        <div className="flex flex-col items-center mr-4 z-10 mt-0.5">
-                                            {getHistoryIcon(event.status)}
-                                        </div>
-                                        <div>
-                                            <p className="font-bold text-foreground text-sm">{event.title}</p>
-                                            <p className="text-sm text-muted-foreground mt-0.5">{event.description}</p>
-                                            <p className="text-xs text-muted-foreground/70 mt-1 font-mono">{event.timestamp}</p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
-                    </div>
-                </div>
+        <div className="animate-fade-in p-6">
+            <div className="mb-8">
+                <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">Transactions</h1>
+                <p className="text-muted-foreground mt-2">Manage invoices and payments.</p>
             </div>
-        </div>
-    );
-};
 
-const Transactions: React.FC = () => {
-    const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
-
-    return (
-        <div className="relative">
-            <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">Transactions</h1>
-            <p className="text-muted-foreground mt-2 mb-8">Review and manage all financial transactions.</p>
-            
-            {/* Header / Actions */}
-            <div className="flex flex-wrap items-center justify-between mb-6 gap-4">
-                <div className="flex items-center bg-card p-1 rounded-lg border border-border">
-                    <button className="px-4 py-1.5 bg-muted text-foreground rounded-md shadow-sm text-sm font-medium transition-colors">Cards</button>
-                    <button className="px-4 py-1.5 text-muted-foreground hover:text-foreground rounded-md text-sm font-medium transition-colors">Table</button>
-                </div>
-                <div className="flex items-center gap-3 w-full sm:w-auto">
-                    <div className="relative flex-grow sm:flex-grow-0">
-                        <SearchIcon className="w-5 h-5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2"/>
-                        <input 
-                            type="text" 
-                            placeholder="Search..." 
-                            className="pl-10 pr-4 py-2 w-full sm:w-64 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm"
-                        />
-                    </div>
-                    <button className="flex items-center space-x-2 px-4 py-2 bg-card border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors shadow-sm">
-                        <FilterIcon className="w-5 h-5"/>
-                        <span>Filter</span>
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8">
+                <div className="flex items-center bg-muted p-1 rounded-lg border border-border">
+                    <button
+                        onClick={() => setView('Bills')}
+                        className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-all duration-200 ${view === 'Bills' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                    >
+                        Bills to Pay
+                    </button>
+                    <button
+                        onClick={() => setView('Payments')}
+                        className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-all duration-200 ${view === 'Payments' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                    >
+                        Ready for Payment
+                    </button>
+                    <button
+                        onClick={() => setView('History')}
+                        className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-all duration-200 ${view === 'History' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                    >
+                        History
                     </button>
                 </div>
+
+                <div className="relative flex-1 md:max-w-xs">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <SearchIcon className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                    <input
+                        type="text"
+                        className="block w-full pl-10 pr-3 py-2 border border-border rounded-lg leading-5 bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm shadow-sm transition-colors"
+                        placeholder="Search transactions..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
             </div>
 
-            {/* Transaction Cards Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {dummyTransactions.map(tx => (
-                    <TransactionCard key={tx.id} transaction={tx} onSelect={() => setSelectedTransaction(tx)} />
-                ))}
+            <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
+                <table className="w-full text-sm text-left">
+                    <thead className="bg-muted text-muted-foreground font-medium uppercase text-xs">
+                        <tr>
+                            <th className="px-6 py-4">Vendor</th>
+                            <th className="px-6 py-4">PO Number</th>
+                            <th className="px-6 py-4">Date</th>
+                            <th className="px-6 py-4">Amount</th>
+                            <th className="px-6 py-4">Status</th>
+                            <th className="px-6 py-4 text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                        {filteredPos.length === 0 ? (
+                            <tr>
+                                <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
+                                    No transactions found.
+                                </td>
+                            </tr>
+                        ) : (
+                            filteredPos.map((item) => {
+                                const total = item.po.items.reduce((sum, i) => sum + (i.totalPrice || 0), 0);
+                                return (
+                                    <tr key={item.po.id} className="hover:bg-muted/50 transition-colors">
+                                        <td className="px-6 py-4 font-medium text-foreground">{item.vendorName}</td>
+                                        <td className="px-6 py-4 font-mono text-muted-foreground">{item.po.id}</td>
+                                        <td className="px-6 py-4 text-foreground">
+                                            {view === 'Bills' ? 'Received' : item.po.invoiceDate || 'N/A'}
+                                        </td>
+                                        <td className="px-6 py-4 font-semibold text-foreground">
+                                            ${(item.po.amountDue || total).toLocaleString()}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${item.po.paymentStatus === 'Paid' ? 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700/50' :
+                                                item.po.paymentStatus === 'Billed' ? 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700/50' :
+                                                    'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-700/50'
+                                                }`}>
+                                                {item.po.paymentStatus || 'Unbilled'}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            {view === 'Bills' && (
+                                                <button
+                                                    onClick={() => handleOpenInvoiceModal(item)}
+                                                    className="text-primary hover:text-primary/80 font-medium text-xs bg-primary/10 px-3 py-1.5 rounded-md transition-colors"
+                                                >
+                                                    Receive Invoice
+                                                </button>
+                                            )}
+                                            {view === 'Payments' && (
+                                                <button
+                                                    onClick={() => handleOpenPaymentModal(item)}
+                                                    className="text-green-600 hover:text-green-700 font-medium text-xs bg-green-100 dark:bg-green-900/30 px-3 py-1.5 rounded-md transition-colors"
+                                                >
+                                                    Pay Vendor
+                                                </button>
+                                            )}
+                                            {view === 'History' && (
+                                                <span className="text-muted-foreground text-xs">Completed</span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                );
+                            })
+                        )}
+                    </tbody>
+                </table>
             </div>
-            
-            <TransactionDetailDrawer transaction={selectedTransaction} onClose={() => setSelectedTransaction(null)} />
+
+            {/* Modal */}
+            {isModalOpen && selectedPo && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+                        <div className="p-6 border-b border-border">
+                            <h2 className="text-xl font-bold text-foreground">
+                                {modalType === 'Invoice' ? 'Receive Invoice' : 'Record Payment'}
+                            </h2>
+                            <p className="text-sm text-muted-foreground mt-1">
+                                {selectedPo.vendorName} - PO #{selectedPo.po.id}
+                            </p>
+                        </div>
+
+                        <div className="p-6 space-y-4">
+                            {modalType === 'Invoice' ? (
+                                <>
+                                    <div>
+                                        <label className="block text-sm font-medium text-foreground mb-1">Invoice Number</label>
+                                        <input
+                                            type="text"
+                                            className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                                            value={invoiceNumber}
+                                            onChange={(e) => setInvoiceNumber(e.target.value)}
+                                            placeholder="INV-12345"
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-foreground mb-1">Invoice Date</label>
+                                            <input
+                                                type="date"
+                                                className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                                                value={invoiceDate}
+                                                onChange={(e) => setInvoiceDate(e.target.value)}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-foreground mb-1">Due Date</label>
+                                            <input
+                                                type="date"
+                                                className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                                                value={dueDate}
+                                                onChange={(e) => setDueDate(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-foreground mb-1">Amount Due</label>
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-2 text-muted-foreground">$</span>
+                                            <input
+                                                type="number"
+                                                className="w-full pl-7 pr-3 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                                                value={amountDue}
+                                                onChange={(e) => setAmountDue(parseFloat(e.target.value))}
+                                            />
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div>
+                                        <label className="block text-sm font-medium text-foreground mb-1">Payment Method</label>
+                                        <select
+                                            className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                                            value={paymentMethod}
+                                            onChange={(e) => setPaymentMethod(e.target.value)}
+                                        >
+                                            <option value="ACH">ACH Transfer</option>
+                                            <option value="Check">Check</option>
+                                            <option value="Credit Card">Credit Card</option>
+                                            <option value="Wire">Wire Transfer</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-foreground mb-1">Payment Date</label>
+                                        <input
+                                            type="date"
+                                            className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                                            value={paymentDate}
+                                            onChange={(e) => setPaymentDate(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="p-4 bg-muted/50 rounded-lg border border-border">
+                                        <div className="flex justify-between text-sm mb-1">
+                                            <span className="text-muted-foreground">Invoice #</span>
+                                            <span className="font-medium">{selectedPo.po.invoiceNumber}</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm font-bold text-foreground">
+                                            <span>Amount to Pay</span>
+                                            <span>${(selectedPo.po.amountDue || 0).toLocaleString()}</span>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
+                        <div className="p-6 border-t border-border bg-muted/20 flex justify-end gap-3">
+                            <button
+                                onClick={() => setIsModalOpen(false)}
+                                className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSubmit}
+                                className="px-4 py-2 text-sm font-bold text-primary-foreground bg-primary rounded-lg hover:opacity-90 transition-all shadow-sm"
+                            >
+                                {modalType === 'Invoice' ? 'Save Bill' : 'Confirm Payment'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -1,8 +1,9 @@
 
 import React, { useState, useMemo } from 'react';
 import { Order, PurchaseOrder, PurchaseOrderStatus, Vendor } from '../types';
-import { SearchIcon, ReceivingIcon, CheckBadgeIcon, CameraIcon } from './Icons';
+import { SearchIcon, ReceivingIcon, CheckBadgeIcon, CameraIcon, PencilIcon } from './Icons';
 import { usePermissions } from '../contexts/PermissionsContext';
+import SignaturePad from './SignaturePad';
 
 interface AugmentedPO extends PurchaseOrder {
     parentOrder: {
@@ -12,22 +13,23 @@ interface AugmentedPO extends PurchaseOrder {
 }
 
 interface ReceivingProps {
-  orders: Order[];
-  vendors: Vendor[];
-  onUpdatePoStatus: (orderId: string, poId: string, newStatus: PurchaseOrderStatus, proofUrl?: string) => void;
-  onSelectOrder: (order: Order) => void;
+    orders: Order[];
+    vendors: Vendor[];
+    onUpdatePoStatus: (orderId: string, poId: string, newStatus: PurchaseOrderStatus, proofUrl?: string) => void;
+    onSelectOrder: (order: Order) => void;
 }
 
-const ReceivingCard: React.FC<{ 
-    po: AugmentedPO; 
-    vendorName: string; 
+const ReceivingCard: React.FC<{
+    po: AugmentedPO;
+    vendorName: string;
     onUpdatePoStatus: (orderId: string, poId: string, newStatus: PurchaseOrderStatus, proofUrl?: string) => void;
-    onSelect: () => void; 
-    isReceivedTab: boolean; 
+    onSelect: () => void;
+    isReceivedTab: boolean;
 }> = ({ po, vendorName, onUpdatePoStatus, onSelect, isReceivedTab }) => {
     const itemCount = po.items.reduce((sum, item) => sum + item.quantity, 0);
     const [proofFile, setProofFile] = useState<File | null>(null);
     const [isUploading, setIsUploading] = useState(false);
+    const [showSignaturePad, setShowSignaturePad] = useState(false);
     const { can } = usePermissions();
     const canReceive = can('receiving:edit');
 
@@ -48,9 +50,25 @@ const ReceivingCard: React.FC<{
         }, 300);
     };
 
+    const handleSignatureSave = (blob: Blob) => {
+        setIsUploading(true);
+        setShowSignaturePad(false);
+        setTimeout(() => {
+            const proofUrl = URL.createObjectURL(blob);
+            onUpdatePoStatus(po.originalOrderId, po.id, 'Received', proofUrl);
+            setIsUploading(false);
+        }, 300);
+    };
+
 
     return (
         <div className="bg-card p-5 rounded-2xl shadow-sm border border-border transition-all duration-200 hover:bg-muted/40 hover:scale-[1.01]">
+            {showSignaturePad && (
+                <SignaturePad
+                    onSave={handleSignatureSave}
+                    onCancel={() => setShowSignaturePad(false)}
+                />
+            )}
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                     <h3 className="font-bold text-lg text-foreground cursor-pointer hover:underline" onClick={onSelect}>{po.id}</h3>
@@ -63,7 +81,7 @@ const ReceivingCard: React.FC<{
                     <p className="font-bold text-lg text-foreground">{vendorName}</p>
                 </div>
             </div>
-            
+
             <div className="mt-4 pt-4 border-t border-border grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
                     <p className="text-muted-foreground">Carrier</p>
@@ -77,7 +95,7 @@ const ReceivingCard: React.FC<{
                     <p className="text-muted-foreground">ETA</p>
                     <p className="font-semibold text-foreground">{po.eta || 'Not specified'}</p>
                 </div>
-                 <div>
+                <div>
                     <p className="text-muted-foreground">Items</p>
                     <p className="font-semibold text-foreground">{itemCount}</p>
                 </div>
@@ -85,37 +103,46 @@ const ReceivingCard: React.FC<{
 
             <div className="mt-4 pt-4 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4">
                 {!isReceivedTab ? (
-                     <div className="w-full md:w-auto">
+                    <div className="w-full md:w-auto">
                         <label className="block text-sm font-medium text-foreground mb-1">Proof of Delivery (Required)</label>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                             <label className={`flex items-center justify-center gap-2 text-sm font-semibold px-4 py-2 border border-dashed border-border rounded-lg transition-colors ${canReceive ? 'cursor-pointer bg-muted/30 hover:bg-muted text-foreground' : 'cursor-not-allowed bg-muted/30 text-muted-foreground'}`}>
                                 <CameraIcon className="w-5 h-5" />
                                 {proofFile ? 'Change File' : 'Upload Photo/PDF'}
                                 <input type="file" className="hidden" accept="image/*,.pdf" onChange={handleFileChange} disabled={!canReceive} />
                             </label>
+                            <span className="text-xs text-muted-foreground font-medium uppercase">OR</span>
+                            <button
+                                onClick={() => setShowSignaturePad(true)}
+                                disabled={!canReceive}
+                                className={`flex items-center justify-center gap-2 text-sm font-semibold px-4 py-2 border border-dashed border-border rounded-lg transition-colors ${canReceive ? 'cursor-pointer bg-muted/30 hover:bg-muted text-foreground' : 'cursor-not-allowed bg-muted/30 text-muted-foreground'}`}
+                            >
+                                <PencilIcon className="w-5 h-5" />
+                                Sign on Screen
+                            </button>
                             {proofFile && <span className="text-sm text-muted-foreground truncate max-w-xs">{proofFile.name}</span>}
                         </div>
                     </div>
                 ) : (
                     po.deliveryProofUrl ? (
-                         <a href={po.deliveryProofUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-green-600 hover:text-green-500 hover:underline flex items-center gap-2">
-                             <CheckBadgeIcon className="w-4 h-4"/> View Proof of Delivery
-                         </a>
+                        <a href={po.deliveryProofUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-green-600 hover:text-green-500 hover:underline flex items-center gap-2">
+                            <CheckBadgeIcon className="w-4 h-4" /> View Proof of Delivery
+                        </a>
                     ) : <div></div>
                 )}
                 <div className="w-full md:w-auto flex justify-end">
                     {isReceivedTab ? (
                         <div className="flex items-center gap-2 bg-green-100 text-green-800 dark:bg-green-500/20 dark:text-green-300 font-bold py-2 px-4 rounded-lg text-sm border border-green-200 dark:border-green-500/30">
-                            <CheckBadgeIcon className="w-5 h-5"/>
+                            <CheckBadgeIcon className="w-5 h-5" />
                             <span>Received</span>
                         </div>
                     ) : (
-                        canReceive && <button 
+                        canReceive && <button
                             onClick={handleMarkAsReceived}
                             disabled={!proofFile || isUploading}
                             className="flex items-center gap-2 bg-primary hover:opacity-90 text-primary-foreground font-bold py-2 px-4 rounded-lg text-sm transition-all duration-200 active:scale-95 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed shadow-md"
                         >
-                            {isUploading ? 'Processing...' : <><CheckBadgeIcon className="w-5 h-5"/> Mark as Received</>}
+                            {isUploading ? 'Processing...' : <><CheckBadgeIcon className="w-5 h-5" /> Mark as Received</>}
                         </button>
                     )}
                 </div>
@@ -130,7 +157,7 @@ const Receiving: React.FC<ReceivingProps> = ({ orders, vendors, onUpdatePoStatus
     const [searchTerm, setSearchTerm] = useState('');
 
     const allPurchaseOrders = useMemo((): AugmentedPO[] => {
-        return orders.flatMap(order => 
+        return orders.flatMap(order =>
             order.purchaseOrders ? order.purchaseOrders.map(po => ({
                 ...po,
                 parentOrder: {
@@ -158,10 +185,10 @@ const Receiving: React.FC<ReceivingProps> = ({ orders, vendors, onUpdatePoStatus
             );
         });
     }, [allPurchaseOrders, searchTerm, activeTab, vendors]);
-    
+
     const handleCardClick = (po: AugmentedPO) => {
         const parentOrder = orders.find(o => o.id === po.parentOrder.id);
-        if(parentOrder) {
+        if (parentOrder) {
             onSelectOrder(parentOrder);
         }
     };
@@ -172,12 +199,12 @@ const Receiving: React.FC<ReceivingProps> = ({ orders, vendors, onUpdatePoStatus
             <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">Receiving</h1>
             <p className="text-muted-foreground mt-2 mb-8">Track incoming shipments and mark items as received.</p>
 
-             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
                 <div className="flex items-center bg-card p-1 rounded-lg border border-border shadow-sm">
                     <button onClick={() => setActiveTab('In Transit')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-all duration-200 ${activeTab === 'In Transit' ? 'bg-muted text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>In Transit</button>
                     <button onClick={() => setActiveTab('Received')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-all duration-200 ${activeTab === 'Received' ? 'bg-muted text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>Received</button>
                 </div>
-                 <div className="relative w-full sm:w-auto">
+                <div className="relative w-full sm:w-auto">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <SearchIcon className="w-5 h-5 text-muted-foreground" />
                     </div>
@@ -210,8 +237,8 @@ const Receiving: React.FC<ReceivingProps> = ({ orders, vendors, onUpdatePoStatus
                             <p className="font-semibold mt-4 text-lg text-foreground">No shipments to display</p>
                             <p className="mt-1 text-sm text-muted-foreground">
                                 {activeTab === 'In Transit'
-                                  ? 'There are currently no orders in transit.'
-                                  : 'No shipments have been marked as received yet.'}
+                                    ? 'There are currently no orders in transit.'
+                                    : 'No shipments have been marked as received yet.'}
                             </p>
                         </div>
                     </div>

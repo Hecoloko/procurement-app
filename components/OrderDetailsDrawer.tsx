@@ -50,16 +50,16 @@ const PurchaseOrderDetail: React.FC<{ po: PurchaseOrder, vendors: Vendor[] }> = 
 
 
     return (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
             <button onClick={() => setIsExpanded(!isExpanded)} className="w-full flex justify-between items-center p-4 text-left">
                 <div>
-                    <h4 className="font-bold text-gray-900">{po.id}</h4>
-                    <p className="text-sm text-gray-500">Vendor: <span className="font-medium text-gray-700">{vendor?.name || 'Unknown'}</span></p>
+                    <h4 className="font-bold text-gray-900 dark:text-gray-100">{po.id}</h4>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Vendor: <span className="font-medium text-gray-700 dark:text-gray-300">{vendor?.name || 'Unknown'}</span></p>
                 </div>
                 <ChevronUpIcon className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${isExpanded ? '' : 'rotate-180'}`} />
             </button>
             {isExpanded && (
-                <div className="px-4 pb-4 border-t border-gray-100">
+                <div className="px-4 pb-4 border-t border-gray-100 dark:border-gray-700">
                     <div className="pt-2 pb-6">
                         <StatusTimeline
                             steps={poTimelineSteps}
@@ -68,7 +68,7 @@ const PurchaseOrderDetail: React.FC<{ po: PurchaseOrder, vendors: Vendor[] }> = 
                     </div>
                     <div className="mt-4">
                         <table className="w-full text-sm">
-                            <thead className="text-xs text-gray-500">
+                            <thead className="text-xs text-gray-500 dark:text-gray-400">
                                 <tr>
                                     <th className="pb-2 text-left font-medium">Product</th>
                                     <th className="pb-2 text-center font-medium">Qty</th>
@@ -78,9 +78,9 @@ const PurchaseOrderDetail: React.FC<{ po: PurchaseOrder, vendors: Vendor[] }> = 
                             <tbody>
                                 {po.items.map(item => (
                                     <tr key={item.id}>
-                                        <td className="py-1.5 text-gray-800">{item.name}</td>
-                                        <td className="py-1.5 text-center text-gray-600">{item.quantity}</td>
-                                        <td className="py-1.5 text-right font-semibold text-gray-800">${item.totalPrice.toFixed(2)}</td>
+                                        <td className="py-1.5 text-gray-800 dark:text-gray-100">{item.name}</td>
+                                        <td className="py-1.5 text-center text-gray-600 dark:text-gray-400">{item.quantity}</td>
+                                        <td className="py-1.5 text-right font-semibold text-gray-800 dark:text-gray-100">${item.totalPrice.toFixed(2)}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -88,17 +88,17 @@ const PurchaseOrderDetail: React.FC<{ po: PurchaseOrder, vendors: Vendor[] }> = 
                     </div>
                     {po.carrier && po.trackingNumber && (
                         <div className="mt-4">
-                            <h5 className="font-semibold text-gray-700 mb-2 text-xs">Shipment Tracking</h5>
-                            <div className="bg-gray-50 p-3 rounded-lg border flex flex-wrap items-center justify-between gap-4">
+                            <h5 className="font-semibold text-gray-700 dark:text-gray-300 mb-2 text-xs">Shipment Tracking</h5>
+                            <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg border dark:border-gray-600 flex flex-wrap items-center justify-between gap-4">
                                 <div className="flex items-center gap-4">
-                                    <div className="bg-gray-200 p-2 rounded-full"><ShipmentIcon className="w-5 h-5 text-gray-600" /></div>
+                                    <div className="bg-gray-200 dark:bg-gray-600 p-2 rounded-full"><ShipmentIcon className="w-5 h-5 text-gray-600 dark:text-gray-300" /></div>
                                     <div>
-                                        <p className="text-xs text-gray-500">Carrier</p>
-                                        <p className="font-semibold text-gray-800 text-sm">{po.carrier}</p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">Carrier</p>
+                                        <p className="font-semibold text-gray-800 dark:text-gray-100 text-sm">{po.carrier}</p>
                                     </div>
                                     <div>
-                                        <p className="text-xs text-gray-500">Tracking #</p>
-                                        <p className="font-semibold text-gray-800 text-sm">{po.trackingNumber}</p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">Tracking #</p>
+                                        <p className="font-semibold text-gray-800 dark:text-gray-100 text-sm">{po.trackingNumber}</p>
                                     </div>
                                 </div>
                                 <a href={getTrackingUrl(po.carrier, po.trackingNumber)} target="_blank" rel="noopener noreferrer" className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-3 rounded-lg text-xs transition-colors duration-200 active:scale-95">
@@ -132,7 +132,8 @@ const DetailsTab: React.FC<{
     onRejectAll: () => void;
     canProcure: boolean;
     onProcure: () => void;
-}> = ({ order, properties, vendors, itemDecisions, onDecisionChange, onApproveAll, onRejectAll, canProcure, onProcure }) => {
+    users: AdminUser[];
+}> = ({ order, properties, vendors, itemDecisions, onDecisionChange, onApproveAll, onRejectAll, canProcure, onProcure, users }) => {
     const isApproverView = order?.status === 'Pending My Approval';
     const [rejectionReasons, setRejectionReasons] = useState<Record<string, string>>({});
 
@@ -201,27 +202,27 @@ const DetailsTab: React.FC<{
     const timelineHistory = getOrderStatusHistoryForTimeline(order);
     return (
         <div className="space-y-6 pb-24">
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                <h3 className="font-semibold text-gray-800 mb-2 text-base px-2">Order Status</h3>
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-2 text-base px-2">Order Status</h3>
                 <StatusTimeline steps={orderTimelineSteps} history={timelineHistory} />
             </div>
 
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                <h3 className="font-semibold text-gray-800 mb-4 text-base">Order Summary</h3>
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-4 text-base">Order Summary</h3>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
-                    <div className="text-gray-500">Submitted By:</div><div className="font-semibold text-gray-800">{order?.submittedBy}</div>
-                    <div className="text-gray-500">Property:</div><div className="font-semibold text-gray-800">{properties.find(p => p.id === order?.propertyId)?.name || 'N/A'}</div>
-                    <div className="text-gray-500">Date:</div><div className="font-semibold text-gray-800">{order?.submissionDate}</div>
-                    <div className="text-gray-500">Total Cost:</div><div className="font-bold text-gray-900">${order?.totalCost.toFixed(2)}</div>
-                    <div className="text-gray-500">Status:</div><div className="font-semibold text-gray-800">{order?.status}</div>
+                    <div className="text-gray-500 dark:text-gray-400">Submitted By:</div><div className="font-semibold text-gray-800 dark:text-gray-100">{users.find(u => u.id === order?.submittedBy)?.name || order?.submittedBy || 'Unknown'}</div>
+                    <div className="text-gray-500 dark:text-gray-400">Property:</div><div className="font-semibold text-gray-800 dark:text-gray-100">{properties.find(p => p.id === order?.propertyId)?.name || 'N/A'}</div>
+                    <div className="text-gray-500 dark:text-gray-400">Date:</div><div className="font-semibold text-gray-800 dark:text-gray-100">{order?.submissionDate}</div>
+                    <div className="text-gray-500 dark:text-gray-400">Total Cost:</div><div className="font-bold text-gray-900 dark:text-gray-100">${order?.totalCost.toFixed(2)}</div>
+                    <div className="text-gray-500 dark:text-gray-400">Status:</div><div className="font-semibold text-gray-800 dark:text-gray-100">{order?.status}</div>
                 </div>
             </div>
 
             {isPreProcessing ? (
                 order?.items && order.items.length > 0 && (
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                        <div className="p-4 border-b flex justify-between items-center">
-                            <h3 className="font-semibold text-gray-700">Items for Approval</h3>
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                        <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+                            <h3 className="font-semibold text-gray-700 dark:text-gray-200">Items for Approval</h3>
                             {isApproverView && (
                                 <div className="flex items-center gap-2">
                                     <button onClick={onApproveAll} className="text-xs font-bold bg-green-100 text-green-700 hover:bg-green-200 px-4 py-1.5 rounded-full transition-colors">Approve All</button>
@@ -229,18 +230,18 @@ const DetailsTab: React.FC<{
                                 </div>
                             )}
                         </div>
-                        <div className="divide-y divide-gray-100">
+                        <div className="divide-y divide-gray-100 dark:divide-gray-700">
                             {order.items.map(item => {
                                 const decision = itemDecisions.get(item.id);
                                 const status: ItemApprovalStatus = decision?.status || item.approvalStatus || 'Pending';
                                 const reason = decision?.reason || item.rejectionReason;
                                 const isPendingForApproval = (item.approvalStatus || 'Pending') === 'Pending';
                                 return (
-                                    <div key={item.id} className="p-4 hover:bg-gray-50 transition-colors">
+                                    <div key={item.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                                         <div className="flex justify-between items-start">
                                             <div>
-                                                <p className="font-semibold text-gray-800 text-base">{item.name}</p>
-                                                <p className="text-sm text-gray-500 mt-1">{item.quantity} x ${item.unitPrice.toFixed(2)} = <span className="font-semibold text-gray-700">${item.totalPrice.toFixed(2)}</span></p>
+                                                <p className="font-semibold text-gray-800 dark:text-gray-100 text-base">{item.name}</p>
+                                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{item.quantity} x ${item.unitPrice.toFixed(2)} = <span className="font-semibold text-gray-700 dark:text-gray-300">${item.totalPrice.toFixed(2)}</span></p>
                                             </div>
                                             <span className={`px-3 py-1 text-xs font-bold rounded-full uppercase tracking-wide ${getStatusTheme(status)}`}>{status}</span>
                                         </div>
@@ -271,35 +272,46 @@ const DetailsTab: React.FC<{
                 )
             ) : (
                 <>
-                    {unassignedItems.length > 0 && (
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                            <div className="p-4 border-b flex justify-between items-center">
-                                <h3 className="font-semibold text-gray-700">Items Awaiting Purchase</h3>
-                                {canProcure && (
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                        <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+                            <h3 className="font-semibold text-gray-700 dark:text-gray-200">Procurement & Items</h3>
+                            <div className="flex gap-2">
+                                {canProcure && unassignedItems.length === 0 && (
+                                    <button onClick={onProcure} className="bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 font-bold py-2 px-3 text-xs rounded-lg transition-colors border border-gray-300 dark:border-gray-600">
+                                        Manage POs
+                                    </button>
+                                )}
+                                {canProcure && unassignedItems.length > 0 && (
                                     <button onClick={onProcure} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-3 text-xs rounded-lg transition-colors">
                                         Procure Items
                                     </button>
                                 )}
                             </div>
+                        </div>
+                        {unassignedItems.length > 0 ? (
                             <table className="w-full text-sm">
-                                <tbody className="divide-y divide-gray-100">
+                                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                                     {unassignedItems.map(item => (
                                         <tr key={item.id}>
-                                            <td className="p-3 text-gray-800">{item.name}</td>
-                                            <td className="p-3 text-center text-gray-600">{item.quantity}</td>
-                                            <td className="p-3 text-right font-semibold text-gray-800">${item.totalPrice.toFixed(2)}</td>
+                                            <td className="p-3 text-gray-800 dark:text-gray-100">{item.name}</td>
+                                            <td className="p-3 text-center text-gray-600 dark:text-gray-400">{item.quantity}</td>
+                                            <td className="p-3 text-right font-semibold text-gray-800 dark:text-gray-100">${item.totalPrice.toFixed(2)}</td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
-                        </div>
-                    )}
+                        ) : (
+                            <div className="p-4 text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50">
+                                All items have been assigned to purchase orders.
+                            </div>
+                        )}
+                    </div>
                     <div>
-                        <h3 className="font-semibold text-gray-700 mb-3">Purchase Orders</h3>
+                        <h3 className="font-semibold text-gray-700 dark:text-gray-200 mb-3">Purchase Orders</h3>
                         {order?.purchaseOrders && order.purchaseOrders.length > 0 ? (
                             <div className="space-y-4">{order.purchaseOrders.map(po => <PurchaseOrderDetail key={po.id} po={po} vendors={vendors} />)}</div>
                         ) : (
-                            <div className="text-center text-sm text-gray-500 bg-white p-6 rounded-lg border-2 border-dashed border-gray-200">No purchase orders have been generated.</div>
+                            <div className="text-center text-sm text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 p-6 rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-700">No purchase orders have been generated.</div>
                         )}
                     </div>
                 </>
@@ -401,20 +413,20 @@ const OrderDetailsDrawer: React.FC<OrderDetailsDrawerProps> = ({ order, onClose,
                 onClick={onClose}
             ></div>
             <div
-                className={`fixed top-0 right-0 h-full w-full max-w-2xl bg-gray-50 shadow-2xl transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
+                className={`fixed top-0 right-0 h-full w-full max-w-2xl bg-gray-50 dark:bg-gray-900 shadow-2xl transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
             >
                 <div className="flex flex-col h-full">
-                    <div className="p-6 border-b bg-white flex justify-between items-start">
+                    <div className="p-6 border-b dark:border-gray-700 bg-white dark:bg-gray-800 flex justify-between items-start">
                         <div>
-                            <h2 className="font-bold text-xl text-gray-900">{order?.cartName}</h2>
-                            <p className="text-sm text-gray-500 mt-1">ORD: {order?.id}</p>
+                            <h2 className="font-bold text-xl text-gray-900 dark:text-gray-100">{order?.cartName}</h2>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">ORD: {order?.id}</p>
                         </div>
                         <button onClick={onClose} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full">
                             <XMarkIcon className="w-6 h-6" />
                         </button>
                     </div>
 
-                    <div className="border-b bg-white">
+                    <div className="border-b dark:border-gray-700 bg-white dark:bg-gray-800">
                         <nav className="-mb-px flex space-x-6 px-6">
                             <button onClick={() => setActiveTab('details')} className={`py-3 px-1 border-b-2 font-semibold text-sm ${activeTab === 'details' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Details</button>
                             <button onClick={() => setActiveTab('communication')} className={`py-3 px-1 border-b-2 font-semibold text-sm flex items-center gap-2 ${activeTab === 'communication' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}><CommunicationIcon className="w-5 h-5" />Communication</button>
@@ -422,7 +434,7 @@ const OrderDetailsDrawer: React.FC<OrderDetailsDrawerProps> = ({ order, onClose,
                     </div>
 
                     <div className="flex-1 p-6 overflow-y-auto">
-                        {order && activeTab === 'details' && <DetailsTab order={order} properties={properties} itemDecisions={itemDecisions} onDecisionChange={handleDecisionChange} onApproveAll={handleApproveAll} onRejectAll={handleRejectAll} canProcure={can('orders:procure')} onProcure={handleProcure} vendors={vendors} />}
+                        {order && activeTab === 'details' && <DetailsTab order={order} properties={properties} itemDecisions={itemDecisions} onDecisionChange={handleDecisionChange} onApproveAll={handleApproveAll} onRejectAll={handleRejectAll} canProcure={can('orders:procure')} onProcure={handleProcure} vendors={vendors} users={users} />}
                         {order && activeTab === 'communication' && (
                             <OrderCommunication
                                 order={order}
@@ -438,7 +450,7 @@ const OrderDetailsDrawer: React.FC<OrderDetailsDrawerProps> = ({ order, onClose,
                     </div>
 
                     {order?.status === 'Pending My Approval' && onApprovalDecision && activeTab === 'details' && (
-                        <div className="p-4 bg-white border-t border-gray-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-10">
+                        <div className="p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-10">
                             <div className="flex justify-between items-center">
                                 <div className="text-sm text-gray-500 font-medium">
                                     {itemDecisions.size} decision{itemDecisions.size !== 1 && 's'} made

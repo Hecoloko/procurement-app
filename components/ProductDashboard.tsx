@@ -15,7 +15,7 @@ interface ProductDashboardProps {
 }
 
 const ProductDashboard: React.FC<ProductDashboardProps> = ({ products, companies, currentCompanyId, onSwitchCompany, activeCart, onUpdateItem, onBack }) => {
-    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('All');
     const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000]);

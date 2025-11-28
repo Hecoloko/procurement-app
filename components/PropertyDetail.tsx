@@ -19,13 +19,13 @@ const StatCard: React.FC<{ icon: React.FC<any>, label: string, value: string | n
         yellow: 'bg-yellow-100 text-yellow-600',
     }
     return (
-        <div className="bg-white p-6 rounded-2xl border border-gray-200 flex items-center space-x-4">
-            <div className={`p-3 rounded-full ${themes[color] || 'bg-gray-100'}`}>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 flex items-center space-x-4">
+            <div className={`p-3 rounded-full ${themes[color] || 'bg-gray-100 dark:bg-gray-700'}`}>
                 <Icon className="w-6 h-6" />
             </div>
             <div>
-                <p className="text-sm text-gray-500 font-medium">{label}</p>
-                <p className="text-2xl font-bold text-gray-800">{value}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">{label}</p>
+                <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">{value}</p>
             </div>
         </div>
     );
@@ -41,11 +41,11 @@ const PropertyDetail: React.FC<PropertyDetailProps> = ({ property, units, orders
         <div>
             {/* Header */}
             <div className="mb-8">
-                <button onClick={onBack} className="flex items-center text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200 mb-4">
+                <button onClick={onBack} className="flex items-center text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors duration-200 mb-4">
                     <ChevronLeftIcon className="w-5 h-5 mr-1" />
                     Back to all properties
                 </button>
-                <h1 className="text-3xl md:text-4xl font-bold text-gray-800 tracking-tight">{property.name}</h1>
+                <h1 className="text-3xl md:text-4xl font-bold text-gray-800 dark:text-gray-100 tracking-tight">{property.name}</h1>
             </div>
 
             {/* Stats Overview */}
@@ -60,13 +60,13 @@ const PropertyDetail: React.FC<PropertyDetailProps> = ({ property, units, orders
                 {/* Units & Users */}
                 <div className="space-y-8">
                     {/* Units */}
-                    <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-200">
-                        <h2 className="text-xl font-semibold text-gray-700 mb-4">Units</h2>
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700">
+                        <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Units</h2>
                         <div className="max-h-60 overflow-y-auto pr-2">
-                             {units.length > 0 ? (
+                            {units.length > 0 ? (
                                 <ul className="divide-y divide-gray-100">
                                     {units.map(unit => (
-                                        <li key={unit.id} className="py-2.5 font-medium text-gray-800">{unit.name}</li>
+                                        <li key={unit.id} className="py-2.5 font-medium text-gray-800 dark:text-gray-100">{unit.name}</li>
                                     ))}
                                 </ul>
                             ) : (
@@ -76,17 +76,17 @@ const PropertyDetail: React.FC<PropertyDetailProps> = ({ property, units, orders
                     </div>
 
                     {/* Users */}
-                     <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-200">
-                        <h2 className="text-xl font-semibold text-gray-700 mb-4">Assigned Users</h2>
-                         <div className="max-h-60 overflow-y-auto pr-2">
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700">
+                        <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Assigned Users</h2>
+                        <div className="max-h-60 overflow-y-auto pr-2">
                             {users.length > 0 ? (
                                 <ul className="space-y-3">
                                     {users.map(user => (
                                         <li key={user.id} className="flex items-center gap-3">
-                                            <img src={user.avatarUrl} alt={user.name} className="w-10 h-10 rounded-full"/>
+                                            <img src={user.avatarUrl} alt={user.name} className="w-10 h-10 rounded-full" />
                                             <div>
-                                                <p className="font-semibold text-gray-800">{user.name}</p>
-                                                <p className="text-sm text-gray-500">{user.email}</p>
+                                                <p className="font-semibold text-gray-800 dark:text-gray-100">{user.name}</p>
+                                                <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
                                             </div>
                                         </li>
                                     ))}
@@ -99,9 +99,9 @@ const PropertyDetail: React.FC<PropertyDetailProps> = ({ property, units, orders
                 </div>
 
                 {/* Recent Orders */}
-                 <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-200">
-                    <h2 className="text-xl font-semibold text-gray-700 mb-4">Recent Orders</h2>
-                     <div className="overflow-x-auto">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700">
+                    <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Recent Orders</h2>
+                    <div className="overflow-x-auto">
                         {recentOrders.length > 0 ? (
                             <table className="w-full text-sm">
                                 <thead className="text-xs text-gray-500 uppercase">
@@ -114,11 +114,11 @@ const PropertyDetail: React.FC<PropertyDetailProps> = ({ property, units, orders
                                 </thead>
                                 <tbody>
                                     {recentOrders.map(order => (
-                                        <tr key={order.id} onClick={() => onSelectOrder(order)} className="border-t border-gray-100 hover:bg-gray-50 cursor-pointer">
-                                            <td className="py-3 font-semibold text-gray-800">{order.cartName}</td>
-                                            <td className="py-3 text-gray-600">{order.submissionDate}</td>
-                                            <td className="py-3 text-right font-semibold">${order.totalCost.toFixed(2)}</td>
-                                            <td className="py-3 text-right"><ChevronRightIcon className="w-5 h-5 text-gray-400"/></td>
+                                        <tr key={order.id} onClick={() => onSelectOrder(order)} className="border-t border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer">
+                                            <td className="py-3 font-semibold text-gray-800 dark:text-gray-100">{order.cartName}</td>
+                                            <td className="py-3 text-gray-600 dark:text-gray-400">{order.submissionDate}</td>
+                                            <td className="py-3 text-right font-semibold text-gray-900 dark:text-gray-100">${order.totalCost.toFixed(2)}</td>
+                                            <td className="py-3 text-right"><ChevronRightIcon className="w-5 h-5 text-gray-400" /></td>
                                         </tr>
                                     ))}
                                 </tbody>
