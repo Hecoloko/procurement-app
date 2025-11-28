@@ -173,7 +173,7 @@ const Receiving: React.FC<ReceivingProps> = ({ orders, vendors, onUpdatePoStatus
             if (po.status !== activeTab) return false;
 
             const lowerSearchTerm = searchTerm.toLowerCase();
-            const vendor = vendors.find(v => v.id === po.vendorId);
+            const vendor = vendors?.find(v => v.id === po.vendorId);
 
             return (
                 po.id.toLowerCase().includes(lowerSearchTerm) ||
@@ -187,7 +187,7 @@ const Receiving: React.FC<ReceivingProps> = ({ orders, vendors, onUpdatePoStatus
     }, [allPurchaseOrders, searchTerm, activeTab, vendors]);
 
     const handleCardClick = (po: AugmentedPO) => {
-        const parentOrder = orders.find(o => o.id === po.parentOrder.id);
+        const parentOrder = orders?.find(o => o.id === po.parentOrder.id);
         if (parentOrder) {
             onSelectOrder(parentOrder);
         }
@@ -224,7 +224,7 @@ const Receiving: React.FC<ReceivingProps> = ({ orders, vendors, onUpdatePoStatus
                         <ReceivingCard
                             key={po.id}
                             po={po}
-                            vendorName={vendors.find(v => v.id === po.vendorId)?.name || 'N/A'}
+                            vendorName={vendors?.find(v => v.id === po.vendorId)?.name || 'N/A'}
                             onUpdatePoStatus={onUpdatePoStatus}
                             onSelect={() => handleCardClick(po)}
                             isReceivedTab={activeTab === 'Received'}

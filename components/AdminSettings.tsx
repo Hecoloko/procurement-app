@@ -242,11 +242,11 @@ const UserSettings: React.FC<{
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-foreground font-medium">
-                                            {roles.find(r => r.id === user.roleId)?.name}
+                                            {roles?.find(r => r.id === user.roleId)?.name}
                                         </td>
                                         <td className="px-6 py-4 text-muted-foreground">
                                             {user.propertyIds.length > 0
-                                                ? user.propertyIds.map(pid => properties.find(p => p.id === pid)?.name).filter(Boolean).join(', ')
+                                                ? user.propertyIds.map(pid => properties?.find(p => p.id === pid)?.name).filter(Boolean).join(', ')
                                                 : <span className="italic text-muted-foreground/50">No properties</span>}
                                         </td>
                                         <td className="px-6 py-4 text-center">
@@ -311,7 +311,7 @@ const RolesSettings: React.FC<RolesSettingsProps> = ({ roles, onAddRole, onUpdat
     const actions: PermissionAction[] = ['view', 'create', 'edit', 'approve', 'delete', 'procure'];
 
     useEffect(() => {
-        if (!selectedRole || !roles.find(r => r.id === selectedRole.id)) {
+        if (!selectedRole || !roles?.find(r => r.id === selectedRole.id)) {
             setSelectedRole(roles[0] || null);
         }
     }, [roles, selectedRole]);
@@ -689,7 +689,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ vendors, properties, unit
     }, [isOwner, onAddCompany, can]);
 
     useEffect(() => {
-        if (tabs.length > 0 && !tabs.find(t => t.id === activeTab)) {
+        if (tabs.length > 0 && !tabs?.find(t => t.id === activeTab)) {
             setActiveTab(tabs[0].id);
         }
     }, [tabs, activeTab]);

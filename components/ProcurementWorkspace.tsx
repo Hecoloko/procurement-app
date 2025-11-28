@@ -119,7 +119,9 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
   };
 
   const handleCreatePOs = () => {
-    if (!canCreatePOs) return;
+    if (!canCreatePOs) {
+      return;
+    }
 
     const posByVendor: Record<string, CartItem[]> = {};
     const assignedItemIds = Object.keys(itemVendorAssignments);
@@ -274,7 +276,7 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h2 className="text-xl font-bold text-gray-900 dark:text-white font-mono">{po.id}</h2>
-              <p className="font-semibold text-gray-500 dark:text-gray-400 mt-1">{vendors.find(v => v.id === po.vendorId)?.name}</p>
+              <p className="font-semibold text-gray-500 dark:text-gray-400 mt-1">{vendors?.find(v => v.id === po.vendorId)?.name}</p>
             </div>
             <div className="flex items-center gap-4">
               <span className={`px-3 py-1 text-sm font-semibold rounded-full ${getPOStatusTheme(po.status)}`}>

@@ -20,14 +20,14 @@ const MobileChatView: React.FC<MobileChatViewProps> = ({ thread, messages, users
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
-    
+
     const handleSendMessage = (content: string, taggedUserIds?: string[]) => {
         onSendMessage(thread.id, content, taggedUserIds);
     };
-    
-     const getThreadTitle = () => {
+
+    const getThreadTitle = () => {
         if (thread.orderId) {
-            const order = orders.find(o => o.id === thread.orderId);
+            const order = orders?.find(o => o.id === thread.orderId);
             return order?.cartName || `Order ${thread.orderId}`;
         }
         return thread.subject || 'Conversation';
@@ -41,13 +41,13 @@ const MobileChatView: React.FC<MobileChatViewProps> = ({ thread, messages, users
                 </button>
                 <h1 className="text-lg font-bold text-white truncate">{getThreadTitle()}</h1>
             </header>
-            
+
             <main className="flex-1 p-4 overflow-y-auto space-y-4">
                 {messages.map(msg => {
-                    const sender = users.find(u => u.id === msg.senderId);
+                    const sender = users?.find(u => u.id === msg.senderId);
                     if (!sender) return null;
                     return (
-                         <ChatMessage
+                        <ChatMessage
                             key={msg.id}
                             message={msg}
                             sender={sender}

@@ -19,14 +19,14 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, sender, isCurrentUse
         return parts.map((part, index) => {
             if (part.startsWith('@')) {
                 const userName = part.substring(1).trim();
-                const user = users.find(u => u.name === userName);
+                const user = users?.find(u => u.name === userName);
                 if (user) {
                     return <strong key={index} className="text-blue-500 font-semibold">{part}</strong>;
                 }
             }
             if (part.startsWith('#')) {
                 const orderId = part.substring(1);
-                const order = orders.find(o => o.id === orderId);
+                const order = orders?.find(o => o.id === orderId);
                 if (order) {
                     return (
                         <button

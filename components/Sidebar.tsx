@@ -32,8 +32,8 @@ const NavButton: React.FC<{
       <button
         onClick={onClick}
         className={`flex items-center w-full text-sm font-medium transition-all duration-200 rounded-xl ${isActive
-            ? 'bg-primary text-primary-foreground shadow-lg'
-            : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+          ? 'bg-primary text-primary-foreground shadow-lg'
+          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
           } ${isCollapsed ? 'justify-center p-3' : 'py-3 px-4'}`}
       >
         <Icon className={`w-5 h-5 flex-shrink-0`} />
@@ -71,7 +71,7 @@ const navItemPermissions: Record<string, Permission> = {
 
 const Sidebar: React.FC<SidebarProps> = ({ activeItem, setActiveItem, isCollapsed, onToggleCollapse, user, roles, companies, currentCompanyId, companyName, onSwitchCompany, onLogout }) => {
   const { can } = usePermissions();
-  const userRole = roles.find(r => r.id === user.roleId)?.name || 'User';
+  const userRole = roles?.find(r => r.id === user.roleId)?.name || 'User';
   const isOwner = user.roleId === 'role-0';
 
   // Avatar handling state

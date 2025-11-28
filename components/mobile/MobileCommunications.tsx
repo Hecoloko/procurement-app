@@ -34,7 +34,7 @@ const MobileCommunications: React.FC<MobileCommunicationsProps> = (props) => {
 
     const getThreadTitle = (thread: CommunicationThread) => {
         if (thread.orderId) {
-            const order = props.orders.find(o => o.id === thread.orderId);
+            const order = props.orders?.find(o => o.id === thread.orderId);
             return order?.cartName || `Order ${thread.orderId}`;
         }
         return thread.subject || 'Conversation';

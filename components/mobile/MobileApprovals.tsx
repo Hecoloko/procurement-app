@@ -48,10 +48,10 @@ const SwipeableOrderCard: React.FC<{
     const touchStartX = useRef(0);
     const itemRef = useRef<HTMLDivElement>(null);
     const hasVibrated = useRef(false); // To ensure we only vibrate once per threshold crossing
-    
+
     const approveThreshold = 100;
     const rejectThreshold = 250;
-    
+
     const isRejecting = -translateX > (approveThreshold + rejectThreshold) / 2;
 
     const onTouchStart = (e: React.TouchEvent) => {
@@ -65,20 +65,20 @@ const SwipeableOrderCard: React.FC<{
         if (!isSwiping) return;
         const currentX = e.touches[0].clientX;
         const dx = currentX - touchStartX.current;
-        
+
         // Swipe Left Logic (Negative dx)
         if (dx < 0) {
             // Add snapiness/haptics
             const absDx = Math.abs(dx);
             if (absDx > approveThreshold && !hasVibrated.current && absDx < rejectThreshold) {
-                if(navigator.vibrate) navigator.vibrate(15);
+                if (navigator.vibrate) navigator.vibrate(15);
                 hasVibrated.current = true;
-            } 
-            
+            }
+
             setTranslateX(dx);
         } else {
             // Resistance for right swipe (not allowed)
-            setTranslateX(dx / 4); 
+            setTranslateX(dx / 4);
         }
     };
 
@@ -87,11 +87,11 @@ const SwipeableOrderCard: React.FC<{
         if (itemRef.current) itemRef.current.style.transition = 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)'; // Bouncy spring
 
         if (-translateX > rejectThreshold) {
-             if(navigator.vibrate) navigator.vibrate([20, 50, 20]); // Double pulse
+            if (navigator.vibrate) navigator.vibrate([20, 50, 20]); // Double pulse
             onReject();
             setTranslateX(-window.innerWidth); // Swipe off screen
         } else if (-translateX > approveThreshold) {
-             if(navigator.vibrate) navigator.vibrate(30); // Strong pulse
+            if (navigator.vibrate) navigator.vibrate(30); // Strong pulse
             onApprove();
             setTranslateX(-window.innerWidth); // Swipe off screen
         } else {
@@ -99,13 +99,13 @@ const SwipeableOrderCard: React.FC<{
         }
         touchStartX.current = 0;
     };
-    
+
     const canSwipe = order.status === 'Pending My Approval';
 
     return (
         <div className="relative bg-[#1E1E1E] rounded-2xl overflow-hidden mb-4 touch-pan-y">
-             {/* Swipe Background Layer */}
-            <div 
+            {/* Swipe Background Layer */}
+            <div
                 className={`absolute inset-y-0 right-0 h-full flex items-center justify-start pl-8 text-white font-bold text-lg transition-colors duration-300 w-full rounded-2xl ${isRejecting ? 'bg-red-600' : 'bg-green-600'}`}
                 style={{ zIndex: 0 }}
             >
@@ -114,7 +114,7 @@ const SwipeableOrderCard: React.FC<{
                         <XCircleIcon className="w-8 h-8 mr-3" /> Reject
                     </div>
                 ) : (
-                     <div className="flex items-center animate-pulse ml-auto pr-8">
+                    <div className="flex items-center animate-pulse ml-auto pr-8">
                         <CheckIcon className="w-8 h-8 mr-3" /> Approve
                     </div>
                 )}
@@ -126,10 +126,10 @@ const SwipeableOrderCard: React.FC<{
                 onTouchStart={canSwipe ? onTouchStart : undefined}
                 onTouchMove={canSwipe ? onTouchMove : undefined}
                 onTouchEnd={canSwipe ? onTouchEnd : undefined}
-                onClick={() => { 
+                onClick={() => {
                     if (Math.abs(translateX) < 5) { // Prevent click if swiping
-                         if(navigator.vibrate) navigator.vibrate(5);
-                        onSelect(); 
+                        if (navigator.vibrate) navigator.vibrate(5);
+                        onSelect();
                     }
                 }}
                 className="relative z-10 w-full text-left bg-[#1E1E1E] p-5 rounded-2xl shadow-lg border border-white/5 flex justify-between items-center active:brightness-95"
@@ -147,7 +147,7 @@ const SwipeableOrderCard: React.FC<{
                         <span className={`inline-block px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md border ${getStatusTheme(order.status)}`}>
                             {order.status === 'Pending My Approval' ? 'Action Required' : order.status}
                         </span>
-                         {canSwipe && <span className="text-[10px] text-gray-500 italic animate-pulse ml-auto">Swipe left to act</span>}
+                        {canSwipe && <span className="text-[10px] text-gray-500 italic animate-pulse ml-auto">Swipe left to act</span>}
                     </div>
                 </div>
                 <ChevronRightIcon className="w-5 h-5 text-gray-600 flex-shrink-0" />
@@ -160,12 +160,12 @@ const SwipeableOrderCard: React.FC<{
 const MobileApprovals: React.FC<MobileApprovalsProps> = ({ orders, users, onUpdateOrderStatus, onApprovalDecision, properties }) => {
     const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
     const [activeTab, setActiveTab] = useState<'my-approvals' | 'all-pending' | 'history'>('my-approvals');
-    
+
     // Simple loading simulation if orders is empty initially
     const [isLoading] = useState(orders.length === 0);
-    
-    const getUserName = (userId: string) => users.find(u => u.id === userId)?.name || 'Unknown User';
-    
+
+    const getUserName = (userId: string) => users?.find(u => u.id === userId)?.name || 'Unknown User';
+
     const filterButtons: { label: string; filter: typeof activeTab }[] = [
         { label: 'Mine', filter: 'my-approvals' },
         { label: 'All Pending', filter: 'all-pending' },
@@ -174,7 +174,7 @@ const MobileApprovals: React.FC<MobileApprovalsProps> = ({ orders, users, onUpda
 
     const filteredOrders = useMemo(() => {
         return orders.filter(order => {
-            switch(activeTab) {
+            switch (activeTab) {
                 case 'my-approvals':
                     return order.status === 'Pending My Approval';
                 case 'all-pending':
@@ -186,7 +186,7 @@ const MobileApprovals: React.FC<MobileApprovalsProps> = ({ orders, users, onUpda
             }
         }).sort((a, b) => new Date(b.submissionDate).getTime() - new Date(a.submissionDate).getTime());
     }, [orders, activeTab]);
-    
+
     if (viewingOrder) {
         return (
             <div className="animate-slide-in-right">
@@ -210,19 +210,18 @@ const MobileApprovals: React.FC<MobileApprovalsProps> = ({ orders, users, onUpda
                 <p className="text-sm text-gray-400 mt-1">Swipe left to quickly approve or reject items.</p>
             </div>
 
-             <div className="flex items-center bg-[#2C2C2E] p-1 rounded-xl w-full mb-6 shadow-inner">
+            <div className="flex items-center bg-[#2C2C2E] p-1 rounded-xl w-full mb-6 shadow-inner">
                 {filterButtons.map(({ label, filter }) => (
                     <button
                         key={filter}
-                        onClick={() => { 
-                            if(navigator.vibrate) navigator.vibrate(5);
-                            setActiveTab(filter); 
+                        onClick={() => {
+                            if (navigator.vibrate) navigator.vibrate(5);
+                            setActiveTab(filter);
                         }}
-                        className={`flex-1 py-2 text-xs sm:text-sm font-bold rounded-lg transition-all duration-200 ${
-                        activeTab === filter
-                            ? 'bg-[#404040] text-white shadow-sm'
-                            : 'text-gray-500 hover:text-gray-300'
-                        }`}
+                        className={`flex-1 py-2 text-xs sm:text-sm font-bold rounded-lg transition-all duration-200 ${activeTab === filter
+                                ? 'bg-[#404040] text-white shadow-sm'
+                                : 'text-gray-500 hover:text-gray-300'
+                            }`}
                     >
                         {label}
                     </button>
@@ -239,7 +238,7 @@ const MobileApprovals: React.FC<MobileApprovalsProps> = ({ orders, users, onUpda
             ) : filteredOrders.length > 0 ? (
                 <div className="pb-20">
                     {filteredOrders.map(order => (
-                        <SwipeableOrderCard 
+                        <SwipeableOrderCard
                             key={order.id}
                             order={order}
                             onSelect={() => setViewingOrder(order)}
@@ -252,7 +251,7 @@ const MobileApprovals: React.FC<MobileApprovalsProps> = ({ orders, users, onUpda
             ) : (
                 <div className="flex flex-col items-center justify-center py-32 opacity-50">
                     <div className="bg-[#2C2C2E] p-6 rounded-full mb-4 animate-bounce">
-                         <CheckCircleIcon className="w-16 h-16 text-green-500" />
+                        <CheckCircleIcon className="w-16 h-16 text-green-500" />
                     </div>
                     <h3 className="text-xl font-bold text-white">All caught up!</h3>
                     <p className="text-sm text-gray-400 mt-2">No pending approvals found.</p>

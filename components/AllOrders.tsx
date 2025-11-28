@@ -159,7 +159,7 @@ const AllOrders: React.FC<AllOrdersProps> = ({ orders, onProcureOrder, onSelectO
                                     <td className="px-6 py-4">
                                         <div className="font-bold text-foreground">{order.cartName}</div>
                                         <div className="text-xs text-muted-foreground mt-1 space-x-2 flex items-center flex-wrap">
-                                            <span className="flex items-center gap-1.5"><BuildingOfficeIcon className="w-3 h-3" /> {properties.find(p => p.id === order.propertyId)?.name || 'N/A'}</span>
+                                            <span className="flex items-center gap-1.5"><BuildingOfficeIcon className="w-3 h-3" /> {properties?.find(p => p.id === order.propertyId)?.name || 'N/A'}</span>
                                             <span className="text-border">|</span>
                                             <span>ORD: <span className="font-mono font-medium text-primary">{order.id}</span></span>
                                             {order.purchaseOrders && order.purchaseOrders.length > 0 && (
@@ -170,7 +170,7 @@ const AllOrders: React.FC<AllOrdersProps> = ({ orders, onProcureOrder, onSelectO
                                             )}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 text-foreground">{users.find(u => u.id === order.submittedBy)?.name || order.submittedBy || 'Unknown'}</td>
+                                    <td className="px-6 py-4 text-foreground">{users?.find(u => u.id === order.submittedBy)?.name || order.submittedBy || 'Unknown'}</td>
                                     <td className="px-6 py-4 text-muted-foreground">{order.submissionDate}</td>
                                     <td className="px-6 py-4 text-right font-bold text-foreground">${order.totalCost.toFixed(2)}</td>
                                     <td className="px-6 py-4 text-center">

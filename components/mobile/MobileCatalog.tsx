@@ -27,7 +27,7 @@ const MobileCatalog: React.FC<MobileCatalogProps> = ({ products, carts, activeCa
 
     const handleCartChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const cartId = e.target.value;
-        const newActiveCart = carts.find(c => c.id === cartId);
+        const newActiveCart = carts?.find(c => c.id === cartId);
         if (newActiveCart) {
             onSelectCart(newActiveCart);
         }

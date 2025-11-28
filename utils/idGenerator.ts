@@ -110,13 +110,17 @@ export function generatePOId(orderId: string, vendorSuffix?: string): string {
     const userId = extractUserId(orderId);
     const sequence = extractSequence(orderId);
 
-    if (!userId || sequence === null) {
-        throw new Error(`Invalid order ID format: ${orderId}`);
-    }
+    let baseId: string;
 
-    const paddedSequence = sequence.toString().padStart(4, '0');
-    // userId extracted from orderId is already short
-    const baseId = `PO-${userId}-${paddedSequence}`;
+    if (!userId || sequence === null) {
+        // Fallback for non-standard order IDs (e.g. ord-timestamp)
+        // Just prefix with PO-
+        baseId = `PO-${orderId}`;
+    } else {
+        const paddedSequence = sequence.toString().padStart(4, '0');
+        // userId extracted from orderId is already short
+        baseId = `PO-${userId}-${paddedSequence}`;
+    }
 
     return vendorSuffix ? `${baseId}-${vendorSuffix}` : baseId;
 }

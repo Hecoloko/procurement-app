@@ -1,12 +1,9 @@
 
-// ... (Imports)
 import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
-// ... (Other imports remain the same)
 import Dashboard from './components/Dashboard';
 import MyCarts from './components/MyCarts';
 import CartDetail from './components/CartDetail';
-import { Cart, Product, Order, OrderStatus, Vendor, Property, Unit, AdminUser, CommunicationThread, Message, CartType, CartItem, ItemApprovalStatus, Role, PurchaseOrder, Company } from './types';
 import Approvals from './components/Approvals';
 import AllOrders from './components/AllOrders';
 import AdminSettings from './components/AdminSettings';
@@ -15,10 +12,14 @@ import Receiving from './components/Receiving';
 import Suppliers from './components/Suppliers';
 import Transactions from './components/Transactions';
 import PurchaseOrders from './components/OrderManagement';
+import ChartOfAccounts from './components/ChartOfAccounts';
+import Reports from './components/Reports';
 import OrderDetailsDrawer from './components/OrderDetailsDrawer';
 import QuickCartModal from './components/QuickCartModal';
 import CreateCartFlowModal from './components/CreateCartFlowModal';
 import Properties from './components/Properties';
+
+import { Cart, Product, Order, OrderStatus, Vendor, Property, Unit, AdminUser, CommunicationThread, Message, CartType, CartItem, ItemApprovalStatus, Role, PurchaseOrder, Company, Account } from './types';
 import ProductDashboard from './components/ProductDashboard';
 import CommunicationCenter from './components/CommunicationCenter';
 import { DUMMY_THREADS, DUMMY_MESSAGES, DUMMY_ROLES } from './constants';
@@ -140,6 +141,12 @@ const mapOrder = (dbOrder: any, products: Product[]): Order => {
             vendorConfirmationNumber: dbPO.vendor_confirmation_number,
             invoiceNumber: dbPO.invoice_number,
             invoiceUrl: dbPO.invoice_url,
+            paymentStatus: dbPO.payment_status,
+            invoiceDate: dbPO.invoice_date,
+            dueDate: dbPO.due_date,
+            paymentDate: dbPO.payment_date,
+            paymentMethod: dbPO.payment_method,
+            amountDue: safeNumber(dbPO.amount_due),
             statusHistory: []
         };
     });
@@ -203,6 +210,7 @@ export const App: React.FC = () => {
     const [units, setUnits] = useState<Unit[]>([]);
     const [users, setUsers] = useState<AdminUser[]>([]);
     const [roles, setRoles] = useState<Role[]>(DUMMY_ROLES);
+    const [accounts, setAccounts] = useState<Account[]>([]);
 
     const [threads, setThreads] = useState<CommunicationThread[]>(DUMMY_THREADS);
     const [messages, setMessages] = useState<Message[]>(DUMMY_MESSAGES);
@@ -365,6 +373,7 @@ export const App: React.FC = () => {
             setVendors([]);
             setProperties([]);
             setUnits([]);
+            setAccounts([]);
             let profile = await getCurrentProfile();
             setLoadingProgress(10);
 
@@ -433,7 +442,8 @@ export const App: React.FC = () => {
                 supabase.from('roles').select('*'),
                 supabase.from('units').select('*'),
                 supabase.from('communication_threads').select('*').eq('company_id', targetCompanyId).limit(100),
-                supabase.from('messages').select('*').limit(500)
+                supabase.from('messages').select('*').limit(500),
+                supabase.from('accounts').select('*').eq('company_id', targetCompanyId)
             ];
 
             let completedCount = 0;
@@ -460,7 +470,8 @@ export const App: React.FC = () => {
                 rolesData,
                 unitsData,
                 threadsData,
-                messagesData
+                messagesData,
+                accountsData
             ] = await Promise.all(trackedPromises);
 
             if (cartsData.error) throw cartsData.error;
@@ -519,6 +530,19 @@ export const App: React.FC = () => {
 
             if (rolesData.data) setRoles(rolesData.data as Role[]);
 
+            if (accountsData.data) {
+                setAccounts(accountsData.data.map((acc: any) => ({
+                    id: acc.id,
+                    companyId: acc.company_id,
+                    code: acc.code,
+                    name: acc.name,
+                    type: acc.type,
+                    subtype: acc.subtype,
+                    isActive: acc.is_active,
+                    balance: acc.balance
+                })));
+            }
+
             if (usersData.data) {
                 const mappedUsers: AdminUser[] = usersData.data.map((p: any) => {
                     let finalName = p.full_name;
@@ -569,6 +593,63 @@ export const App: React.FC = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleAddAccount = async (account: Omit<Account, 'id'>) => {
+        const currentUser = impersonatingUser || users?.find(u => u.id === session?.user?.id);
+        const targetCompany = viewingCompanyId || currentUser?.companyId;
+        if (!targetCompany) return;
+
+        const id = `acc-${Date.now()}`;
+        const payload = {
+            id,
+            company_id: targetCompany,
+            code: account.code,
+            name: account.name,
+            type: account.type,
+            subtype: account.subtype,
+            is_active: account.isActive
+        };
+
+        const { data: newAcc } = await supabase.from('accounts').insert(payload).select().single();
+        if (newAcc) {
+            setAccounts(prev => [...prev, {
+                id: newAcc.id,
+                companyId: newAcc.company_id,
+                code: newAcc.code,
+                name: newAcc.name,
+                type: newAcc.type,
+                subtype: newAcc.subtype,
+                isActive: newAcc.is_active
+            }]);
+        }
+    };
+
+    const handleUpdateAccount = async (account: Account) => {
+        const payload = {
+            code: account.code,
+            name: account.name,
+            type: account.type,
+            subtype: account.subtype,
+            is_active: account.isActive
+        };
+
+        const { data: updatedAcc } = await supabase.from('accounts').update(payload).eq('id', account.id).select().single();
+        if (updatedAcc) {
+            setAccounts(prev => prev.map(a => a.id === account.id ? {
+                ...a,
+                code: updatedAcc.code,
+                name: updatedAcc.name,
+                type: updatedAcc.type,
+                subtype: updatedAcc.subtype,
+                isActive: updatedAcc.is_active
+            } : a));
+        }
+    };
+
+    const handleDeleteAccount = async (accountId: string) => {
+        setAccounts(prev => prev.filter(a => a.id !== accountId));
+        await supabase.from('accounts').delete().eq('id', accountId);
     };
 
     const handleSwitchCompany = (newCompanyId: string) => {
@@ -1383,6 +1464,7 @@ export const App: React.FC = () => {
     };
 
     const handleUpdatePoPaymentStatus = async (orderId: string, poId: string, updates: Partial<PurchaseOrder>) => {
+        console.log("DEBUG: handleUpdatePoPaymentStatus called", { orderId, poId, updates });
         const dbUpdates: any = {};
         if (updates.paymentStatus) dbUpdates.payment_status = updates.paymentStatus;
         if (updates.invoiceNumber) dbUpdates.invoice_number = updates.invoiceNumber;
@@ -1391,10 +1473,22 @@ export const App: React.FC = () => {
         if (updates.amountDue) dbUpdates.amount_due = updates.amountDue;
         if (updates.paymentDate) dbUpdates.payment_date = updates.paymentDate;
         if (updates.paymentMethod) dbUpdates.payment_method = updates.paymentMethod;
+        if (updates.invoiceUrl) dbUpdates.invoice_url = updates.invoiceUrl;
 
-        await supabase.from('purchase_orders').update(dbUpdates).eq('id', poId);
+        const { error: updateError } = await supabase.from('purchase_orders').update(dbUpdates).eq('id', poId);
 
-        const { data: freshOrderData } = await supabase.from('orders').select('*, cart:carts(cart_items(*)), purchase_orders(*), order_status_history(*)').eq('id', orderId).single();
+        if (updateError) {
+            console.error("Error updating PO status:", updateError);
+            alert(`Failed to update status: ${updateError.message}`);
+            return;
+        }
+
+        const { data: freshOrderData, error: fetchError } = await supabase.from('orders').select('*, cart:carts(cart_items(*)), purchase_orders(*), order_status_history(*)').eq('id', orderId).single();
+
+        if (fetchError) {
+            console.error("Error fetching fresh order data:", fetchError);
+            return;
+        }
 
         if (freshOrderData && freshOrderData.purchase_orders) {
             const freshOrder = mapOrder(freshOrderData, products);
@@ -1421,10 +1515,11 @@ export const App: React.FC = () => {
         if (activeItem === 'Approvals') return <Approvals orders={orders} onUpdateOrderStatus={handleUpdateOrderStatus} onSelectOrder={(o) => { setSelectedOrder(o); }} users={users} properties={properties} />;
         if (activeItem === 'Receiving') return <Receiving orders={orders} vendors={vendors} onUpdatePoStatus={handleUpdatePoStatus} onSelectOrder={(o) => setSelectedOrder(o)} />;
         if (activeItem === 'Communications') return <CommunicationCenter threads={threads} messages={messages} users={users} orders={orders} currentUser={currentUser} onSendMessage={handleSendMessage} onStartNewThread={handleStartThread} onSelectOrder={setSelectedOrder} />;
-
         if (activeItem === 'Company Settings') return <AdminSettings vendors={vendors} properties={properties} units={units} users={users} roles={roles} companies={availableCompanies} currentUser={currentUser} onAddProperty={handleAddProperty} onDeleteProperty={handleDeleteProperty} onAddUnit={handleAddUnit} onAddRole={handleAddRole} onUpdateRole={handleUpdateRole} onDeleteRole={handleDeleteRole} onViewAsUser={setImpersonatingUser} onAddUser={handleAddUser} onAddCompany={handleAddCompany} onDeleteUser={handleDeleteUser} />;
         if (activeItem === 'Suppliers') return <Suppliers vendors={vendors} products={products} orders={orders} properties={properties} companies={availableCompanies} currentCompanyId={viewingCompanyId || currentUser?.companyId || ''} onSwitchCompany={currentUser?.roleId === 'role-0' ? handleSwitchCompany : undefined} onSelectOrder={(o) => { setSelectedOrder(o); }} onAddVendor={handleAddVendor} onAddProduct={handleAddProduct} onAddVendorAccount={handleAddVendorAccount} />;
+        if (activeItem === 'Chart of Accounts') return <ChartOfAccounts accounts={accounts} onAddAccount={handleAddAccount} onUpdateAccount={handleUpdateAccount} onDeleteAccount={handleDeleteAccount} />;
         if (activeItem === 'Transactions') return <Transactions orders={orders} vendors={vendors} onUpdatePoPaymentStatus={handleUpdatePoPaymentStatus} />;
+        if (activeItem === 'Reports') return <Reports orders={orders} vendors={vendors} products={products} />;
         if (activeItem === 'Properties') return <Properties properties={properties} units={units} orders={orders} users={users} onSelectOrder={setSelectedOrder} />;
         if (activeItem === 'Product Dashboard') return <ProductDashboard products={products} companies={availableCompanies} currentCompanyId={viewingCompanyId || currentUser?.companyId || ''} onSwitchCompany={currentUser?.roleId === 'role-0' ? handleSwitchCompany : undefined} />;
 

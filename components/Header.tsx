@@ -13,27 +13,27 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ onQuickCartClick, onCartIconClick, user, activeCart, roles }) => {
-    const { can } = usePermissions();
-    const cartItemCount = activeCart?.itemCount || 0;
-    
-    // Avatar handling state
-    const [avatarSrc, setAvatarSrc] = useState(user.avatarUrl);
+  const { can } = usePermissions();
+  const cartItemCount = activeCart?.itemCount || 0;
 
-    useEffect(() => {
-        const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=random&color=fff&bold=true`;
-        if (!user.avatarUrl || user.avatarUrl === '' || user.avatarUrl.includes('via.placeholder.com')) {
-            setAvatarSrc(fallbackUrl);
-        } else {
-            setAvatarSrc(user.avatarUrl);
-        }
-    }, [user.avatarUrl, user.name]);
+  // Avatar handling state
+  const [avatarSrc, setAvatarSrc] = useState(user.avatarUrl);
 
-    const handleImageError = () => {
-        setAvatarSrc(`https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=random&color=fff&bold=true`);
-    };
+  useEffect(() => {
+    const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=random&color=fff&bold=true`;
+    if (!user.avatarUrl || user.avatarUrl === '' || user.avatarUrl.includes('via.placeholder.com')) {
+      setAvatarSrc(fallbackUrl);
+    } else {
+      setAvatarSrc(user.avatarUrl);
+    }
+  }, [user.avatarUrl, user.name]);
 
-    return (
-     <header className="bg-card/80 backdrop-blur-sm border-b border-border p-4 h-[68px] flex-shrink-0">
+  const handleImageError = () => {
+    setAvatarSrc(`https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=random&color=fff&bold=true`);
+  };
+
+  return (
+    <header className="bg-card/80 backdrop-blur-sm border-b border-border p-4 h-[68px] flex-shrink-0">
       <div className="flex items-center justify-end h-full">
         <div className="flex items-center space-x-4">
           {can('carts:create') && (
@@ -64,12 +64,12 @@ const Header: React.FC<HeaderProps> = ({ onQuickCartClick, onCartIconClick, user
             />
             <div>
               <p className="font-semibold text-sm text-foreground">{user.name}</p>
-              <p className="text-xs text-muted-foreground">{roles.find(r => r.id === user.roleId)?.name || 'User'}</p>
+              <p className="text-xs text-muted-foreground">{roles?.find(r => r.id === user.roleId)?.name || 'User'}</p>
             </div>
           </div>
         </div>
       </div>
     </header>
-    );
+  );
 }
 export default Header;

@@ -156,7 +156,7 @@ const CartDetail: React.FC<CartDetailProps> = ({ cart, onBack, onOpenCatalog, on
 
   const [editedName, setEditedName] = useState(baseName);
 
-  const property = useMemo(() => properties.find(p => p.id === cart.propertyId), [properties, cart.propertyId]);
+  const property = useMemo(() => properties?.find(p => p.id === cart.propertyId), [properties, cart.propertyId]);
   const scheduleDetails = useMemo(() => getScheduleSummary(cart), [cart]);
 
   useEffect(() => {

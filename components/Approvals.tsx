@@ -40,12 +40,12 @@ const ApprovalCard: React.FC<{ order: Order, onSelect: () => void, submitterName
 );
 
 interface ApprovalsProps {
-  orders: Order[];
-  onUpdateOrderStatus: (orderId: string, status: OrderStatus) => void;
-  onSelectOrder: (order: Order) => void;
-  users: AdminUser[];
-  properties: Property[];
-  initialFilter?: 'my-approvals' | 'all-pending' | 'history';
+    orders: Order[];
+    onUpdateOrderStatus: (orderId: string, status: OrderStatus) => void;
+    onSelectOrder: (order: Order) => void;
+    users: AdminUser[];
+    properties: Property[];
+    initialFilter?: 'my-approvals' | 'all-pending' | 'history';
 }
 
 const Approvals: React.FC<ApprovalsProps> = ({ orders, onUpdateOrderStatus, onSelectOrder, users, properties, initialFilter }) => {
@@ -56,9 +56,9 @@ const Approvals: React.FC<ApprovalsProps> = ({ orders, onUpdateOrderStatus, onSe
         { label: 'All Pending', filter: 'all-pending' },
         { label: 'History', filter: 'history' },
     ];
-    
+
     const filteredApprovals = orders.filter(order => {
-        switch(activeTab) {
+        switch (activeTab) {
             case 'my-approvals':
                 return order.status === 'Pending My Approval';
             case 'all-pending':
@@ -68,7 +68,7 @@ const Approvals: React.FC<ApprovalsProps> = ({ orders, onUpdateOrderStatus, onSe
         }
     });
 
-    const getUserName = (userId: string) => users.find(u => u.id === userId)?.name || 'Unknown User';
+    const getUserName = (userId: string) => users?.find(u => u.id === userId)?.name || 'Unknown User';
 
     return (
         <>
@@ -77,17 +77,16 @@ const Approvals: React.FC<ApprovalsProps> = ({ orders, onUpdateOrderStatus, onSe
 
             <div className="flex items-center bg-card p-1 rounded-lg max-w-md border border-border shadow-sm">
                 {filterButtons.map(({ label, filter }) => (
-                <button
-                    key={filter}
-                    onClick={() => setActiveTab(filter)}
-                    className={`w-full px-4 py-2 text-sm font-semibold rounded-md transition-all duration-200 ${
-                    activeTab === filter
-                        ? 'bg-muted text-foreground shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                    }`}
-                >
-                    {label}
-                </button>
+                    <button
+                        key={filter}
+                        onClick={() => setActiveTab(filter)}
+                        className={`w-full px-4 py-2 text-sm font-semibold rounded-md transition-all duration-200 ${activeTab === filter
+                                ? 'bg-muted text-foreground shadow-sm'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                            }`}
+                    >
+                        {label}
+                    </button>
                 ))}
             </div>
 
@@ -95,8 +94,8 @@ const Approvals: React.FC<ApprovalsProps> = ({ orders, onUpdateOrderStatus, onSe
                 {filteredApprovals.length > 0 ? (
                     <div className="space-y-4">
                         {filteredApprovals.map(order => (
-                            <ApprovalCard 
-                                key={order.id} 
+                            <ApprovalCard
+                                key={order.id}
                                 order={order}
                                 onSelect={() => onSelectOrder(order)}
                                 submitterName={getUserName(order.submittedBy)}

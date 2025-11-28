@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Order, PurchaseOrder, Vendor } from '../types';
-import { SearchIcon, FilterIcon, CheckCircleIcon, XCircleIcon, ClockIcon, DocumentDuplicateIcon } from './Icons';
+import { SearchIcon, FilterIcon, CheckCircleIcon, XCircleIcon, ClockIcon, DocumentDuplicateIcon, PaperClipIcon } from './Icons';
 
 interface TransactionsProps {
     orders: Order[];
@@ -20,6 +20,7 @@ const Transactions: React.FC<TransactionsProps> = ({ orders, vendors, onUpdatePo
     const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
     const [dueDate, setDueDate] = useState('');
     const [amountDue, setAmountDue] = useState<number>(0);
+    const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
     const [paymentMethod, setPaymentMethod] = useState('ACH');
     const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
 
@@ -28,7 +29,7 @@ const Transactions: React.FC<TransactionsProps> = ({ orders, vendors, onUpdatePo
         orders.forEach(order => {
             if (order.purchaseOrders) {
                 order.purchaseOrders.forEach(po => {
-                    const vendor = vendors.find(v => v.id === po.vendorId);
+                    const vendor = vendors?.find(v => v.id === po.vendorId);
                     pos.push({
                         orderId: order.id,
                         po,
@@ -78,6 +79,7 @@ const Transactions: React.FC<TransactionsProps> = ({ orders, vendors, onUpdatePo
         const next30 = new Date();
         next30.setDate(next30.getDate() + 30);
         setDueDate(next30.toISOString().split('T')[0]);
+        setInvoiceFile(null);
 
         // Calculate total from items
         const total = (item.po.items || []).reduce((sum, i) => sum + (i.totalPrice || 0), 0);
@@ -103,7 +105,8 @@ const Transactions: React.FC<TransactionsProps> = ({ orders, vendors, onUpdatePo
                 invoiceNumber,
                 invoiceDate,
                 dueDate,
-                amountDue
+                amountDue,
+                invoiceUrl: invoiceFile ? URL.createObjectURL(invoiceFile) : undefined
             });
         } else {
             await onUpdatePoPaymentStatus(selectedPo.orderId, selectedPo.po.id, {
@@ -186,6 +189,11 @@ const Transactions: React.FC<TransactionsProps> = ({ orders, vendors, onUpdatePo
                                         <td className="px-6 py-4 font-mono text-muted-foreground">{item.po.id}</td>
                                         <td className="px-6 py-4 text-foreground">
                                             {view === 'Bills' ? 'Received' : item.po.invoiceDate || 'N/A'}
+                                            {item.po.invoiceUrl && (
+                                                <a href={item.po.invoiceUrl} target="_blank" rel="noopener noreferrer" className="ml-2 inline-block text-primary hover:text-primary/80" title="View Invoice">
+                                                    <PaperClipIcon className="w-4 h-4" />
+                                                </a>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 font-semibold text-foreground">
                                             ${(item.po.amountDue || total).toLocaleString()}
@@ -283,6 +291,20 @@ const Transactions: React.FC<TransactionsProps> = ({ orders, vendors, onUpdatePo
                                                 value={amountDue}
                                                 onChange={(e) => setAmountDue(parseFloat(e.target.value))}
                                             />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-foreground mb-1">Upload Invoice (Optional)</label>
+                                        <div className="flex items-center gap-2">
+                                            <label className="flex items-center justify-center px-4 py-2 border border-dashed border-border rounded-lg cursor-pointer hover:bg-muted transition-colors w-full text-sm text-muted-foreground">
+                                                <span className="truncate">{invoiceFile ? invoiceFile.name : "Click to upload PDF or Image"}</span>
+                                                <input type="file" className="hidden" accept="image/*,.pdf" onChange={(e) => e.target.files && setInvoiceFile(e.target.files[0])} />
+                                            </label>
+                                            {invoiceFile && (
+                                                <button onClick={() => setInvoiceFile(null)} className="p-2 text-muted-foreground hover:text-red-500">
+                                                    <XCircleIcon className="w-5 h-5" />
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 </>

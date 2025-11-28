@@ -22,18 +22,18 @@ interface AugmentedPO extends PurchaseOrder {
 }
 
 interface PurchaseOrdersProps {
-  orders: Order[];
-  vendors: Vendor[];
-  onSelectOrder: (order: Order) => void;
-  initialStatusFilter?: PurchaseOrderStatus | 'All';
-  properties: Property[];
+    orders: Order[];
+    vendors: Vendor[];
+    onSelectOrder: (order: Order) => void;
+    initialStatusFilter?: PurchaseOrderStatus | 'All';
+    properties: Property[];
 }
 
 const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({ orders, vendors, onSelectOrder, initialStatusFilter, properties }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<PurchaseOrderStatus | 'All'>(initialStatusFilter || 'All');
     const [vendorFilter, setVendorFilter] = useState<string | 'All'>('All');
-    
+
     useEffect(() => {
         if (initialStatusFilter) {
             setStatusFilter(initialStatusFilter);
@@ -41,7 +41,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({ orders, vendors, onSele
     }, [initialStatusFilter]);
 
     const allPurchaseOrders = useMemo((): AugmentedPO[] => {
-        return orders.flatMap(order => 
+        return orders.flatMap(order =>
             order.purchaseOrders ? order.purchaseOrders.map(po => ({
                 ...po,
                 parentOrder: {
@@ -56,11 +56,11 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({ orders, vendors, onSele
     const filteredPOs = useMemo(() => {
         return allPurchaseOrders.filter(po => {
             const lowerSearchTerm = searchTerm.toLowerCase();
-            const vendor = vendors.find(v => v.id === po.vendorId);
+            const vendor = vendors?.find(v => v.id === po.vendorId);
             const matchesSearch = po.id.toLowerCase().includes(lowerSearchTerm) ||
-                                  po.parentOrder.id.toLowerCase().includes(lowerSearchTerm) ||
-                                  po.parentOrder.cartName.toLowerCase().includes(lowerSearchTerm) ||
-                                  (vendor && vendor.name.toLowerCase().includes(lowerSearchTerm));
+                po.parentOrder.id.toLowerCase().includes(lowerSearchTerm) ||
+                po.parentOrder.cartName.toLowerCase().includes(lowerSearchTerm) ||
+                (vendor && vendor.name.toLowerCase().includes(lowerSearchTerm));
             const matchesStatus = statusFilter === 'All' || po.status === statusFilter;
             const matchesVendor = vendorFilter === 'All' || po.vendorId === vendorFilter;
 
@@ -69,15 +69,15 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({ orders, vendors, onSele
     }, [allPurchaseOrders, searchTerm, statusFilter, vendorFilter, vendors]);
 
     const handleRowClick = (po: AugmentedPO) => {
-        const parentOrder = orders.find(o => o.id === po.parentOrder.id);
-        if(parentOrder) {
+        const parentOrder = orders?.find(o => o.id === po.parentOrder.id);
+        if (parentOrder) {
             onSelectOrder(parentOrder);
         }
     };
 
     const poStatuses: (PurchaseOrderStatus | 'All')[] = ['All', 'Issued', 'Purchased', 'In Transit', 'Received'];
-    const vendorOptions: (Vendor | {id: 'All', name: 'All Vendors'})[] = [{id: 'All', name: 'All Vendors'}, ...vendors];
-    
+    const vendorOptions: (Vendor | { id: 'All', name: 'All Vendors' })[] = [{ id: 'All', name: 'All Vendors' }, ...vendors];
+
     return (
         <>
             <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">Purchase Orders</h1>
@@ -124,7 +124,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({ orders, vendors, onSele
                             value={vendorFilter}
                             onChange={(e) => setVendorFilter(e.target.value as any)}
                         >
-                             {vendorOptions.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                            {vendorOptions.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
                         </select>
                     </div>
                 </div>
@@ -147,32 +147,32 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({ orders, vendors, onSele
                         </thead>
                         <tbody className="divide-y divide-border">
                             {filteredPOs.length > 0 ? filteredPOs.map(po => (
-                            <tr key={po.id} className="hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => handleRowClick(po)}>
-                                <td className="px-6 py-4">
+                                <tr key={po.id} className="hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => handleRowClick(po)}>
+                                    <td className="px-6 py-4">
                                         <div className="font-bold text-lg text-primary font-mono">{po.id}</div>
-                                </td>
-                                <td className="px-6 py-4">
+                                    </td>
+                                    <td className="px-6 py-4">
                                         <div className="font-semibold text-foreground">{po.parentOrder.cartName}</div>
                                         <div className="text-xs text-muted-foreground">ORD: {po.parentOrder.id}</div>
                                         <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5">
-                                            <BuildingOfficeIcon className="w-3 h-3"/>
-                                            {properties.find(p => p.id === po.parentOrder.propertyId)?.name || 'N/A'}
+                                            <BuildingOfficeIcon className="w-3 h-3" />
+                                            {properties?.find(p => p.id === po.parentOrder.propertyId)?.name || 'N/A'}
                                         </div>
-                                </td>
-                                <td className="px-6 py-4 text-foreground font-medium">{vendors.find(v => v.id === po.vendorId)?.name || 'N/A'}</td>
-                                <td className="px-6 py-4 text-center">
-                                    <span className={`px-3 py-1 text-xs font-semibold rounded-full border ${getPOStatusTheme(po.status)}`}>
+                                    </td>
+                                    <td className="px-6 py-4 text-foreground font-medium">{vendors?.find(v => v.id === po.vendorId)?.name || 'N/A'}</td>
+                                    <td className="px-6 py-4 text-center">
+                                        <span className={`px-3 py-1 text-xs font-semibold rounded-full border ${getPOStatusTheme(po.status)}`}>
                                             {po.status}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 text-center text-foreground font-medium">
-                                    {po.items.length}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-center text-foreground font-medium">
+                                        {po.items.length}
                                     </td>
                                     <td className="px-6 py-4 text-muted-foreground">{po.eta || 'N/A'}</td>
                                     <td className="px-4 py-4">
-                                        <ChevronRightIcon className="w-5 h-5 text-muted-foreground"/>
+                                        <ChevronRightIcon className="w-5 h-5 text-muted-foreground" />
                                     </td>
-                            </tr>
+                                </tr>
                             )) : (
                                 <tr>
                                     <td colSpan={7} className="text-center py-12 text-muted-foreground">

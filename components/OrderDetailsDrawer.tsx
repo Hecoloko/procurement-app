@@ -20,7 +20,7 @@ const getTrackingUrl = (carrier: string, trackingNumber: string): string => {
 
 const PurchaseOrderDetail: React.FC<{ po: PurchaseOrder, vendors: Vendor[] }> = ({ po, vendors }) => {
     const [isExpanded, setIsExpanded] = useState(true);
-    const vendor = vendors.find(v => v.id === po.vendorId);
+    const vendor = vendors?.find(v => v.id === po.vendorId);
 
     const poTimelineSteps: { key: PurchaseOrderStatus; label: string }[] = [
         { key: 'Issued', label: 'Ordered' },
@@ -210,8 +210,8 @@ const DetailsTab: React.FC<{
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
                 <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-4 text-base">Order Summary</h3>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
-                    <div className="text-gray-500 dark:text-gray-400">Submitted By:</div><div className="font-semibold text-gray-800 dark:text-gray-100">{users.find(u => u.id === order?.submittedBy)?.name || order?.submittedBy || 'Unknown'}</div>
-                    <div className="text-gray-500 dark:text-gray-400">Property:</div><div className="font-semibold text-gray-800 dark:text-gray-100">{properties.find(p => p.id === order?.propertyId)?.name || 'N/A'}</div>
+                    <div className="text-gray-500 dark:text-gray-400">Submitted By:</div><div className="font-semibold text-gray-800 dark:text-gray-100">{users?.find(u => u.id === order?.submittedBy)?.name || order?.submittedBy || 'Unknown'}</div>
+                    <div className="text-gray-500 dark:text-gray-400">Property:</div><div className="font-semibold text-gray-800 dark:text-gray-100">{properties?.find(p => p.id === order?.propertyId)?.name || 'N/A'}</div>
                     <div className="text-gray-500 dark:text-gray-400">Date:</div><div className="font-semibold text-gray-800 dark:text-gray-100">{order?.submissionDate}</div>
                     <div className="text-gray-500 dark:text-gray-400">Total Cost:</div><div className="font-bold text-gray-900 dark:text-gray-100">${order?.totalCost.toFixed(2)}</div>
                     <div className="text-gray-500 dark:text-gray-400">Status:</div><div className="font-semibold text-gray-800 dark:text-gray-100">{order?.status}</div>

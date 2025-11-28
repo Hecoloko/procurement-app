@@ -182,7 +182,7 @@ const MobileApp: React.FC<MobileAppProps> = (props) => {
                                 <img src={props.currentUser.avatarUrl} className="w-16 h-16 rounded-full border-2 border-green-500 shadow-md" alt="Profile" />
                                 <div>
                                     <h2 className="text-2xl font-bold text-white tracking-tight">{props.currentUser.name}</h2>
-                                    <p className="text-gray-400 text-sm font-medium">{props.roles.find(r => r.id === props.currentUser.roleId)?.name}</p>
+                                    <p className="text-gray-400 text-sm font-medium">{props.roles?.find(r => r.id === props.currentUser.roleId)?.name}</p>
                                 </div>
                             </div>
                             {/* Company Switcher */}
@@ -192,7 +192,7 @@ const MobileApp: React.FC<MobileAppProps> = (props) => {
                                     <div className="relative">
                                         <select
                                             value={props.currentCompanyId}
-                                            onChange={(e) => { props.onSwitchCompany(e.target.value); showToast(`Switched to ${props.availableCompanies.find(c => c.id === e.target.value)?.name}`); }}
+                                            onChange={(e) => { props.onSwitchCompany(e.target.value); showToast(`Switched to ${props.availableCompanies?.find(c => c.id === e.target.value)?.name}`); }}
                                             className="w-full bg-[#2C2C2E] text-white border border-white/10 rounded-xl py-3 px-4 appearance-none focus:outline-none focus:ring-2 focus:ring-green-500/50 font-medium text-sm shadow-inner transition-all"
                                         >
                                             {props.availableCompanies.map(c => (
@@ -297,6 +297,8 @@ const MobileApp: React.FC<MobileAppProps> = (props) => {
                             onAddVendor={props.onAddVendor}
                             onAddProduct={props.onAddProduct}
                             onAddVendorAccount={props.onAddVendorAccount}
+                            companies={props.availableCompanies}
+                            currentCompanyId={props.currentCompanyId}
                         />
                     </div>
                 );
@@ -307,7 +309,15 @@ const MobileApp: React.FC<MobileAppProps> = (props) => {
                             <button onClick={() => { hapticFeedback(); setActiveView('more'); }} className="p-2 bg-white rounded-full shadow-sm text-gray-600 active:bg-gray-100"><XMarkIcon className="w-6 h-6" /></button>
                             <h2 className="font-bold text-xl tracking-tight">Transactions</h2>
                         </div>
-                        <Transactions />
+                        <Transactions
+                            orders={props.orders}
+                            vendors={props.vendors}
+                            onUpdatePoPaymentStatus={async (orderId, poId, status) => {
+                                // Mobile implementation for payment status update - simplified for now
+                                console.log('Update payment status:', orderId, poId, status);
+                                showToast('Payment status updated');
+                            }}
+                        />
                     </div>
                 );
             case 'purchaseOrders':

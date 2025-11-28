@@ -229,7 +229,7 @@ const Suppliers: React.FC<SuppliersProps> = ({ vendors, products, orders, onSele
     // Keep local state in sync with props
     useEffect(() => {
         if (selectedVendor) {
-            const updatedVendor = vendors.find(v => v.id === selectedVendor.id);
+            const updatedVendor = vendors?.find(v => v.id === selectedVendor.id);
             setSelectedVendor(updatedVendor || null);
         } else if (vendors.length > 0) {
             setSelectedVendor(vendors[0]);
@@ -484,7 +484,7 @@ const Suppliers: React.FC<SuppliersProps> = ({ vendors, products, orders, onSele
                                                         <tbody className="divide-y divide-border">
                                                             {selectedVendor.accounts.map(acc => (
                                                                 <tr key={acc.id} className="hover:bg-muted/50 transition-colors">
-                                                                    <td className="px-4 py-3 font-medium text-foreground">{properties.find(p => p.id === acc.propertyId)?.name || 'Unknown Property'}</td>
+                                                                    <td className="px-4 py-3 font-medium text-foreground">{properties?.find(p => p.id === acc.propertyId)?.name || 'Unknown Property'}</td>
                                                                     <td className="px-4 py-3 font-mono text-muted-foreground">{acc.accountNumber}</td>
                                                                 </tr>
                                                             ))}

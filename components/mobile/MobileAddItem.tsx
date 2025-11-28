@@ -18,34 +18,34 @@ const MobileAddItem: React.FC<MobileAddItemProps> = ({ cart, products, onUpdateI
         const lowerSearch = searchTerm.toLowerCase();
         return products.filter(p => p.name.toLowerCase().includes(lowerSearch) || p.sku.toLowerCase().includes(lowerSearch));
     }, [products, searchTerm]);
-    
+
     const getCartQuantity = (sku: string) => {
-        return cart.items.find(item => item.sku === sku)?.quantity || 0;
+        return cart.items?.find(item => item.sku === sku)?.quantity || 0;
     };
-    
+
     const handleAdd = (product: Product) => {
-        if(navigator.vibrate) navigator.vibrate(10);
+        if (navigator.vibrate) navigator.vibrate(10);
         onUpdateItem(product, 1);
     };
-    
+
     const handleIncrement = (product: Product, qty: number) => {
-        if(navigator.vibrate) navigator.vibrate(5);
+        if (navigator.vibrate) navigator.vibrate(5);
         onUpdateItem(product, qty + 1);
     };
-    
+
     const handleDecrement = (product: Product, qty: number) => {
-        if(navigator.vibrate) navigator.vibrate(5);
+        if (navigator.vibrate) navigator.vibrate(5);
         onUpdateItem(product, qty - 1);
     };
 
     return (
         <div className="fixed inset-0 z-50 flex flex-col font-sans animate-slide-up bg-[#121212]">
-             {/* Drag Handle Area */}
-             <div className="w-full flex justify-center pt-3 pb-1 bg-[#1E1E1E] rounded-t-3xl shadow-[0_-5px_20px_rgba(0,0,0,0.5)] border-t border-white/10" onClick={onBack}>
-                 <div className="w-12 h-1.5 bg-gray-600 rounded-full"></div>
-             </div>
-             
-             <header className="bg-[#1E1E1E] px-4 pb-4 border-b border-white/5 shadow-md">
+            {/* Drag Handle Area */}
+            <div className="w-full flex justify-center pt-3 pb-1 bg-[#1E1E1E] rounded-t-3xl shadow-[0_-5px_20px_rgba(0,0,0,0.5)] border-t border-white/10" onClick={onBack}>
+                <div className="w-12 h-1.5 bg-gray-600 rounded-full"></div>
+            </div>
+
+            <header className="bg-[#1E1E1E] px-4 pb-4 border-b border-white/5 shadow-md">
                 <div className="flex justify-between items-start mb-4">
                     <div>
                         <h1 className="text-xl font-bold text-white">Add Items</h1>
@@ -82,7 +82,7 @@ const MobileAddItem: React.FC<MobileAddItemProps> = ({ cart, products, onUpdateI
                             </div>
                             <div className="flex-shrink-0">
                                 {quantity === 0 ? (
-                                    <button 
+                                    <button
                                         onClick={() => handleAdd(product)}
                                         className="bg-green-600 text-white font-bold px-5 py-2 rounded-full text-xs shadow-lg shadow-green-900/30 active:scale-90 transition-transform"
                                     >
@@ -90,9 +90,9 @@ const MobileAddItem: React.FC<MobileAddItemProps> = ({ cart, products, onUpdateI
                                     </button>
                                 ) : (
                                     <div className="flex items-center bg-gray-800 rounded-full p-1 border border-gray-700">
-                                        <button onClick={() => handleDecrement(product, quantity)} className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-700 hover:bg-gray-600 text-white transition-colors active:scale-90"><MinusIcon className="w-4 h-4"/></button>
+                                        <button onClick={() => handleDecrement(product, quantity)} className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-700 hover:bg-gray-600 text-white transition-colors active:scale-90"><MinusIcon className="w-4 h-4" /></button>
                                         <span className="text-sm font-bold text-white w-8 text-center">{quantity}</span>
-                                        <button onClick={() => handleIncrement(product, quantity)} className="w-8 h-8 flex items-center justify-center rounded-full bg-green-600 hover:bg-green-500 text-white transition-colors active:scale-90 shadow-md"><PlusIcon className="w-4 h-4"/></button>
+                                        <button onClick={() => handleIncrement(product, quantity)} className="w-8 h-8 flex items-center justify-center rounded-full bg-green-600 hover:bg-green-500 text-white transition-colors active:scale-90 shadow-md"><PlusIcon className="w-4 h-4" /></button>
                                     </div>
                                 )}
                             </div>
