@@ -587,14 +587,14 @@ export const App: React.FC = () => {
         }
     }, [viewingCompanyId]);
 
-    const handleAddCart = async (cartType: CartType = 'Standard', targetCompany?: string, additionalData?: any) => {
-        if (!properties[0]) return;
-        const currentUser = impersonatingUser || users.find(u => u.id === session?.user?.id);
+    const handleAddCart = async (cartType: CartType = 'Standard', targetCompany?: string, additionalData?: any): Promise<{ success: boolean; message?: string }> => {
+        if (!properties[0]) return { success: false, message: 'No properties available' };
+        const currentUser = impersonatingUser || users?.find(u => u.id === session?.user?.id);
         if (!targetCompany) {
             targetCompany = viewingCompanyId || currentUser?.companyId;
         }
 
-        if (!targetCompany) return;
+        if (!targetCompany) return { success: false, message: 'No company selected' };
 
         const cartId = `cart-${Date.now()}`;
         const { propertyId, items, name, scheduledDate, startDate, dayOfWeek, dayOfMonth, frequency, category } = additionalData || {};
@@ -625,8 +625,7 @@ export const App: React.FC = () => {
         }
 
         if (!workOrderId) {
-            alert('Failed to generate unique Work Order ID. Please try again.');
-            return;
+            return { success: false, message: 'Failed to generate unique Work Order ID. Please try again.' };
         }
 
         let initialItemCount = 0;
@@ -660,8 +659,7 @@ export const App: React.FC = () => {
 
         if (cartError) {
             console.error("Error creating cart:", cartError);
-            alert(`Error creating cart: ${cartError.message}`);
-            return;
+            return { success: false, message: `Error creating cart: ${cartError.message}` };
         }
 
         if (items && Array.isArray(items) && items.length > 0) {
@@ -687,10 +685,12 @@ export const App: React.FC = () => {
             setView('detail');
             setSelectedCart(mappedCart);
         }
+
+        return { success: true };
     };
 
     const handleReuseCart = async (originalCartId: string) => {
-        const currentUser = impersonatingUser || users.find(u => u.id === session?.user?.id);
+        const currentUser = impersonatingUser || users?.find(u => u.id === session?.user?.id);
         if (!currentUser) return;
 
         // 1. Fetch original cart and items
@@ -823,7 +823,7 @@ export const App: React.FC = () => {
         const { data: cartData } = await supabase.from('carts').select('name, type, property_id, created_by').eq('id', cartId).single();
         if (!cartData) return;
 
-        const currentUser = impersonatingUser || users.find(u => u.id === session?.user?.id);
+        const currentUser = impersonatingUser || users?.find(u => u.id === session?.user?.id);
         const targetCompany = viewingCompanyId || currentUser?.companyId;
 
         await supabase.from('carts').update({ status: 'Submitted', total_cost: calculatedTotal, item_count: calculatedCount }).eq('id', cartId);
@@ -983,7 +983,7 @@ export const App: React.FC = () => {
         await supabase.from('communication_threads').update({ last_message_at: new Date().toISOString(), last_message_snippet: content.substring(0, 50) }).eq('id', threadId);
         const { data } = await supabase.from('messages').select('*');
         if (data) setMessages(data.map(mapMessage));
-        const targetCompany = viewingCompanyId || users.find(u => u.id === session?.user?.id)?.companyId;
+        const targetCompany = viewingCompanyId || users?.find(u => u.id === session?.user?.id)?.companyId;
         if (targetCompany) {
             const { data: tData } = await supabase.from('communication_threads').select('*').eq('company_id', targetCompany);
             if (tData) setThreads(tData.map(mapThread));
@@ -991,7 +991,7 @@ export const App: React.FC = () => {
     };
 
     const handleStartThread = async (participantIds: string[]): Promise<string> => {
-        const currentUser = impersonatingUser || users.find(u => u.id === session?.user?.id);
+        const currentUser = impersonatingUser || users?.find(u => u.id === session?.user?.id);
         const targetCompany = viewingCompanyId || currentUser?.companyId;
         const newThreadId = `thread-${Date.now()}`;
         const allParticipants = Array.from(new Set([...participantIds, session.user.id]));
@@ -1019,7 +1019,7 @@ export const App: React.FC = () => {
     };
 
     const handleAddProperty = async (data: { name: string; userIds?: string[] }) => {
-        const currentUser = impersonatingUser || users.find(u => u.id === session?.user?.id);
+        const currentUser = impersonatingUser || users?.find(u => u.id === session?.user?.id);
         const targetCompany = viewingCompanyId || currentUser?.companyId;
         if (!targetCompany) return;
         const id = `prop-${Date.now()}`;
@@ -1031,7 +1031,7 @@ export const App: React.FC = () => {
             // Assign users if selected
             if (data.userIds && data.userIds.length > 0) {
                 const updates = data.userIds.map(async (userId) => {
-                    const user = users.find(u => u.id === userId);
+                    const user = users?.find(u => u.id === userId);
                     if (user) {
                         const newPropertyIds = [...(user.propertyIds || []), newProp.id];
                         // Update Supabase
@@ -1080,7 +1080,7 @@ export const App: React.FC = () => {
     }
 
     const handleAddUser = async (userData: { name: string; email: string; password?: string; roleId: string; propertyIds: string[]; sendInvite?: boolean }) => {
-        const currentUser = impersonatingUser || users.find(u => u.id === session?.user?.id);
+        const currentUser = impersonatingUser || users?.find(u => u.id === session?.user?.id);
         const targetCompany = viewingCompanyId || currentUser?.companyId;
         if (!targetCompany) return;
 
@@ -1238,7 +1238,7 @@ export const App: React.FC = () => {
     };
 
     const handleAddVendor = async (vendorData: { name: string; phone?: string; email?: string }) => {
-        const currentUser = impersonatingUser || users.find(u => u.id === session?.user?.id);
+        const currentUser = impersonatingUser || users?.find(u => u.id === session?.user?.id);
         const targetCompany = viewingCompanyId || currentUser?.companyId;
         if (!targetCompany) return;
         const id = `vendor-${Date.now()}`;
@@ -1247,7 +1247,7 @@ export const App: React.FC = () => {
     };
 
     const handleAddProduct = async (product: Omit<Product, 'id'>) => {
-        const currentUser = impersonatingUser || users.find(u => u.id === session?.user?.id);
+        const currentUser = impersonatingUser || users?.find(u => u.id === session?.user?.id);
         const targetCompany = viewingCompanyId || currentUser?.companyId;
         if (!targetCompany) return;
         const id = `prod-${Date.now()}`;
@@ -1273,7 +1273,7 @@ export const App: React.FC = () => {
         const id = `vacc-${Date.now()}`;
         const { data: newAcc } = await supabase.from('vendor_accounts').insert({ id, vendor_id: vendorId, property_id: accountData.propertyId, account_number: accountData.accountNumber }).select().single();
         if (newAcc) {
-            const currentUser = impersonatingUser || users.find(u => u.id === session?.user?.id);
+            const currentUser = impersonatingUser || users?.find(u => u.id === session?.user?.id);
             const targetCompany = viewingCompanyId || currentUser?.companyId;
             if (targetCompany) {
                 const { data } = await supabase.from('vendors').select('*, vendor_accounts(*)').eq('company_id', targetCompany);
@@ -1435,12 +1435,14 @@ export const App: React.FC = () => {
                     <Header onQuickCartClick={() => setIsQuickCartModalOpen(true)} onCartIconClick={() => setIsCartDrawerOpen(true)} user={currentUser} activeCart={activeCart} roles={roles} />
                     <main className="flex-1 p-6 lg:p-8 overflow-y-auto">{renderContent()}</main>
                 </div>
-                <CreateCartFlowModal isOpen={isCreateCartModalOpen} onClose={() => setIsCreateCartModalOpen(false)} onSave={(data) => { handleAddCart(data.type, viewingCompanyId || currentUser?.companyId, data); return { success: true } }} properties={properties} userName={currentUser?.name || 'Unknown User'} />
+                <CreateCartFlowModal isOpen={isCreateCartModalOpen} onClose={() => setIsCreateCartModalOpen(false)} onSave={async (data) => { const result = await handleAddCart(data.type, viewingCompanyId || currentUser?.companyId, data); return result; }} properties={properties} userName={currentUser?.name || 'Unknown User'} />
                 <QuickCartModal isOpen={isQuickCartModalOpen} onClose={() => setIsQuickCartModalOpen(false)} onSave={(data) => { handleAddCart('Standard', viewingCompanyId || currentUser?.companyId, { name: data.name, propertyId: data.propertyId, items: data.items as any }); setIsQuickCartModalOpen(false); }} properties={properties} />
-                <GlobalCartDrawer isOpen={isCartDrawerOpen} onClose={() => setIsCartDrawerOpen(false)} activeCart={activeCart} carts={carts.filter(c => c.status === 'Draft' || c.status === 'Ready for Review')} onSelectCart={setActiveCart} onUpdateItem={(prod, qty, note) => activeCart && handleUpdateCartItem(activeCart.id, prod, qty, note)} onSubmitForApproval={(cartId) => { handleSubmitCart(cartId); setIsCartDrawerOpen(false); }} onViewFullCart={() => { if (activeCart) { setIsCartDrawerOpen(false); setActiveItem('My Carts'); setSelectedCart(activeCart); setView('detail'); } }} />
+                <GlobalCartDrawer isOpen={isCartDrawerOpen} onClose={() => setIsCartDrawerOpen(false)} activeCart={activeCart} carts={carts?.filter(c => c.status === 'Draft' || c.status === 'Ready for Review')} onSelectCart={setActiveCart} onUpdateItem={(prod, qty, note) => activeCart && handleUpdateCartItem(activeCart.id, prod, qty, note)} onSubmitForApproval={(cartId) => { handleSubmitCart(cartId); setIsCartDrawerOpen(false); }} onViewFullCart={() => { if (activeCart) { setIsCartDrawerOpen(false); setActiveItem('My Carts'); setSelectedCart(activeCart); setView('detail'); } }} />
                 <OrderDetailsDrawer order={selectedOrder} onClose={() => setSelectedOrder(null)} properties={properties} users={users} threads={threads} messages={messages} currentUser={currentUser} onSendMessage={handleSendMessage} orders={orders} onSelectOrder={setSelectedOrder} onUpdateOrderStatus={handleUpdateOrderStatus} onApprovalDecision={handleApprovalDecision} onProcureOrder={(o) => { setSelectedOrder(null); setOrderForProcurement(o); }} vendors={vendors} />
                 <EditScheduleModal isOpen={isEditScheduleModalOpen} onClose={() => setIsEditScheduleModalOpen(false)} cart={cartForScheduleEdit} onSave={() => { setIsEditScheduleModalOpen(false); }} />
             </div>
         </PermissionsProvider>
     );
 };
+
+export default App;
