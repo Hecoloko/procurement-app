@@ -15,9 +15,11 @@ interface MobileCartsProps {
     onSelectCart: (cart: Cart | null) => void;
     view: 'list' | 'add_item' | 'manual_add';
     setView: (view: 'list' | 'add_item' | 'manual_add') => void;
+    onRefresh: () => void;
+    currentCompanyId: string;
 }
 
-const MobileCarts: React.FC<MobileCartsProps> = ({ carts, products, onUpdateCartItem, activeCart, onSelectCart, view, setView }) => {
+const MobileCarts: React.FC<MobileCartsProps> = ({ carts, products, onUpdateCartItem, activeCart, onSelectCart, view, setView, onRefresh, currentCompanyId }) => {
 
     const openCarts = carts.filter(c => c.status === 'Draft' || c.status === 'Ready for Review');
 
@@ -33,7 +35,7 @@ const MobileCarts: React.FC<MobileCartsProps> = ({ carts, products, onUpdateCart
     };
 
     if (view === 'add_item' && activeCart) {
-        return <MobileAddItem cart={activeCart} products={products} onUpdateItem={onUpdateCartItem} onBack={() => setView('list')} />
+        return <MobileAddItem cart={activeCart} products={products} onUpdateItem={onUpdateCartItem} onBack={() => setView('list')} onRefresh={onRefresh} currentCompanyId={currentCompanyId} />
     }
 
     if (view === 'manual_add' && activeCart) {

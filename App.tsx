@@ -1469,6 +1469,7 @@ export const App: React.FC = () => {
                     onLogout={handleLogout}
                     impersonatingUser={impersonatingUser}
                     onImpersonate={setImpersonatingUser}
+                    onRefresh={() => session && fetchInitialData(session)}
                 />
             </PermissionsProvider>
         )

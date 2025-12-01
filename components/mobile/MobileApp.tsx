@@ -80,6 +80,7 @@ interface MobileAppProps {
     onLogout: () => void;
     impersonatingUser: AdminUser | null;
     onImpersonate: (user: AdminUser | null) => void;
+    onRefresh: () => void;
 }
 
 type MobileView = 'approvals' | 'carts' | 'orders' | 'messages' | 'more' | 'receiving' | 'suppliers' | 'settings' | 'transactions' | 'purchaseOrders' | 'procurement';
@@ -165,6 +166,8 @@ const MobileApp: React.FC<MobileAppProps> = (props) => {
                     onSelectCart={props.onSelectCart}
                     view={cartView}
                     setView={setCartView}
+                    onRefresh={props.onRefresh}
+                    currentCompanyId={props.currentCompanyId}
                 /></div>;
             case 'orders':
                 return <div className="animate-fade-in"><MobileOrders
