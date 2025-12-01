@@ -843,8 +843,12 @@ export const App: React.FC = () => {
     };
 
     const handleUpdateCartItem = async (cartId: string, product: { sku: string; name: string; unitPrice: number; vendorId?: string }, quantity: number, note?: string) => {
+        console.log('App: handleUpdateCartItem called', { cartId, product, quantity });
         const currentCart = carts.find(c => c.id === cartId);
-        if (!currentCart) return;
+        if (!currentCart) {
+            console.error('App: handleUpdateCartItem - Cart not found', cartId);
+            return;
+        }
         const existingItem = currentCart.items.find(i => i.sku === product.sku);
 
         if (quantity <= 0) {

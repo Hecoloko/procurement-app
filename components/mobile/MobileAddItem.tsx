@@ -76,6 +76,7 @@ const MobileAddItem: React.FC<MobileAddItemProps> = ({ cart, products, onUpdateI
     };
 
     const handleAdd = (product: Product) => {
+        console.log('MobileAddItem: handleAdd called', product);
         if (navigator.vibrate) navigator.vibrate(10);
         onUpdateItem(product, 1);
     };
