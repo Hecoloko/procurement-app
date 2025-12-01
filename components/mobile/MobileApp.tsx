@@ -10,6 +10,7 @@ import Receiving from '../Receiving';
 import Suppliers from '../Suppliers';
 import Transactions from '../Transactions';
 import PurchaseOrders from '../OrderManagement';
+import ProcurementWorkspace from '../ProcurementWorkspace';
 import { ApprovalIcon, CartIcon, POIcon, CommunicationIcon, PlusIcon, XMarkIcon, SearchIcon, PencilIcon, Bars3Icon, BuildingOfficeIcon, SettingsIcon, ShipmentIcon, TransactionIcon, SupplierIcon, LogoutIcon, CheckCircleIcon } from '../Icons';
 import { Select } from '../../components/ui/Select';
 import { usePermissions } from '../../contexts/PermissionsContext';
@@ -30,8 +31,8 @@ const Toast: React.FC<{ message: string, type: 'success' | 'error', onClose: () 
 
     return (
         <div className="fixed top-safe-top mt-4 left-4 right-4 z-50 animate-slide-down">
-            <div className={`flex items-center gap-3 p-4 rounded-xl shadow-2xl backdrop-blur-md border ${type === 'success' ? 'bg-green-500/90 border-green-400 text-white' : 'bg-red-500/90 border-red-400 text-white'}`}>
-                {type === 'success' ? <CheckCircleIcon className="w-6 h-6" /> : <XMarkIcon className="w-6 h-6" />}
+            <div className={`flex items-center gap-3 p-4 rounded-xl shadow-lg backdrop-blur-md border ${type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+                {type === 'success' ? <CheckCircleIcon className="w-6 h-6 text-green-600" /> : <XMarkIcon className="w-6 h-6 text-red-600" />}
                 <p className="font-medium text-sm">{message}</p>
             </div>
         </div>
@@ -81,7 +82,7 @@ interface MobileAppProps {
     onImpersonate: (user: AdminUser | null) => void;
 }
 
-type MobileView = 'approvals' | 'carts' | 'orders' | 'messages' | 'more' | 'receiving' | 'suppliers' | 'settings' | 'transactions' | 'purchaseOrders';
+type MobileView = 'approvals' | 'carts' | 'orders' | 'messages' | 'more' | 'receiving' | 'suppliers' | 'settings' | 'transactions' | 'purchaseOrders' | 'procurement';
 
 const MobileApp: React.FC<MobileAppProps> = (props) => {
     const [activeView, setActiveView] = useState<MobileView>('approvals');
@@ -89,6 +90,7 @@ const MobileApp: React.FC<MobileAppProps> = (props) => {
     const [cartView, setCartView] = useState<'list' | 'add_item' | 'manual_add'>('list');
     const [isInsideMessageView, setIsInsideMessageView] = useState(false);
     const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
+    const [procurementOrder, setProcurementOrder] = useState<Order | null>(null);
     const { can } = usePermissions();
 
     const showToast = (message: string, type: 'success' | 'error' = 'success') => {
@@ -106,19 +108,24 @@ const MobileApp: React.FC<MobileAppProps> = (props) => {
         }
     };
 
+    const handleProcureOrder = (order: Order) => {
+        setProcurementOrder(order);
+        setActiveView('procurement');
+    };
+
     const NavButton: React.FC<{ view: MobileView, label: string, icon: React.FC<any>, permission?: string }> = ({ view, label, icon: Icon, permission }) => {
-        const isActive = activeView === view || (view === 'more' && ['receiving', 'suppliers', 'settings', 'transactions', 'purchaseOrders'].includes(activeView));
+        const isActive = activeView === view || (view === 'more' && ['receiving', 'suppliers', 'settings', 'transactions', 'purchaseOrders', 'procurement'].includes(activeView));
         if (permission && !can(permission as any)) return null;
 
         return (
             <button
                 onClick={() => handleTabChange(view)}
-                className={`flex flex-col items-center justify-center w-full pt-2 pb-1 transition-all duration-200 active:scale-95 ${isActive ? 'text-white' : 'text-white/40'}`}
+                className={`flex flex-col items-center justify-center w-full pt-2 pb-1 transition-all duration-200 active:scale-95 ${isActive ? 'text-blue-600' : 'text-gray-400'}`}
             >
-                <div className={`p-1 rounded-2xl transition-all duration-300 ${isActive ? 'bg-white/15 translate-y-[-2px]' : ''} mb-0.5`}>
+                <div className={`p-1 rounded-xl transition-all duration-300 ${isActive ? 'bg-blue-50 translate-y-[-2px]' : ''} mb-0.5`}>
                     <Icon className={`w-6 h-6`} />
                 </div>
-                <span className={`text-[10px] font-medium tracking-wide ${isActive ? 'opacity-100' : 'opacity-70'}`}>{label}</span>
+                <span className={`text-[10px] font-medium tracking-wide ${isActive ? 'opacity-100 font-semibold' : 'opacity-70'}`}>{label}</span>
             </button>
         )
     };
@@ -163,6 +170,7 @@ const MobileApp: React.FC<MobileAppProps> = (props) => {
                 return <div className="animate-fade-in"><MobileOrders
                     orders={props.orders}
                     properties={props.properties}
+                    onProcure={handleProcureOrder}
                 /></div>;
             case 'messages':
                 return <div className="animate-fade-in"><MobileCommunications
@@ -175,26 +183,52 @@ const MobileApp: React.FC<MobileAppProps> = (props) => {
                     onStartNewThread={props.onStartNewThread}
                     setIsInsideMessageView={setIsInsideMessageView}
                 /></div>;
+            case 'procurement':
+                if (!procurementOrder) return null;
+                return (
+                    <div className="bg-gray-50 min-h-full -m-4 sm:-m-6 p-4 sm:p-6 text-gray-900 pb-32 animate-slide-in-right">
+                        <div className="flex items-center gap-3 mb-6 sticky top-0 bg-gray-50/90 backdrop-blur-sm py-2 z-10">
+                            <button onClick={() => { hapticFeedback(); setActiveView('orders'); setProcurementOrder(null); }} className="p-2 bg-white rounded-full shadow-sm text-gray-600 active:bg-gray-100 border border-gray-200"><XMarkIcon className="w-6 h-6" /></button>
+                            <h2 className="font-bold text-xl tracking-tight text-gray-900">Procure Order</h2>
+                        </div>
+                        <ProcurementWorkspace
+                            order={procurementOrder}
+                            vendors={props.vendors}
+                            products={props.products}
+                            onBack={(updated) => {
+                                setActiveView('orders');
+                                setProcurementOrder(null);
+                                if (updated) props.onProcureOrder(updated);
+                            }}
+                            onOrderComplete={(updated) => {
+                                props.onProcureOrder(updated);
+                                showToast('Order Procured Successfully');
+                                setActiveView('orders');
+                                setProcurementOrder(null);
+                            }}
+                        />
+                    </div>
+                );
             case 'more':
                 return (
                     <div className="pb-24 animate-slide-in-right">
-                        <div className="bg-[#1E1E1E] rounded-2xl p-5 mb-6 shadow-lg border border-white/5">
+                        <div className="bg-white rounded-2xl p-5 mb-6 shadow-sm border border-gray-100">
                             <div className="flex items-center gap-4 mb-6">
-                                <img src={props.currentUser.avatarUrl} className="w-16 h-16 rounded-full border-2 border-green-500 shadow-md" alt="Profile" />
+                                <img src={props.currentUser.avatarUrl} className="w-16 h-16 rounded-full border-2 border-blue-100 shadow-sm" alt="Profile" />
                                 <div>
-                                    <h2 className="text-2xl font-bold text-white tracking-tight">{props.currentUser.name}</h2>
-                                    <p className="text-gray-400 text-sm font-medium">{props.roles?.find(r => r.id === props.currentUser.roleId)?.name}</p>
+                                    <h2 className="text-2xl font-bold text-gray-900 tracking-tight">{props.currentUser.name}</h2>
+                                    <p className="text-gray-500 text-sm font-medium">{props.roles?.find(r => r.id === props.currentUser.roleId)?.name}</p>
                                 </div>
                             </div>
                             {/* Company Switcher */}
                             {props.availableCompanies.length > 1 && (
                                 <div className="mb-6">
-                                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 block ml-1">Current Company</label>
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block ml-1">Current Company</label>
                                     <div className="relative">
                                         <Select
                                             value={props.currentCompanyId}
                                             onChange={(e) => { props.onSwitchCompany(e.target.value); showToast(`Switched to ${props.availableCompanies?.find(c => c.id === e.target.value)?.name}`); }}
-                                            className="bg-[#2C2C2E] text-white border-white/10 focus:ring-green-500/50"
+                                            className="bg-gray-50 text-gray-900 border-gray-200 focus:ring-blue-500/50"
                                             icon={null}
                                         >
                                             {props.availableCompanies.map(c => (
@@ -205,41 +239,41 @@ const MobileApp: React.FC<MobileAppProps> = (props) => {
                                     </div>
                                 </div>
                             )}
-                            <button onClick={() => { hapticFeedback(); props.onLogout(); }} className="w-full py-3 flex items-center justify-center gap-2 bg-red-500/10 text-red-400 rounded-xl font-semibold hover:bg-red-500/20 active:scale-[0.98] transition-all border border-red-500/20">
+                            <button onClick={() => { hapticFeedback(); props.onLogout(); }} className="w-full py-3 flex items-center justify-center gap-2 bg-red-50 text-red-600 rounded-xl font-semibold hover:bg-red-100 active:scale-[0.98] transition-all border border-red-100">
                                 <LogoutIcon className="w-5 h-5" /> Log Out
                             </button>
                         </div>
 
-                        <h3 className="text-xs font-bold text-gray-500 uppercase mb-4 px-2 tracking-widest">Modules</h3>
+                        <h3 className="text-xs font-bold text-gray-400 uppercase mb-4 px-2 tracking-widest">Modules</h3>
                         <div className="grid grid-cols-2 gap-4">
                             {can('receiving:view') && (
-                                <button onClick={() => setActiveView('receiving')} className="bg-[#1E1E1E] p-5 rounded-2xl flex flex-col items-center justify-center gap-3 hover:bg-[#252525] active:scale-95 transition-all shadow-md border border-white/5 aspect-square">
-                                    <div className="bg-cyan-500/20 p-4 rounded-full"><ShipmentIcon className="w-7 h-7 text-cyan-400" /></div>
-                                    <span className="font-semibold text-white text-sm">Receiving</span>
+                                <button onClick={() => setActiveView('receiving')} className="bg-white p-5 rounded-2xl flex flex-col items-center justify-center gap-3 hover:bg-gray-50 active:scale-95 transition-all shadow-sm border border-gray-100 aspect-square">
+                                    <div className="bg-cyan-50 p-4 rounded-full"><ShipmentIcon className="w-7 h-7 text-cyan-600" /></div>
+                                    <span className="font-semibold text-gray-700 text-sm">Receiving</span>
                                 </button>
                             )}
                             {can('purchaseOrders:view') && (
-                                <button onClick={() => setActiveView('purchaseOrders')} className="bg-[#1E1E1E] p-5 rounded-2xl flex flex-col items-center justify-center gap-3 hover:bg-[#252525] active:scale-95 transition-all shadow-md border border-white/5 aspect-square">
-                                    <div className="bg-blue-500/20 p-4 rounded-full"><POIcon className="w-7 h-7 text-blue-400" /></div>
-                                    <span className="font-semibold text-white text-sm">Purchase Orders</span>
+                                <button onClick={() => setActiveView('purchaseOrders')} className="bg-white p-5 rounded-2xl flex flex-col items-center justify-center gap-3 hover:bg-gray-50 active:scale-95 transition-all shadow-sm border border-gray-100 aspect-square">
+                                    <div className="bg-blue-50 p-4 rounded-full"><POIcon className="w-7 h-7 text-blue-600" /></div>
+                                    <span className="font-semibold text-gray-700 text-sm">Purchase Orders</span>
                                 </button>
                             )}
                             {can('transactions:view') && (
-                                <button onClick={() => setActiveView('transactions')} className="bg-[#1E1E1E] p-5 rounded-2xl flex flex-col items-center justify-center gap-3 hover:bg-[#252525] active:scale-95 transition-all shadow-md border border-white/5 aspect-square">
-                                    <div className="bg-yellow-500/20 p-4 rounded-full"><TransactionIcon className="w-7 h-7 text-yellow-400" /></div>
-                                    <span className="font-semibold text-white text-sm">Transactions</span>
+                                <button onClick={() => setActiveView('transactions')} className="bg-white p-5 rounded-2xl flex flex-col items-center justify-center gap-3 hover:bg-gray-50 active:scale-95 transition-all shadow-sm border border-gray-100 aspect-square">
+                                    <div className="bg-yellow-50 p-4 rounded-full"><TransactionIcon className="w-7 h-7 text-yellow-600" /></div>
+                                    <span className="font-semibold text-gray-700 text-sm">Transactions</span>
                                 </button>
                             )}
                             {can('suppliers:view') && (
-                                <button onClick={() => setActiveView('suppliers')} className="bg-[#1E1E1E] p-5 rounded-2xl flex flex-col items-center justify-center gap-3 hover:bg-[#252525] active:scale-95 transition-all shadow-md border border-white/5 aspect-square">
-                                    <div className="bg-purple-500/20 p-4 rounded-full"><SupplierIcon className="w-7 h-7 text-purple-400" /></div>
-                                    <span className="font-semibold text-white text-sm">Suppliers</span>
+                                <button onClick={() => setActiveView('suppliers')} className="bg-white p-5 rounded-2xl flex flex-col items-center justify-center gap-3 hover:bg-gray-50 active:scale-95 transition-all shadow-sm border border-gray-100 aspect-square">
+                                    <div className="bg-purple-50 p-4 rounded-full"><SupplierIcon className="w-7 h-7 text-purple-600" /></div>
+                                    <span className="font-semibold text-gray-700 text-sm">Suppliers</span>
                                 </button>
                             )}
                             {can('settings:view') && (
-                                <button onClick={() => setActiveView('settings')} className="bg-[#1E1E1E] p-5 rounded-2xl flex flex-col items-center justify-center gap-3 hover:bg-[#252525] active:scale-95 transition-all shadow-md border border-white/5 aspect-square">
-                                    <div className="bg-gray-500/20 p-4 rounded-full"><SettingsIcon className="w-7 h-7 text-gray-300" /></div>
-                                    <span className="font-semibold text-white text-sm">Company Settings</span>
+                                <button onClick={() => setActiveView('settings')} className="bg-white p-5 rounded-2xl flex flex-col items-center justify-center gap-3 hover:bg-gray-50 active:scale-95 transition-all shadow-sm border border-gray-100 aspect-square">
+                                    <div className="bg-gray-100 p-4 rounded-full"><SettingsIcon className="w-7 h-7 text-gray-500" /></div>
+                                    <span className="font-semibold text-gray-700 text-sm">Company Settings</span>
                                 </button>
                             )}
                         </div>
@@ -251,7 +285,7 @@ const MobileApp: React.FC<MobileAppProps> = (props) => {
                 return (
                     <div className="bg-gray-50 min-h-full -m-4 sm:-m-6 p-4 sm:p-6 text-gray-900 pb-32 animate-slide-in-right">
                         <div className="flex items-center gap-3 mb-6 sticky top-0 bg-gray-50/90 backdrop-blur-sm py-2 z-10">
-                            <button onClick={() => { hapticFeedback(); setActiveView('more'); }} className="p-2 bg-white rounded-full shadow-sm text-gray-600 active:bg-gray-100"><XMarkIcon className="w-6 h-6" /></button>
+                            <button onClick={() => { hapticFeedback(); setActiveView('more'); }} className="p-2 bg-white rounded-full shadow-sm text-gray-600 active:bg-gray-100 border border-gray-200"><XMarkIcon className="w-6 h-6" /></button>
                             <h2 className="font-bold text-xl tracking-tight">Settings</h2>
                         </div>
                         <AdminSettings
@@ -277,7 +311,7 @@ const MobileApp: React.FC<MobileAppProps> = (props) => {
                 return (
                     <div className="bg-gray-50 min-h-full -m-4 sm:-m-6 p-4 sm:p-6 text-gray-900 pb-32 animate-slide-in-right">
                         <div className="flex items-center gap-3 mb-6 sticky top-0 bg-gray-50/90 backdrop-blur-sm py-2 z-10">
-                            <button onClick={() => { hapticFeedback(); setActiveView('more'); }} className="p-2 bg-white rounded-full shadow-sm text-gray-600 active:bg-gray-100"><XMarkIcon className="w-6 h-6" /></button>
+                            <button onClick={() => { hapticFeedback(); setActiveView('more'); }} className="p-2 bg-white rounded-full shadow-sm text-gray-600 active:bg-gray-100 border border-gray-200"><XMarkIcon className="w-6 h-6" /></button>
                             <h2 className="font-bold text-xl tracking-tight">Receiving</h2>
                         </div>
                         <Receiving orders={props.orders} vendors={props.vendors} onUpdatePoStatus={props.onUpdatePoStatus} onSelectOrder={() => { }} />
@@ -287,7 +321,7 @@ const MobileApp: React.FC<MobileAppProps> = (props) => {
                 return (
                     <div className="bg-gray-50 min-h-full -m-4 sm:-m-6 p-4 sm:p-6 text-gray-900 pb-32 animate-slide-in-right">
                         <div className="flex items-center gap-3 mb-6 sticky top-0 bg-gray-50/90 backdrop-blur-sm py-2 z-10">
-                            <button onClick={() => { hapticFeedback(); setActiveView('more'); }} className="p-2 bg-white rounded-full shadow-sm text-gray-600 active:bg-gray-100"><XMarkIcon className="w-6 h-6" /></button>
+                            <button onClick={() => { hapticFeedback(); setActiveView('more'); }} className="p-2 bg-white rounded-full shadow-sm text-gray-600 active:bg-gray-100 border border-gray-200"><XMarkIcon className="w-6 h-6" /></button>
                             <h2 className="font-bold text-xl tracking-tight">Suppliers</h2>
                         </div>
                         <Suppliers
@@ -308,7 +342,7 @@ const MobileApp: React.FC<MobileAppProps> = (props) => {
                 return (
                     <div className="bg-gray-50 min-h-full -m-4 sm:-m-6 p-4 sm:p-6 text-gray-900 pb-32 animate-slide-in-right">
                         <div className="flex items-center gap-3 mb-6 sticky top-0 bg-gray-50/90 backdrop-blur-sm py-2 z-10">
-                            <button onClick={() => { hapticFeedback(); setActiveView('more'); }} className="p-2 bg-white rounded-full shadow-sm text-gray-600 active:bg-gray-100"><XMarkIcon className="w-6 h-6" /></button>
+                            <button onClick={() => { hapticFeedback(); setActiveView('more'); }} className="p-2 bg-white rounded-full shadow-sm text-gray-600 active:bg-gray-100 border border-gray-200"><XMarkIcon className="w-6 h-6" /></button>
                             <h2 className="font-bold text-xl tracking-tight">Transactions</h2>
                         </div>
                         <Transactions
@@ -326,7 +360,7 @@ const MobileApp: React.FC<MobileAppProps> = (props) => {
                 return (
                     <div className="bg-gray-50 min-h-full -m-4 sm:-m-6 p-4 sm:p-6 text-gray-900 pb-32 animate-slide-in-right">
                         <div className="flex items-center gap-3 mb-6 sticky top-0 bg-gray-50/90 backdrop-blur-sm py-2 z-10">
-                            <button onClick={() => { hapticFeedback(); setActiveView('more'); }} className="p-2 bg-white rounded-full shadow-sm text-gray-600 active:bg-gray-100"><XMarkIcon className="w-6 h-6" /></button>
+                            <button onClick={() => { hapticFeedback(); setActiveView('more'); }} className="p-2 bg-white rounded-full shadow-sm text-gray-600 active:bg-gray-100 border border-gray-200"><XMarkIcon className="w-6 h-6" /></button>
                             <h2 className="font-bold text-xl tracking-tight">Purchase Orders</h2>
                         </div>
                         <PurchaseOrders orders={props.orders} vendors={props.vendors} onSelectOrder={() => { }} properties={props.properties} />
@@ -353,20 +387,16 @@ const MobileApp: React.FC<MobileAppProps> = (props) => {
             </style>
             {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-            <div className="fixed inset-0 bg-[#121212] text-white font-sans overflow-hidden flex flex-col">
-                {/* Background accent */}
-                <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[40%] bg-green-600/20 rounded-full blur-[100px] pointer-events-none"></div>
-                <div className="absolute bottom-[-20%] right-[-20%] w-[60%] h-[40%] bg-blue-600/20 rounded-full blur-[100px] pointer-events-none"></div>
-
+            <div className="fixed inset-0 bg-gray-50 text-gray-900 font-sans overflow-hidden flex flex-col">
                 {/* Top Bar (only for non-wrapped views) */}
-                {!['receiving', 'suppliers', 'settings', 'transactions', 'purchaseOrders'].includes(activeView) && !isInsideMessageView && (
-                    <div className="px-6 pt-safe-top pb-2 flex justify-between items-center z-10 backdrop-blur-md bg-[#121212]/70 border-b border-white/5 sticky top-0">
-                        <h1 className="font-bold text-xl tracking-tight flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]"></span>
+                {!['receiving', 'suppliers', 'settings', 'transactions', 'purchaseOrders', 'procurement'].includes(activeView) && !isInsideMessageView && (
+                    <div className="px-6 pt-safe-top pb-2 flex justify-between items-center z-10 backdrop-blur-md bg-white/80 border-b border-gray-200 sticky top-0">
+                        <h1 className="font-bold text-xl tracking-tight flex items-center gap-2 text-gray-900">
+                            <span className="w-2 h-2 rounded-full bg-green-500"></span>
                             {props.companyName}
                         </h1>
                         {props.impersonatingUser && (
-                            <button onClick={() => props.onImpersonate(null)} className="text-[10px] font-bold bg-red-500/20 text-red-400 px-3 py-1 rounded-full border border-red-500/30">Stop Impersonating</button>
+                            <button onClick={() => props.onImpersonate(null)} className="text-[10px] font-bold bg-red-50 text-red-600 px-3 py-1 rounded-full border border-red-100">Stop Impersonating</button>
                         )}
                     </div>
                 )}
@@ -381,12 +411,12 @@ const MobileApp: React.FC<MobileAppProps> = (props) => {
                     <>
                         {/* FAB Modal */}
                         {isFabOpen && (
-                            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 animate-fade-in touch-none" onClick={() => setIsFabOpen(false)}>
+                            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 animate-fade-in touch-none" onClick={() => setIsFabOpen(false)}>
                                 <div className="absolute bottom-32 right-1/2 translate-x-1/2 w-full px-10 flex flex-col items-end gap-5 animate-slide-up">
                                     {fabActions.map((action, index) => (
                                         <div key={action.label} className="flex items-center justify-end gap-4 w-full">
-                                            <span className="bg-white/90 text-gray-900 text-sm font-bold px-4 py-2 rounded-full shadow-xl">{action.label}</span>
-                                            <button onClick={action.action} className="bg-white text-gray-900 rounded-full w-14 h-14 flex items-center justify-center shadow-xl active:scale-90 transition-transform">
+                                            <span className="bg-white text-gray-900 text-sm font-bold px-4 py-2 rounded-full shadow-lg border border-gray-100">{action.label}</span>
+                                            <button onClick={action.action} className="bg-blue-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-xl active:scale-90 transition-transform">
                                                 <action.icon className="w-6 h-6" />
                                             </button>
                                         </div>
@@ -396,7 +426,7 @@ const MobileApp: React.FC<MobileAppProps> = (props) => {
                         )}
 
                         {/* Bottom Navigation */}
-                        <footer className="fixed bottom-0 left-0 right-0 pb-safe-bottom bg-[#121212]/90 backdrop-blur-xl border-t border-white/5 z-50">
+                        <footer className="fixed bottom-0 left-0 right-0 pb-safe-bottom bg-white border-t border-gray-200 z-50">
                             <div className="flex justify-around items-center h-[60px] px-2">
                                 <div className="w-1/5"><NavButton view="approvals" label="Home" icon={ApprovalIcon} permission="approvals:view" /></div>
                                 <div className="w-1/5"><NavButton view="carts" label="Carts" icon={CartIcon} permission="carts:view" /></div>
@@ -405,7 +435,7 @@ const MobileApp: React.FC<MobileAppProps> = (props) => {
                                     {fabActions.length > 0 && (
                                         <button
                                             onClick={() => { hapticFeedback(); setIsFabOpen(!isFabOpen); }}
-                                            className={`absolute -top-6 w-14 h-14 bg-green-500 text-white rounded-full flex items-center justify-center shadow-lg shadow-green-500/30 transition-all duration-300 cubic-bezier(0.68, -0.55, 0.265, 1.55) transform ${isFabOpen ? 'rotate-[135deg] bg-gray-700 scale-90' : 'hover:scale-105 active:scale-95'} border-[4px] border-[#121212]`}
+                                            className={`absolute -top-6 w-14 h-14 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg shadow-blue-600/30 transition-all duration-300 cubic-bezier(0.68, -0.55, 0.265, 1.55) transform ${isFabOpen ? 'rotate-[135deg] bg-gray-800 scale-90' : 'hover:scale-105 active:scale-95'} border-[4px] border-gray-50`}
                                         >
                                             <PlusIcon className="w-7 h-7" />
                                         </button>

@@ -125,7 +125,22 @@ CREATE TABLE products (
   secondary_category text,
   rating numeric(2,1),
   tags text[],
+  global_product_id text REFERENCES global_products(id) ON DELETE SET NULL,
   created_at timestamptz DEFAULT now()
+);
+
+-- GLOBAL PRODUCTS
+CREATE TABLE global_products (
+    id text PRIMARY KEY,
+    name text NOT NULL,
+    sku text,
+    description text,
+    unit_price numeric(10, 2) NOT NULL,
+    image_url text,
+    category text,
+    provider text,
+    specs jsonb,
+    created_at timestamptz DEFAULT now()
 );
 
 -- CARTS

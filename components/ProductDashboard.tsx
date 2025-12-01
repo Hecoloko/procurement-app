@@ -1,8 +1,9 @@
 
 import React, { useState, useMemo } from 'react';
 import { Product, Company, Cart, CartItem } from '../types';
-import { MagnifyingGlassIcon, FunnelIcon, Squares2X2Icon, ListBulletIcon, StarIcon, TagIcon, ShoppingCartIcon, PlusIcon, MinusIcon, ChevronLeftIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, FunnelIcon, Squares2X2Icon, ListBulletIcon, StarIcon, TagIcon, ShoppingCartIcon, PlusIcon, MinusIcon, ChevronLeftIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
 import { Select } from './ui/Select';
+import GlobalCatalog from './GlobalCatalog';
 
 interface ProductDashboardProps {
     products: Product[];
@@ -13,13 +14,15 @@ interface ProductDashboardProps {
     activeCart?: Cart | null;
     onUpdateItem?: (product: { sku: string, name: string, unitPrice: number }, newQuantity: number, note?: string) => void;
     onBack?: () => void;
+    onRefresh?: () => void;
 }
 
-const ProductDashboard: React.FC<ProductDashboardProps> = ({ products, companies, currentCompanyId, onSwitchCompany, activeCart, onUpdateItem, onBack }) => {
+const ProductDashboard: React.FC<ProductDashboardProps> = ({ products, companies, currentCompanyId, onSwitchCompany, activeCart, onUpdateItem, onBack, onRefresh }) => {
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('All');
     const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000]);
+    const [activeTab, setActiveTab] = useState<'company' | 'global'>('company');
 
     // Filter products by company first
     const companyProducts = useMemo(() => {
@@ -105,68 +108,106 @@ const ProductDashboard: React.FC<ProductDashboardProps> = ({ products, companies
                 <StatCard title="Vendors" value={stats.vendors} icon={<StarIcon className="w-5 h-5" />} color="bg-orange-500/10 text-orange-500" />
             </div>
 
-            {/* Filters & Controls */}
-            <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-card/50 backdrop-blur-sm p-4 rounded-xl border border-border shadow-sm">
-                <div className="relative w-full md:w-96">
-                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                    <input
-                        type="text"
-                        placeholder="Search products, SKUs, descriptions..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
-                    />
-                </div>
-
-                <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
-                    <Select
-                        value={selectedCategory}
-                        onChange={(e) => setSelectedCategory(e.target.value)}
-                        className="w-48"
-                    >
-                        {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                    </Select>
-
-                    <div className="flex bg-background border border-border rounded-lg p-1">
-                        <button
-                            onClick={() => setViewMode('grid')}
-                            className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted'}`}
-                        >
-                            <Squares2X2Icon className="w-5 h-5" />
-                        </button>
-                        <button
-                            onClick={() => setViewMode('list')}
-                            className={`p-2 rounded-md transition-all ${viewMode === 'list' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted'}`}
-                        >
-                            <ListBulletIcon className="w-5 h-5" />
-                        </button>
-                    </div>
-                </div>
+            {/* Tabs */}
+            <div className="flex space-x-1 rounded-xl bg-gray-100/50 p-1 dark:bg-gray-800/50 mb-6 w-fit">
+                <button
+                    onClick={() => setActiveTab('company')}
+                    className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium leading-5 ring-white ring-opacity-60 ring-offset-2 ring-offset-blue-400 focus:outline-none focus:ring-2 ${activeTab === 'company'
+                        ? 'bg-white text-blue-700 shadow dark:bg-gray-700 dark:text-blue-100'
+                        : 'text-gray-600 hover:bg-white/[0.12] hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-300'
+                        }`}
+                >
+                    <Squares2X2Icon className="w-4 h-4" />
+                    Company Catalog
+                </button>
+                <button
+                    onClick={() => setActiveTab('global')}
+                    className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium leading-5 ring-white ring-opacity-60 ring-offset-2 ring-offset-blue-400 focus:outline-none focus:ring-2 ${activeTab === 'global'
+                        ? 'bg-white text-blue-700 shadow dark:bg-gray-700 dark:text-blue-100'
+                        : 'text-gray-600 hover:bg-white/[0.12] hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-300'
+                        }`}
+                >
+                    <GlobeAltIcon className="w-4 h-4" />
+                    Global Catalog
+                </button>
             </div>
 
-            {/* Product Grid/List */}
-            {filteredProducts.length === 0 ? (
-                <div className="text-center py-20 bg-card/30 rounded-2xl border border-dashed border-border">
-                    <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-                        <MagnifyingGlassIcon className="w-8 h-8 text-muted-foreground" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-foreground">No products found</h3>
-                    <p className="text-muted-foreground">Try adjusting your filters or search query.</p>
-                </div>
+            {activeTab === 'global' ? (
+                <GlobalCatalog
+                    companyId={currentCompanyId}
+                    onProductAdopted={() => {
+                        if (onRefresh) onRefresh();
+                        setActiveTab('company');
+                    }}
+                />
             ) : (
-                <div className={viewMode === 'grid' ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" : "space-y-4"}>
-                    {filteredProducts.map(product => (
-                        <ProductCard
-                            key={product.id}
-                            product={product}
-                            viewMode={viewMode}
-                            cartItem={activeCart?.items.find(item => item.sku === product.sku)}
-                            onUpdateItem={activeCart ? handleUpdateCartItem : undefined}
-                        />
-                    ))}
-                </div>
+                <>
+                    {/* Filters & Controls */}
+                    <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-card/50 backdrop-blur-sm p-4 rounded-xl border border-border shadow-sm">
+                        <div className="relative w-full md:w-96">
+                            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                            <input
+                                type="text"
+                                placeholder="Search products, SKUs, descriptions..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
+                            />
+                        </div>
+
+                        <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
+                            <Select
+                                value={selectedCategory}
+                                onChange={(e) => setSelectedCategory(e.target.value)}
+                                className="w-48"
+                            >
+                                {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                            </Select>
+
+                            <div className="flex bg-background border border-border rounded-lg p-1">
+                                <button
+                                    onClick={() => setViewMode('grid')}
+                                    className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted'}`}
+                                >
+                                    <Squares2X2Icon className="w-5 h-5" />
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('list')}
+                                    className={`p-2 rounded-md transition-all ${viewMode === 'list' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted'}`}
+                                >
+                                    <ListBulletIcon className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Product Grid/List */}
+                    {
+                        filteredProducts.length === 0 ? (
+                            <div className="text-center py-20 bg-card/30 rounded-2xl border border-dashed border-border">
+                                <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                                    <MagnifyingGlassIcon className="w-8 h-8 text-muted-foreground" />
+                                </div>
+                                <h3 className="text-lg font-semibold text-foreground">No products found</h3>
+                                <p className="text-muted-foreground">Try adjusting your filters or search query.</p>
+                            </div>
+                        ) : (
+                            <div className={viewMode === 'grid' ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" : "space-y-4"}>
+                                {filteredProducts.map(product => (
+                                    <ProductCard
+                                        key={product.id}
+                                        product={product}
+                                        viewMode={viewMode}
+                                        cartItem={activeCart?.items.find(item => item.sku === product.sku)}
+                                        onUpdateItem={activeCart ? handleUpdateCartItem : undefined}
+                                    />
+                                ))}
+                            </div>
+                        )
+                    }
+                </>
             )}
-        </div>
+        </div >
     );
 };
 

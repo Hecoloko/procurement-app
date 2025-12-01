@@ -22,6 +22,14 @@ async function inspectData() {
     } else {
         console.log("No users found or error.");
     }
+
+    console.log("\n--- VENDORS ---");
+    const { data: vendors } = await supabase.from('vendors').select('id, name, company_id');
+    if (vendors) {
+        vendors.forEach(v => console.log(`ID: ${v.id}, Name: ${v.name}, Company ID: ${v.company_id}`));
+    } else {
+        console.log("No vendors found or error.");
+    }
 }
 
 inspectData();

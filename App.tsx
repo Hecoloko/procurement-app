@@ -1529,7 +1529,7 @@ export const App: React.FC = () => {
                 return <CartDetail cart={selectedCart} onBack={() => setView('list')} onOpenCatalog={() => setView('catalog')} properties={properties} products={products} onUpdateCartName={handleUpdateCartName} onUpdateCartItem={(prod, qty, note) => handleUpdateCartItem(selectedCart.id, prod, qty, note)} onSubmitForApproval={handleSubmitCart} onRevertToDraft={handleRevertCartToDraft} onOpenEditSchedule={(cart) => { setCartForScheduleEdit(cart); setIsEditScheduleModalOpen(true); }} onManualAdd={(item) => handleUpdateCartItem(selectedCart.id, { sku: item.sku, name: item.name, unitPrice: item.unitPrice }, item.quantity, item.note)} />;
             }
             if (view === 'catalog' && selectedCart) {
-                return <ProductDashboard products={products} companies={availableCompanies} currentCompanyId={viewingCompanyId || currentUser?.companyId || ''} activeCart={selectedCart} onUpdateItem={(prod, qty, note) => handleUpdateCartItem(selectedCart.id, prod, qty, note)} onBack={() => setView('detail')} />;
+                return <ProductDashboard products={products} companies={availableCompanies} currentCompanyId={viewingCompanyId || currentUser?.companyId || ''} activeCart={selectedCart} onUpdateItem={(prod, qty, note) => handleUpdateCartItem(selectedCart.id, prod, qty, note)} onBack={() => setView('detail')} onRefresh={() => session && fetchInitialData(session)} />;
             }
             return <MyCarts carts={carts} setCarts={setCarts} onSelectCart={(c) => { const freshCart = carts.find(cart => cart.id === c.id) || c; setSelectedCart(freshCart); setView('detail'); }} onOpenCreateCartModal={() => setIsCreateCartModalOpen(true)} onBulkSubmit={handleBulkSubmit} properties={properties} initialStatusFilter={activeItem === 'Carts to Submit' ? 'Needs Attention' : 'All'} orders={orders} onDeleteCart={handleDeleteCart} onDeleteOrder={handleDeleteOrder} onBulkDeleteCarts={handleBulkDeleteCarts} onReuseCart={handleReuseCart} />;
         }
@@ -1546,7 +1546,7 @@ export const App: React.FC = () => {
         if (activeItem === 'Reports') return <Reports orders={orders} vendors={vendors} products={products} />;
         if (activeItem === 'Integrations') return <Integrations />;
         if (activeItem === 'Properties') return <Properties properties={properties} units={units} orders={orders} users={users} onSelectOrder={setSelectedOrder} />;
-        if (activeItem === 'Product Dashboard') return <ProductDashboard products={products} companies={availableCompanies} currentCompanyId={viewingCompanyId || currentUser?.companyId || ''} onSwitchCompany={currentUser?.roleId === 'role-0' ? handleSwitchCompany : undefined} />;
+        if (activeItem === 'Product Dashboard') return <ProductDashboard products={products} companies={availableCompanies} currentCompanyId={viewingCompanyId || currentUser?.companyId || ''} onSwitchCompany={currentUser?.roleId === 'role-0' ? handleSwitchCompany : undefined} onRefresh={() => session && fetchInitialData(session)} />;
 
         return <Dashboard orders={orders} carts={carts} onNavigateToApprovals={() => handleNavigation('Approvals')} onNavigateToOrdersInTransit={() => handleNavigation('Receiving')} onNavigateToCartsToSubmit={() => handleNavigation('Carts to Submit')} onNavigateToCompletedOrders={() => handleNavigation('All Orders')} onNavigateToMyOrders={() => handleNavigation('All Orders')} onOpenCreateCartModal={() => setIsCreateCartModalOpen(true)} onGenerateReport={() => { }} />;
     };

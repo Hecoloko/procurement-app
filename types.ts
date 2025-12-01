@@ -70,6 +70,19 @@ export interface Product {
   secondaryCategory: string;
   rating?: number;
   tags?: string[];
+  globalProductId?: string;
+}
+
+export interface GlobalProduct {
+  id: string;
+  name: string;
+  sku: string;
+  description: string;
+  unitPrice: number;
+  imageUrl: string;
+  category: string;
+  provider: string;
+  specs?: Record<string, any>;
 }
 
 export type ApprovalStatus = 'Pending My Approval' | 'Pending Others' | 'Approved' | 'Rejected';

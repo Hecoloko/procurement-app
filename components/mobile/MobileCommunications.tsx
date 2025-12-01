@@ -90,25 +90,28 @@ const MobileCommunications: React.FC<MobileCommunicationsProps> = (props) => {
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-white">Messages</h1>
-                <button onClick={() => setView('new')} title="New Chat" className="p-2 text-green-400 bg-[#2C2C2E] rounded-full">
+                <h1 className="text-3xl font-bold text-gray-900">Messages</h1>
+                <button onClick={() => setView('new')} title="New Chat" className="p-2 text-blue-600 bg-white border border-gray-200 shadow-sm rounded-full hover:bg-gray-50">
                     <PlusIcon className="w-6 h-6" />
                 </button>
             </div>
             <div className="space-y-3">
                 {props.threads.map(thread => (
-                    <button key={thread.id} onClick={() => setSelectedThreadId(thread.id)} className="w-full text-left bg-[#1E1E1E] p-4 rounded-xl shadow-lg border border-gray-800 flex justify-between items-start gap-3 transition-transform active:scale-95">
+                    <button key={thread.id} onClick={() => setSelectedThreadId(thread.id)} className="w-full text-left bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex justify-between items-start gap-3 transition-all active:scale-[0.98] hover:shadow-md">
                         <div className="flex-grow min-w-0">
-                            <h2 className="font-bold text-white truncate">{getThreadTitle(thread)}</h2>
-                            <p className="text-sm text-gray-400 mt-1 truncate">{thread.lastMessageSnippet}</p>
+                            <h2 className="font-bold text-gray-900 truncate">{getThreadTitle(thread)}</h2>
+                            <p className="text-sm text-gray-500 mt-1 truncate">{thread.lastMessageSnippet}</p>
                         </div>
                         <div className="flex-shrink-0 flex flex-col items-end">
-                            <time className="text-xs text-gray-500">{getTimeAgo(thread.lastMessageTimestamp)}</time>
-                            {!thread.isRead && <span className="mt-2 w-2.5 h-2.5 bg-green-500 rounded-full"></span>}
+                            <time className="text-xs text-gray-400">{getTimeAgo(thread.lastMessageTimestamp)}</time>
+                            {!thread.isRead && <span className="mt-2 w-2.5 h-2.5 bg-blue-600 rounded-full"></span>}
                         </div>
                     </button>
                 ))}
             </div>
+            {props.threads.length === 0 && (
+                <p className="text-center text-gray-500 py-16">No messages yet.</p>
+            )}
         </div>
     );
 };

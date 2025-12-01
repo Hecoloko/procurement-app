@@ -194,8 +194,8 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
 
   const AssignItemsView = (
     <div>
-      <div className="bg-white dark:bg-white/5 backdrop-blur-md rounded-2xl shadow-lg border border-gray-200 dark:border-white/10">
-        <table className="w-full text-sm border-collapse">
+      <div className="bg-white dark:bg-white/5 backdrop-blur-md rounded-2xl shadow-lg border border-gray-200 dark:border-white/10 overflow-x-auto">
+        <table className="w-full text-sm border-collapse min-w-[600px]">
           <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-50 dark:bg-white/5">
             <tr>
               <th className="px-6 py-3 text-left font-bold rounded-tl-2xl">Product</th>
