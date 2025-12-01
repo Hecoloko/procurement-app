@@ -6,9 +6,10 @@ import { ChevronLeftIcon } from '../Icons';
 interface MobileCartDetailProps {
     cart: Cart;
     onBack: () => void;
+    onAddItems: () => void;
 }
 
-const MobileCartDetail: React.FC<MobileCartDetailProps> = ({ cart, onBack }) => {
+const MobileCartDetail: React.FC<MobileCartDetailProps> = ({ cart, onBack, onAddItems }) => {
     const subtotal = cart.items.reduce((acc, item) => acc + item.totalPrice, 0);
 
     return (
@@ -18,12 +19,12 @@ const MobileCartDetail: React.FC<MobileCartDetailProps> = ({ cart, onBack }) => 
                     <ChevronLeftIcon className="w-5 h-5 mr-1" />
                     Back
                 </button>
-                <div className="flex justify-between items-end">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-900 truncate max-w-[250px]">{cart.name}</h1>
+                <div className="flex justify-between items-end gap-4">
+                    <div className="flex-1 min-w-0">
+                        <h1 className="text-2xl font-bold text-gray-900 truncate">{cart.name}</h1>
                         <span className="inline-block mt-1 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-gray-100 text-gray-800 rounded border border-gray-200">{cart.status}</span>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right flex-shrink-0">
                         <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Total</p>
                         <p className="text-xl font-bold text-gray-900">${subtotal.toFixed(2)}</p>
                     </div>
@@ -51,9 +52,18 @@ const MobileCartDetail: React.FC<MobileCartDetailProps> = ({ cart, onBack }) => 
                         </div>
                     ))
                 ) : (
-                    <div className="text-center py-20 opacity-60">
-                        <p className="text-lg font-medium text-gray-900">Cart is empty</p>
-                        <p className="text-sm text-gray-500 mt-1">Tap the + button to add items</p>
+                    <div className="flex flex-col items-center justify-center py-20 opacity-80">
+                        <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                            <span className="text-4xl">🛒</span>
+                        </div>
+                        <p className="text-lg font-bold text-gray-900">Cart is empty</p>
+                        <p className="text-sm text-gray-500 mt-1 mb-6 text-center max-w-[200px]">Start adding items to your cart to proceed.</p>
+                        <button
+                            onClick={onAddItems}
+                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-blue-900/20 active:scale-95 transition-all"
+                        >
+                            Add Items
+                        </button>
                     </div>
                 )}
             </div>

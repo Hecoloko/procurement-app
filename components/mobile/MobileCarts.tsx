@@ -44,6 +44,7 @@ const MobileCarts: React.FC<MobileCartsProps> = ({ carts, products, onUpdateCart
                 <MobileCartDetail
                     cart={activeCart}
                     onBack={() => { onSelectCart(null); setView('list'); }}
+                    onAddItems={() => setView('add_item')}
                 />
                 <ManualAddItemModal
                     isOpen={true}
@@ -60,6 +61,7 @@ const MobileCarts: React.FC<MobileCartsProps> = ({ carts, products, onUpdateCart
             <MobileCartDetail
                 cart={activeCart}
                 onBack={() => { onSelectCart(null); setView('list'); }}
+                onAddItems={() => setView('add_item')}
             />
         )
     }
