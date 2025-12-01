@@ -852,13 +852,28 @@ export const App: React.FC = () => {
         const existingItem = currentCart.items.find(i => i.sku === product.sku);
 
         if (quantity <= 0) {
-            if (existingItem) await supabase.from('cart_items').delete().eq('id', existingItem.id);
+            if (existingItem) {
+                const { error } = await supabase.from('cart_items').delete().eq('id', existingItem.id);
+                if (error) console.error('Error deleting item:', error);
+            }
         } else {
             const itemPayload: any = { cart_id: cartId, name: product.name, sku: product.sku, unit_price: product.unitPrice, quantity: quantity, note: note };
             if (product.vendorId) itemPayload.vendor_id = product.vendorId;
 
-            if (existingItem) await supabase.from('cart_items').update(itemPayload).eq('id', existingItem.id);
-            else await supabase.from('cart_items').insert(itemPayload);
+            let error;
+            if (existingItem) {
+                const res = await supabase.from('cart_items').update(itemPayload).eq('id', existingItem.id);
+                error = res.error;
+            } else {
+                const res = await supabase.from('cart_items').insert(itemPayload);
+                error = res.error;
+            }
+
+            if (error) {
+                console.error('Error updating/inserting item:', error);
+                alert(`Failed to add item: ${error.message}`);
+                return;
+            }
         }
 
         const { data: currentItems } = await supabase.from('cart_items').select('*').eq('cart_id', cartId);
