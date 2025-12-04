@@ -237,46 +237,72 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
                   </td>
                   <td className="px-6 py-4 text-right font-medium">${currentTotalPrice.toFixed(2)}</td>
                   <td className={`px-6 py-4 ${isLast ? 'rounded-br-2xl' : ''}`}>
-                    {effectiveVendorId ? (
-                      <div className="flex items-center">
-                        <span className="px-3 py-1.5 bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 rounded-lg border border-gray-200 dark:border-white/10 font-medium text-sm flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                          {vendors.find(v => v.id === effectiveVendorId)?.name || 'Unknown Vendor'}
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-2">
-                        <CustomSelect
-                          value={itemVendorAssignments[item.id] || ''}
-                          onChange={(val) => {
+                    <div className="flex flex-col gap-2">
+                      <CustomSelect
+                        value={effectiveVendorId || ''}
+                        onChange={(val) => {
+                          if (val) {
+                            handleVendorSelect(item.id, val);
+                            // Find price for the selected vendor
+                            const vendorOptions = product?.vendorOptions || [];
+                            const opt = vendorOptions.find(vo => vo.vendorId === val);
+                            if (opt) {
+                              handlePriceChange(item.id, opt.price);
+                            } else if (val === item.vendorId) {
+                              // Fallback to original item price if it matches original vendor
+                              handlePriceChange(item.id, item.unitPrice);
+                            }
+                          } else {
+                            // Handle clearing vendor? Maybe not allowed or just clear assignment
                             setItemVendorAssignments(prev => {
                               const next = { ...prev };
-                              if (val) {
-                                next[item.id] = val;
-                              } else {
-                                delete next[item.id];
-                              }
+                              delete next[item.id];
                               return next;
                             });
-                          }}
-                          options={vendors.map(v => ({ value: v.id, label: v.name }))}
-                          placeholder="Select a vendor..."
-                          className="w-full max-w-xs bg-gray-50 dark:bg-white/10 border-gray-300 dark:border-white/20 text-gray-900 dark:text-white"
-                          disabled={!canCreatePOs}
-                        />
-                        {product?.vendorOptions && product.vendorOptions.length > 0 && (
-                          <button
-                            onClick={() => {
-                              setComparisonProduct(product);
-                              setComparisonItemId(item.id);
-                            }}
-                            className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 self-start"
-                          >
-                            Compare Prices
-                          </button>
-                        )}
-                      </div>
-                    )}
+                          }
+                        }}
+                        options={vendors.map(v => {
+                          const vendorOptions = product?.vendorOptions || [];
+                          const opt = vendorOptions.find(vo => vo.vendorId === v.id);
+                          let label = v.name;
+                          if (opt) {
+                            label += ` ($${opt.price.toFixed(2)})`;
+                          } else if (v.id === item.vendorId) {
+                            label += ` ($${item.unitPrice.toFixed(2)})`;
+                          }
+                          return { value: v.id, label };
+                        })}
+                        placeholder="Select a vendor..."
+                        className="w-full max-w-xs bg-gray-50 dark:bg-white/10 border-gray-300 dark:border-white/20 text-gray-900 dark:text-white"
+                        disabled={!canCreatePOs}
+                      />
+
+                      {(() => {
+                        const vendorOptions = product?.vendorOptions || [];
+                        // Include the original item price as an option if not already in vendorOptions
+                        const allOptions = [...vendorOptions];
+                        if (item.vendorId && !allOptions.find(o => o.vendorId === item.vendorId)) {
+                          allOptions.push({ id: 'original', vendorId: item.vendorId, price: item.unitPrice, vendorSku: item.sku, isPreferred: false });
+                        }
+
+                        if (allOptions.length > 0 && effectiveVendorId) {
+                          const currentPrice = currentUnitPrice;
+                          const cheapestOption = allOptions.sort((a, b) => a.price - b.price)[0];
+
+                          if (cheapestOption && currentPrice > cheapestOption.price) {
+                            const savings = currentPrice - cheapestOption.price;
+                            const cheapestVendor = vendors.find(v => v.id === cheapestOption.vendorId);
+                            return (
+                              <div className="text-xs text-blue-600 dark:text-blue-400 font-bold flex items-center gap-1 mt-1 animate-pulse">
+                                <ArrowUpTrayIcon className="w-4 h-4 rotate-180" />
+                                Save ${savings.toFixed(2)} with {cheapestVendor?.name || 'Cheaper Vendor'}
+                              </div>
+                            );
+                          }
+                        }
+                        return null;
+                      })()}
+                    </div>
                   </td>
                 </tr>
               )
