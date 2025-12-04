@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Order, CartItem, PurchaseOrder, PurchaseOrderStatus, Vendor, Product } from '../types';
+import { Order, CartItem, PurchaseOrder, PurchaseOrderStatus, Vendor, Product, ProductVendorOption } from '../types';
 import { ChevronLeftIcon, CheckBadgeIcon, CameraIcon, ShipmentIcon, TransactionIcon, PaperClipIcon, ArrowUpTrayIcon } from './Icons';
 import { CustomSelect } from './ui/CustomSelect';
+import VendorComparisonModal from './VendorComparisonModal';
 import { usePermissions } from '../contexts/PermissionsContext';
 import { generatePOId } from '../utils/idGenerator';
 
@@ -38,6 +39,8 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
   });
 
   const [itemPriceOverrides, setItemPriceOverrides] = useState<Record<string, number>>({});
+  const [comparisonProduct, setComparisonProduct] = useState<Product | null>(null);
+  const [comparisonItemId, setComparisonItemId] = useState<string | null>(null);
   const { can } = usePermissions();
 
   const canCreatePOs = can('purchaseOrders:create');
@@ -242,24 +245,37 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
                         </span>
                       </div>
                     ) : (
-                      <CustomSelect
-                        value={itemVendorAssignments[item.id] || ''}
-                        onChange={(val) => {
-                          setItemVendorAssignments(prev => {
-                            const next = { ...prev };
-                            if (val) {
-                              next[item.id] = val;
-                            } else {
-                              delete next[item.id];
-                            }
-                            return next;
-                          });
-                        }}
-                        options={vendors.map(v => ({ value: v.id, label: v.name }))}
-                        placeholder="Select a vendor..."
-                        className="w-full max-w-xs bg-gray-50 dark:bg-white/10 border-gray-300 dark:border-white/20 text-gray-900 dark:text-white"
-                        disabled={!canCreatePOs}
-                      />
+                      <div className="flex flex-col gap-2">
+                        <CustomSelect
+                          value={itemVendorAssignments[item.id] || ''}
+                          onChange={(val) => {
+                            setItemVendorAssignments(prev => {
+                              const next = { ...prev };
+                              if (val) {
+                                next[item.id] = val;
+                              } else {
+                                delete next[item.id];
+                              }
+                              return next;
+                            });
+                          }}
+                          options={vendors.map(v => ({ value: v.id, label: v.name }))}
+                          placeholder="Select a vendor..."
+                          className="w-full max-w-xs bg-gray-50 dark:bg-white/10 border-gray-300 dark:border-white/20 text-gray-900 dark:text-white"
+                          disabled={!canCreatePOs}
+                        />
+                        {product?.vendorOptions && product.vendorOptions.length > 0 && (
+                          <button
+                            onClick={() => {
+                              setComparisonProduct(product);
+                              setComparisonItemId(item.id);
+                            }}
+                            className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 self-start"
+                          >
+                            Compare Prices
+                          </button>
+                        )}
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -267,7 +283,7 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
             })}
           </tbody>
         </table>
-      </div>
+      </div >
       {canCreatePOs && (
         <div className="flex justify-end mt-6">
           <button
@@ -279,7 +295,7 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
           </button>
         </div>
       )}
-    </div>
+    </div >
   );
 
   const ManagePOsView = (
@@ -417,6 +433,25 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
       )}
       {activeTab === 'manage' && poCount > 0 && ManagePOsView}
 
+      {comparisonProduct && comparisonItemId && (
+        <VendorComparisonModal
+          isOpen={!!comparisonProduct}
+          onClose={() => {
+            setComparisonProduct(null);
+            setComparisonItemId(null);
+          }}
+          product={comparisonProduct}
+          currentVendorId={itemVendorAssignments[comparisonItemId]}
+          onSelect={(option) => {
+            if (comparisonItemId) {
+              handleVendorSelect(comparisonItemId, option.vendorId);
+              handlePriceChange(comparisonItemId, option.price);
+            }
+            setComparisonProduct(null);
+            setComparisonItemId(null);
+          }}
+        />
+      )}
     </div>
   );
 };
