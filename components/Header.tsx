@@ -46,14 +46,16 @@ const Header: React.FC<HeaderProps> = ({ onQuickCartClick, onCartIconClick, user
             </button>
           )}
 
-          <button onClick={onCartIconClick} className="relative text-muted-foreground hover:text-foreground transition-colors p-2 rounded-full hover:bg-muted">
-            <CartIcon className="w-6 h-6" />
-            {cartItemCount > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                {cartItemCount}
-              </span>
-            )}
-          </button>
+          {can('carts:view-all') && (
+            <button onClick={onCartIconClick} className="relative text-muted-foreground hover:text-foreground transition-colors p-2 rounded-full hover:bg-muted">
+              <CartIcon className="w-6 h-6" />
+              {cartItemCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                  {cartItemCount}
+                </span>
+              )}
+            </button>
+          )}
 
           <div className="flex items-center space-x-3 pl-2 border-l border-border">
             <img

@@ -25,12 +25,28 @@ const MobileCarts: React.FC<MobileCartsProps> = ({ carts, products, onUpdateCart
 
     const handleSaveManualItem = (itemData: { name: string; sku: string; quantity: number; unitPrice: number; note?: string; }) => {
         if (!activeCart) return;
-        const productInfo = {
-            name: itemData.name,
-            sku: itemData.sku || `MANUAL-${Date.now()}`,
-            unitPrice: itemData.unitPrice
-        };
-        onUpdateCartItem(productInfo, itemData.quantity, itemData.note);
+
+        // Check if item with same name already exists
+        const existingItem = activeCart.items.find(i => i.name.toLowerCase() === itemData.name.toLowerCase());
+
+        if (existingItem) {
+            // Update existing item
+            const newQuantity = existingItem.quantity + itemData.quantity;
+            const productInfo = {
+                name: existingItem.name,
+                sku: existingItem.sku,
+                unitPrice: itemData.unitPrice // Use new price if provided, or could keep old
+            };
+            onUpdateCartItem(productInfo, newQuantity, itemData.note || existingItem.note);
+        } else {
+            // Create new item
+            const productInfo = {
+                name: itemData.name,
+                sku: itemData.sku || `MANUAL-${Date.now()}`,
+                unitPrice: itemData.unitPrice
+            };
+            onUpdateCartItem(productInfo, itemData.quantity, itemData.note);
+        }
         setView('list'); // Return to detail view after adding
     };
 
