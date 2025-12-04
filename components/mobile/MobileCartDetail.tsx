@@ -1,16 +1,32 @@
 
 import React from 'react';
-import { Cart } from '../../types';
+import { Cart, Product, ProductVendorOption } from '../../types';
 import { ChevronLeftIcon } from '../Icons';
+import VendorComparisonModal from '../VendorComparisonModal';
+import { useState } from 'react';
 
 interface MobileCartDetailProps {
     cart: Cart;
     onBack: () => void;
     onAddItems: () => void;
+    products: Product[];
+    onUpdateItem: (product: { sku: string; name: string; unitPrice: number }, newQuantity: number, note?: string) => void;
 }
 
-const MobileCartDetail: React.FC<MobileCartDetailProps> = ({ cart, onBack, onAddItems }) => {
+const MobileCartDetail: React.FC<MobileCartDetailProps> = ({ cart, onBack, onAddItems, products, onUpdateItem }) => {
     const subtotal = cart.items.reduce((acc, item) => acc + item.totalPrice, 0);
+    const [comparisonProduct, setComparisonProduct] = useState<Product | null>(null);
+    const [currentComparisonVendorId, setCurrentComparisonVendorId] = useState<string | undefined>(undefined);
+
+    const handleCompare = (item: any) => {
+        // Find product by SKU or Name to get vendor options
+        const product = products.find(p => p.sku === item.sku || p.name === item.name);
+        if (product && product.vendorOptions && product.vendorOptions.length > 0) {
+            setComparisonProduct(product);
+            setCurrentComparisonVendorId(item.vendorId || product.vendorId);
+        }
+    };
+
 
     return (
         <div className="animate-slide-in-right h-full flex flex-col bg-gray-50">
@@ -43,24 +59,43 @@ const MobileCartDetail: React.FC<MobileCartDetailProps> = ({ cart, onBack, onAdd
 
             <div className="space-y-4 py-6 pb-32 px-4">
                 {cart.items.length > 0 ? (
-                    cart.items.map((item, index) => (
-                        <div
-                            key={item.id}
-                            className="bg-white p-4 rounded-2xl border border-gray-200 flex justify-between items-start shadow-sm active:scale-[0.99] transition-transform"
-                            style={{ animationDelay: `${index * 50}ms` }}
-                        >
-                            <div className="flex-grow pr-4">
-                                <p className="font-bold text-gray-900 text-base mb-1">{item.name}</p>
-                                {item.note && <p className="text-xs text-gray-500 italic mb-2 bg-gray-50 p-1.5 rounded-md inline-block">"{item.note}"</p>}
-                                <div className="flex items-center gap-2 mt-1">
-                                    <span className="bg-gray-100 text-gray-700 text-xs font-medium px-2 py-1 rounded-md">{item.quantity} qty</span>
-                                    <span className="text-xs text-gray-400">x</span>
-                                    <span className="text-xs text-gray-700 font-medium">${item.unitPrice.toFixed(2)}</span>
+                    cart.items.map((item, index) => {
+                        const product = products.find(p => p.sku === item.sku || p.name === item.name);
+                        const hasAlternatives = product?.vendorOptions && product.vendorOptions.length > 0;
+
+                        return (
+                            <div
+                                key={item.id}
+                                className="bg-white p-4 rounded-2xl border border-gray-200 flex justify-between items-start shadow-sm active:scale-[0.99] transition-transform"
+                                style={{ animationDelay: `${index * 50}ms` }}
+                            >
+                                <div className="flex-grow pr-4">
+                                    <p className="font-bold text-gray-900 text-base mb-1">{item.name}</p>
+                                    {item.note && <p className="text-xs text-gray-500 italic mb-2 bg-gray-50 p-1.5 rounded-md inline-block">"{item.note}"</p>}
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <span className="bg-gray-100 text-gray-700 text-xs font-medium px-2 py-1 rounded-md">{item.quantity} qty</span>
+                                        <span className="text-xs text-gray-400">x</span>
+                                        <span className="text-xs text-gray-700 font-medium">${item.unitPrice.toFixed(2)}</span>
+                                    </div>
+                                    {hasAlternatives && (
+                                        <button
+                                            onClick={() => {
+                                                setComparisonProduct(product!);
+                                                setCurrentComparisonVendorId(item.vendorId);
+                                            }}
+                                            className="mt-3 text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-1"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
+                                                <path fillRule="evenodd" d="M2.24 6.8a.75.75 0 001.06-.04l1.95-2.1v8.59a.75.75 0 001.5 0V4.66l1.95 2.1a.75.75 0 101.1-1.02l-3.25-3.5a.75.75 0 00-1.1 0L2.2 5.74a.75.75 0 00.04 1.06zm8 6.4a.75.75 0 00-.04 1.06l3.25 3.5a.75.75 0 001.1 0l3.25-3.5a.75.75 0 10-1.1-1.02l-1.95 2.1V6.75a.75.75 0 00-1.5 0v8.59l-1.95-2.1a.75.75 0 00-1.06.04z" clipRule="evenodd" />
+                                            </svg>
+                                            Compare Vendors
+                                        </button>
+                                    )}
                                 </div>
+                                <p className="font-bold text-gray-900 text-lg">${item.totalPrice.toFixed(2)}</p>
                             </div>
-                            <p className="font-bold text-gray-900 text-lg">${item.totalPrice.toFixed(2)}</p>
-                        </div>
-                    ))
+                        );
+                    })
                 ) : (
                     <div className="flex flex-col items-center justify-center py-20 opacity-80">
                         <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
@@ -84,6 +119,28 @@ const MobileCartDetail: React.FC<MobileCartDetailProps> = ({ cart, onBack, onAdd
                     <span>${subtotal.toFixed(2)}</span>
                 </button>
             </div>
+
+            {comparisonProduct && (
+                <VendorComparisonModal
+                    isOpen={!!comparisonProduct}
+                    onClose={() => setComparisonProduct(null)}
+                    product={comparisonProduct}
+                    currentVendorId={currentComparisonVendorId}
+                    onSelect={(option) => {
+                        const cartItem = cart.items.find(i => i.sku === comparisonProduct.sku || i.name === comparisonProduct.name);
+                        if (cartItem) {
+                            onUpdateItem({
+                                sku: comparisonProduct.sku,
+                                name: comparisonProduct.name,
+                                unitPrice: option.price,
+                                // @ts-ignore
+                                vendorId: option.vendorId
+                            }, cartItem.quantity, cartItem.note);
+                        }
+                        setComparisonProduct(null);
+                    }}
+                />
+            )}
         </div>
     );
 };

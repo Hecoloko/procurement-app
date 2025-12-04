@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Cart, CartItem, Property, Product } from '../types';
+import { Cart, CartItem, Property, Product, ProductVendorOption } from '../types';
 import { ChevronLeftIcon, DocumentReportIcon, PencilIcon, PlusIcon, TrashIcon, BuildingOfficeIcon, CalendarIcon, ArrowDownTrayIcon } from './Icons';
 import ManualAddItemModal from './ManualAddItemModal';
+import VendorComparisonModal from './VendorComparisonModal';
 import { usePermissions } from '../contexts/PermissionsContext';
 
 interface CartDetailProps {
@@ -146,6 +147,8 @@ const exportCartToCSV = (cart: Cart) => {
 const CartDetail: React.FC<CartDetailProps> = ({ cart, onBack, onOpenCatalog, onManualAdd, onUpdateCartName, onUpdateCartItem, onSubmitForApproval, onRevertToDraft, properties, onOpenEditSchedule, products }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
+  const [comparisonProduct, setComparisonProduct] = useState<Product | null>(null);
+  const [currentComparisonVendorId, setCurrentComparisonVendorId] = useState<string | undefined>(undefined);
   const { can } = usePermissions();
 
   const canEditCart = can('carts:edit') || can('carts:edit-own');
@@ -346,6 +349,25 @@ const CartDetail: React.FC<CartDetailProps> = ({ cart, onBack, onOpenCatalog, on
                       </button>
                     )}
                   </div>
+
+                  {(() => {
+                    const product = products.find(p => p.sku === item.sku || p.name === item.name);
+                    const hasAlternatives = product?.vendorOptions && product.vendorOptions.length > 0;
+                    if (hasAlternatives && canEditCart) {
+                      return (
+                        <button
+                          onClick={() => {
+                            setComparisonProduct(product!);
+                            setCurrentComparisonVendorId(item.vendorId);
+                          }}
+                          className="mt-2 text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded hover:bg-blue-100 transition-colors flex items-center gap-1 mx-auto"
+                        >
+                          Compare
+                        </button>
+                      );
+                    }
+                    return null;
+                  })()}
                 </td>
               </tr>
             ))}
@@ -403,6 +425,29 @@ const CartDetail: React.FC<CartDetailProps> = ({ cart, onBack, onOpenCatalog, on
         onSave={handleSaveManualItem}
         products={products}
       />
+
+      {
+        comparisonProduct && (
+          <VendorComparisonModal
+            isOpen={!!comparisonProduct}
+            onClose={() => setComparisonProduct(null)}
+            product={comparisonProduct}
+            currentVendorId={currentComparisonVendorId}
+            onSelect={(option) => {
+              const cartItem = cart.items.find(i => i.sku === comparisonProduct.sku || i.name === comparisonProduct.name);
+              if (cartItem) {
+                onUpdateCartItem({
+                  sku: comparisonProduct.sku,
+                  name: comparisonProduct.name,
+                  unitPrice: option.price,
+                  vendorId: option.vendorId
+                }, cartItem.quantity, cartItem.note);
+              }
+              setComparisonProduct(null);
+            }}
+          />
+        )
+      }
 
       {/* Printable View - No longer uses Tailwind 'hidden' */}
       <div className="printable-area">
@@ -476,7 +521,7 @@ const CartDetail: React.FC<CartDetailProps> = ({ cart, onBack, onOpenCatalog, on
           </div>
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 

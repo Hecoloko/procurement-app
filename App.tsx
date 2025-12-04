@@ -444,7 +444,8 @@ export const App: React.FC = () => {
                 supabase.from('units').select('*'),
                 supabase.from('communication_threads').select('*').eq('company_id', targetCompanyId).limit(100),
                 supabase.from('messages').select('*').limit(500),
-                supabase.from('accounts').select('*').eq('company_id', targetCompanyId)
+                supabase.from('accounts').select('*').eq('company_id', targetCompanyId),
+                supabase.from('product_vendors').select('*')
             ];
 
             let completedCount = 0;
@@ -472,13 +473,32 @@ export const App: React.FC = () => {
                 unitsData,
                 threadsData,
                 messagesData,
-                accountsData
+                accountsData,
+                productVendorsData
             ] = await Promise.all(trackedPromises);
 
             if (cartsData.error) throw cartsData.error;
             if (ordersData.error) throw ordersData.error;
 
             const mappedProducts = (productsData.data || []).map(mapProduct);
+
+            if (productVendorsData && productVendorsData.data) {
+                const vendorMap = new Map((vendorsData.data || []).map((v: any) => [v.id, v.name]));
+                mappedProducts.forEach(p => {
+                    const options = productVendorsData.data
+                        .filter((pv: any) => pv.product_id === p.id)
+                        .map((pv: any) => ({
+                            id: pv.id,
+                            vendorId: pv.vendor_id,
+                            vendorName: vendorMap.get(pv.vendor_id) || 'Unknown Vendor',
+                            vendorSku: pv.vendor_sku,
+                            price: safeNumber(pv.price),
+                            isPreferred: pv.is_preferred
+                        }));
+                    p.vendorOptions = options;
+                });
+            }
+
             setProducts(mappedProducts);
             console.log("DEBUG: Products loaded:", mappedProducts.length);
 

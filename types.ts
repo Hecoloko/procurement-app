@@ -71,6 +71,16 @@ export interface Product {
   rating?: number;
   tags?: string[];
   globalProductId?: string;
+  vendorOptions?: ProductVendorOption[];
+}
+
+export interface ProductVendorOption {
+  id: string;
+  vendorId: string;
+  vendorName?: string; // Enriched
+  vendorSku: string;
+  price: number;
+  isPreferred: boolean;
 }
 
 export interface GlobalProduct {
