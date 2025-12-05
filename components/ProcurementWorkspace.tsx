@@ -48,7 +48,18 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
 
 
   useEffect(() => {
-    setLocalOrder(order);
+    // Prevent overwriting local optimistic updates with stale prop data
+    setLocalOrder(prev => {
+      const prevPoCount = prev.purchaseOrders?.length || 0;
+      const newPoCount = order.purchaseOrders?.length || 0;
+
+      // If we have more POs locally (optimistic creation), don't revert to stale prop
+      // This handles the case where parent re-renders before DB update propagates
+      if (prevPoCount > newPoCount) {
+        return prev;
+      }
+      return order;
+    });
   }, [order]);
 
   // Sync state to cache
@@ -216,7 +227,8 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
 
               // Determine effective vendor from live product data or item snapshot. Match by SKU.
               const product = products.find(p => p.sku === item.sku);
-              const effectiveVendorId = product?.vendorId || item.vendorId;
+              // FIX: Prioritize the user's manual assignment from state!
+              const effectiveVendorId = itemVendorAssignments[item.id] || product?.vendorId || item.vendorId;
 
               return (
                 <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
@@ -238,44 +250,50 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
                   <td className="px-6 py-4 text-right font-medium">${currentTotalPrice.toFixed(2)}</td>
                   <td className={`px-6 py-4 ${isLast ? 'rounded-br-2xl' : ''}`}>
                     <div className="flex flex-col gap-2">
-                      <CustomSelect
-                        value={effectiveVendorId || ''}
-                        onChange={(val) => {
-                          if (val) {
-                            handleVendorSelect(item.id, val);
-                            // Find price for the selected vendor
-                            const vendorOptions = product?.vendorOptions || [];
-                            const opt = vendorOptions.find(vo => vo.vendorId === val);
-                            if (opt) {
-                              handlePriceChange(item.id, opt.price);
-                            } else if (val === item.vendorId) {
-                              // Fallback to original item price if it matches original vendor
-                              handlePriceChange(item.id, item.unitPrice);
+                      <div className="flex items-center gap-2">
+                        <CustomSelect
+                          value={effectiveVendorId || ''}
+                          onChange={(val) => {
+                            if (val) {
+                              handleVendorSelect(item.id, val);
+                              // Find price for the selected vendor
+                              const vendorOptions = product?.vendorOptions || [];
+                              const opt = vendorOptions.find(vo => vo.vendorId === val);
+                              if (opt) {
+                                handlePriceChange(item.id, opt.price);
+                              } else if (val === item.vendorId) {
+                                // Fallback to original item price if it matches original vendor
+                                handlePriceChange(item.id, item.unitPrice);
+                              }
+                            } else {
+                              // Handle clearing vendor? Maybe not allowed or just clear assignment
+                              setItemVendorAssignments(prev => {
+                                const next = { ...prev };
+                                delete next[item.id];
+                                return next;
+                              });
                             }
-                          } else {
-                            // Handle clearing vendor? Maybe not allowed or just clear assignment
-                            setItemVendorAssignments(prev => {
-                              const next = { ...prev };
-                              delete next[item.id];
-                              return next;
-                            });
-                          }
-                        }}
-                        options={vendors.map(v => {
-                          const vendorOptions = product?.vendorOptions || [];
-                          const opt = vendorOptions.find(vo => vo.vendorId === v.id);
-                          let label = v.name;
-                          if (opt) {
-                            label += ` ($${opt.price.toFixed(2)})`;
-                          } else if (v.id === item.vendorId) {
-                            label += ` ($${item.unitPrice.toFixed(2)})`;
-                          }
-                          return { value: v.id, label };
-                        })}
-                        placeholder="Select a vendor..."
-                        className="w-full max-w-xs bg-gray-50 dark:bg-white/10 border-gray-300 dark:border-white/20 text-gray-900 dark:text-white"
-                        disabled={!canCreatePOs}
-                      />
+                          }}
+                          options={vendors.map(v => {
+                            const vendorOptions = product?.vendorOptions || [];
+                            const opt = vendorOptions.find(vo => vo.vendorId === v.id);
+                            let label = v.name;
+                            let rightLabel = null;
+                            if (opt) {
+                              rightLabel = `$${opt.price.toFixed(2)}`;
+                            } else if (v.id === item.vendorId) {
+                              rightLabel = `$${item.unitPrice.toFixed(2)}`;
+                            }
+                            return { value: v.id, label, rightLabel };
+                          })}
+                          placeholder="Select a vendor..."
+                          className="w-full max-w-xs bg-gray-50 dark:bg-white/10 border-gray-300 dark:border-white/20 text-gray-900 dark:text-white flex-1"
+                          disabled={!canCreatePOs}
+                        />
+                        <span className="font-bold text-sm text-gray-900 dark:text-white whitespace-nowrap">
+                          ${currentUnitPrice.toFixed(2)}
+                        </span>
+                      </div>
 
                       {(() => {
                         const vendorOptions = product?.vendorOptions || [];

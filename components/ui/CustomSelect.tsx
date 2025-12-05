@@ -4,6 +4,7 @@ import { ChevronDownIcon } from '../Icons';
 export interface Option {
     value: string;
     label: string;
+    rightLabel?: React.ReactNode;
 }
 
 interface CustomSelectProps {
@@ -84,6 +85,11 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                     <span className={`truncate ${!selectedOption ? 'text-muted-foreground' : ''}`}>
                         {selectedOption ? selectedOption.label : placeholder}
                     </span>
+                    {selectedOption?.rightLabel && (
+                        <span className="ml-auto mr-2 text-muted-foreground text-xs">
+                            {selectedOption.rightLabel}
+                        </span>
+                    )}
                     <ChevronDownIcon
                         className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
                     />
@@ -108,7 +114,12 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                                 >
                                     <span className="truncate">{option.label}</span>
                                     {option.value === value && (
-                                        <div className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0 ml-2" />
+                                        <div className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0 ml-2 mr-2" />
+                                    )}
+                                    {option.rightLabel && (
+                                        <span className="ml-auto text-muted-foreground text-xs">
+                                            {option.rightLabel}
+                                        </span>
                                     )}
                                 </button>
                             ))}
