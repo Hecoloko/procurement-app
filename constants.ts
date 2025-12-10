@@ -49,6 +49,7 @@ export const NAVIGATION_DATA: NavSection[] = [
     items: [
       { name: 'Integrations', icon: IntegrationIcon },
       { name: 'Company Settings', icon: SettingsIcon },
+      { name: 'Payment Settings', icon: SettingsIcon },
     ],
   },
 ];

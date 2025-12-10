@@ -67,6 +67,7 @@ const navItemPermissions: Record<string, Permission> = {
   'Suppliers': 'suppliers:view',
   'Integrations': 'integrations:view',
   'Company Settings': 'settings:view',
+  'Payment Settings': 'settings:view',
   'Chart of Accounts': 'settings:view'
 };
 

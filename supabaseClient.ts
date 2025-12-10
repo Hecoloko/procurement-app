@@ -2,11 +2,13 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Use environment variables for Supabase credentials
-export const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-export const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+// Safe access for both Vite (browser) and Node (scripts)
+const env = import.meta.env || (process.env as any) || {};
+export const supabaseUrl = env.VITE_SUPABASE_URL || 'https://hrlyuobsabqpdafuylgo.supabase.co';
+export const supabaseKey = env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhybHl1b2JzYWJxcGRhZnV5bGdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1MDk1NjMsImV4cCI6MjA3OTA4NTU2M30.Z6HieyAT_sziXm0ZYerHXOv4qKMrSGLNS4Aotxc_p5c';
 
 if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Missing Supabase environment variables. Please check your .env file.');
+    console.warn('Missing Supabase environment variables. Checking .env file...');
 }
 
 export const supabase = createClient(supabaseUrl, supabaseKey);

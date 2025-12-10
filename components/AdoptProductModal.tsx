@@ -43,9 +43,9 @@ const AdoptProductModal: React.FC<AdoptProductModalProps> = ({ isOpen, onClose, 
                 image_url: formData.imageUrl,
                 primary_category: formData.primaryCategory,
                 secondary_category: formData.secondaryCategory,
-                global_product_id: sourceProduct.id, // Important: Link to source
+                global_product_id: sourceProduct.globalProductId || null, // Only link if source is already global
                 rating: 5, // Default rating
-                tags: ['adopted', `from:${sourceProduct.companyId}`]
+                tags: ['adopted', `from:${sourceProduct.companyId}`, `origin_id:${sourceProduct.id}`]
             };
 
             const { error: insertError } = await supabase

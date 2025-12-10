@@ -357,3 +357,20 @@ export interface CommunicationThread {
   lastMessageSnippet: string;
   isRead: boolean;
 }
+
+// Payment Settings Types
+export interface CompanyPaymentSettings {
+  id: string;
+  companyId: string;
+  accountLabel: string;
+  solaXKey?: string; // Optional/Partial if we don't want to expose it fully on read, but for admin edit we might need it
+  solaIFieldsKey: string;
+  isActive: boolean;
+}
+
+export interface InvoiceTypeMapping {
+  id: string;
+  companyId: string;
+  invoiceType: string;
+  paymentSettingsId: string;
+}

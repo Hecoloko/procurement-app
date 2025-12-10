@@ -2,11 +2,12 @@
 // ... (imports remain unchanged)
 import React, { useState, useMemo, useEffect } from 'react';
 import { AdminUser, Role, ApprovalRule, NotificationSetting, AppModule, PermissionAction, Permission, Vendor, Property, Unit, PermissionSet, Company, Product } from '../types';
-import { UserGroupIcon, ShieldCheckIcon, ArrowPathIcon, BellIcon, PlusIcon, TrashIcon, PencilIcon, BuildingOfficeIcon, XMarkIcon, ArrowUpTrayIcon, EyeIcon, SunIcon, CheckBadgeIcon } from './Icons';
 import CreateRoleModal from './CreateRoleModal';
 import AddUserModal from './AddUserModal';
 import AddCompanyModal from './AddCompanyModal';
+import PaymentSettings from './PaymentSettings';
 import { ThemeSwitcher } from './ThemeSwitcher';
+import { UserGroupIcon, ShieldCheckIcon, ArrowPathIcon, BellIcon, PlusIcon, TrashIcon, PencilIcon, BuildingOfficeIcon, XMarkIcon, ArrowUpTrayIcon, EyeIcon, SunIcon, CheckBadgeIcon, CreditCardIcon } from './Icons';
 import { usePermissions } from '../contexts/PermissionsContext';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
 
@@ -805,6 +806,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ vendors, properties, unit
         { id: 'properties', label: 'Properties & Units', icon: BuildingOfficeIcon, permission: 'companyProperties:view' },
         { id: 'appearance', label: 'Appearance', icon: SunIcon, permission: 'settings:view' },
         { id: 'data', label: 'Data Management', icon: ArrowUpTrayIcon, permission: 'settings:view' },
+        { id: 'payments', label: 'Payment Settings', icon: CreditCardIcon, permission: 'settings:view' },
     ];
 
     const tabs = useMemo(() => {
@@ -837,6 +839,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ vendors, properties, unit
             case 'companies': return companies && onAddCompany ? <CompanySettings companies={companies} onAddCompany={onAddCompany} roles={roles} /> : null;
             case 'appearance': return <ThemeSwitcher />;
             case 'data': return products && onUpdateProduct ? <DataManagementSettings products={products} vendors={vendors} onUpdateProduct={onUpdateProduct} /> : <div className="p-8 text-center text-muted-foreground">Data management features unavailable.</div>;
+            case 'payments': return <PaymentSettings companyId={currentUser.companyId} />;
             default: return null;
         }
     };

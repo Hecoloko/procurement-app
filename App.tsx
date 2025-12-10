@@ -19,6 +19,7 @@ import QuickCartModal from './components/QuickCartModal';
 import CreateCartFlowModal from './components/CreateCartFlowModal';
 import Properties from './components/Properties';
 import Integrations from './components/Integrations';
+import PaymentSettings from './components/PaymentSettings';
 
 import { Cart, Product, Order, OrderStatus, Vendor, Property, Unit, AdminUser, CommunicationThread, Message, CartType, CartItem, ItemApprovalStatus, Role, PurchaseOrder, Company, Account } from './types';
 import ProductDashboard from './components/ProductDashboard';
@@ -34,6 +35,7 @@ import { createClient } from '@supabase/supabase-js';
 import Auth from './components/Auth';
 import { ProcureProLogoIcon, RefreshIcon } from './components/Icons';
 import { useTheme } from './hooks/useTheme';
+import { processPayment } from './services/paymentService';
 
 // ... (Helper functions remain same)
 const safeNumber = (val: any): number => {
@@ -1527,8 +1529,36 @@ export const App: React.FC = () => {
         }
     };
 
-    const handleUpdatePoPaymentStatus = async (orderId: string, poId: string, updates: Partial<PurchaseOrder>) => {
+    const handleUpdatePoPaymentStatus = async (orderId: string, poId: string, updates: Partial<PurchaseOrder> & { paymentMetadata?: any }) => {
         console.log("DEBUG: handleUpdatePoPaymentStatus called", { orderId, poId, updates });
+
+        // 1. Process Payment via Sola (if metadata provided)
+        if (updates.paymentMetadata) {
+            try {
+                // Ensure we have an amount to charge
+                const amountToCharge = updates.amountDue;
+                if (!amountToCharge) {
+                    alert("Error: Payment amount is missing. Cannot process.");
+                    return;
+                }
+
+                // We use a placeholder token for now as per previous design
+                const paymentResult = await processPayment(poId, 'placeholder-token', amountToCharge, updates.paymentMetadata);
+
+                if (!paymentResult.success) {
+                    alert(`Payment Failed: ${paymentResult.error}`);
+                    return; // Abort DB update
+                }
+
+                console.log("Payment Successful:", paymentResult.transactionId);
+                // Optionally store transactionId in DB if schema supports it
+            } catch (err: any) {
+                console.error("Critical Payment Error:", err);
+                alert(`System Error during payment: ${err.message}`);
+                return;
+            }
+        }
+
         const dbUpdates: any = {};
         if (updates.paymentStatus) dbUpdates.payment_status = updates.paymentStatus;
         if (updates.invoiceNumber) dbUpdates.invoice_number = updates.invoiceNumber;
@@ -1580,6 +1610,7 @@ export const App: React.FC = () => {
         if (activeItem === 'Receiving') return <Receiving orders={orders} vendors={vendors} onUpdatePoStatus={handleUpdatePoStatus} onSelectOrder={(o) => setSelectedOrder(o)} />;
         if (activeItem === 'Communications') return <CommunicationCenter threads={threads} messages={messages} users={users} orders={orders} currentUser={currentUser} onSendMessage={handleSendMessage} onStartNewThread={handleStartThread} onSelectOrder={setSelectedOrder} />;
         if (activeItem === 'Company Settings') return <AdminSettings vendors={vendors} properties={properties} units={units} users={users} roles={roles} companies={availableCompanies} currentUser={currentUser} onAddProperty={handleAddProperty} onDeleteProperty={handleDeleteProperty} onAddUnit={handleAddUnit} onAddRole={handleAddRole} onUpdateRole={handleUpdateRole} onDeleteRole={handleDeleteRole} onViewAsUser={setImpersonatingUser} onAddUser={handleAddUser} onAddCompany={handleAddCompany} onDeleteUser={handleDeleteUser} products={products} onUpdateProduct={handleUpdateProduct} />;
+        if (activeItem === 'Payment Settings') return <PaymentSettings companyId={viewingCompanyId || currentUser?.companyId || ''} />;
         if (activeItem === 'Suppliers') return <Suppliers vendors={vendors} products={products} orders={orders} properties={properties} companies={availableCompanies} currentCompanyId={viewingCompanyId || currentUser?.companyId || ''} onSwitchCompany={currentUser?.roleId === 'role-0' ? handleSwitchCompany : undefined} onSelectOrder={(o) => { setSelectedOrder(o); }} onAddVendor={handleAddVendor} onAddProduct={handleAddProduct} onAddVendorAccount={handleAddVendorAccount} />;
         if (activeItem === 'Chart of Accounts') return <ChartOfAccounts accounts={accounts} onAddAccount={handleAddAccount} onUpdateAccount={handleUpdateAccount} onDeleteAccount={handleDeleteAccount} />;
         if (activeItem === 'Transactions') return <Transactions orders={orders} vendors={vendors} onUpdatePoPaymentStatus={handleUpdatePoPaymentStatus} />;
