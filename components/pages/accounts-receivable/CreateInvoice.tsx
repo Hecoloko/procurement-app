@@ -72,10 +72,11 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ currentCompanyId, current
             const firstItem = initialBillableItems[0];
 
             // Auto-detect recipient type and pre-fill details
-            if (firstItem.propertyId && firstItem.unitId) {
+            // Auto-detect recipient type and pre-fill details
+            if (firstItem.propertyId) { // Prioritize Property if propertyId exists
                 setRecipientType('property');
                 setSelectedPropertyId(firstItem.propertyId);
-                setSelectedUnitId(firstItem.unitId);
+                setSelectedUnitId(firstItem.unitId || '');
             } else if (firstItem.customerId) {
                 setRecipientType('customer');
                 setSelectedCustomerId(firstItem.customerId);
@@ -376,7 +377,7 @@ Accounts Department`;
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div className="space-y-6">
                         {/* Recipient Toggle - Only show if manually editing or empty */}
-                        {!initialBillableItems?.length && (
+                        {!initialBillableItems?.length && !preSelectedPropertyId && (
                             <div className="flex gap-4 p-1 bg-muted/50 rounded-lg w-fit">
                                 <button
                                     onClick={() => setRecipientType('customer')}
@@ -415,7 +416,8 @@ Accounts Department`;
                                             setSelectedPropertyId(e.target.value);
                                             setSelectedUnitId(''); // Reset unit when property changes
                                         }}
-                                        className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-foreground transition-shadow shadow-sm"
+                                        disabled={!!initialBillableItems?.length || !!preSelectedPropertyId} // Lock property if pre-selected
+                                        className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none disabled:opacity-70 disabled:bg-muted text-foreground transition-shadow shadow-sm"
                                     >
                                         <option value="">Select a Property</option>
                                         {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -426,7 +428,7 @@ Accounts Department`;
                                     <select
                                         value={selectedUnitId}
                                         onChange={e => setSelectedUnitId(e.target.value)}
-                                        disabled={!selectedPropertyId}
+                                        disabled={!selectedPropertyId || !!preSelectedUnitId} // Lock unit if pre-selected
                                         className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none disabled:opacity-50 text-foreground transition-shadow shadow-sm disabled:cursor-not-allowed"
                                     >
                                         <option value="">Select a Unit</option>
@@ -468,18 +470,19 @@ Accounts Department`;
 
                         <div className="flex items-center gap-4">
                             {/* Tax Rate Control */}
-                            <div className="flex items-center gap-2 bg-muted/30 px-3 py-1.5 rounded-lg border border-border">
-                                <span className="text-xs font-medium text-muted-foreground">Tax Rate:</span>
-                                <div className="relative group">
+                            {/* Tax Rate Control - Clean UI */}
+                            <div className="flex items-center gap-3 bg-card px-4 py-2 rounded-lg border border-border shadow-sm">
+                                <span className="text-sm font-medium text-foreground whitespace-nowrap">Tax Rate</span>
+                                <div className="flex items-center relative">
                                     <input
                                         type="number"
                                         min="0"
                                         step="0.1"
                                         value={taxRate}
                                         onChange={(e) => setTaxRate(Number(e.target.value))}
-                                        className="w-12 bg-transparent text-right text-sm font-bold focus:outline-none border-b border-transparent focus:border-primary transition-colors"
+                                        className="w-16 bg-muted/30 text-right pr-6 py-1 rounded text-sm font-bold focus:outline-none focus:ring-1 focus:ring-primary border border-transparent focus:border-primary transition-all"
                                     />
-                                    <span className="text-xs text-muted-foreground font-bold ml-0.5">%</span>
+                                    <span className="absolute right-2 text-muted-foreground text-xs font-bold pointer-events-none">%</span>
                                 </div>
                             </div>
 
