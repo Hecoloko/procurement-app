@@ -56,9 +56,18 @@ const BillableItemsList: React.FC<BillableItemsListProps> = ({ companyId, custom
     };
 
     useEffect(() => {
-        if (companyId) {
-            fetchItems();
-        }
+        const init = async () => {
+            if (companyId) {
+                // Auto-sync checks for any missing items from paid POs
+                try {
+                    await billbackService.syncMissingBillableItems(companyId);
+                } catch (e) {
+                    console.error("Auto-sync failed:", e);
+                }
+                await fetchItems();
+            }
+        };
+        init();
     }, [companyId]);
 
     const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {

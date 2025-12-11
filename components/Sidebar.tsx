@@ -62,7 +62,7 @@ const navItemPermissions: Record<string, Permission> = {
   'Approvals': 'approvals:view',
   'Purchase Orders': 'purchaseOrders:view',
   'Receiving': 'receiving:view',
-  'Bills': 'transactions:view',
+
   'Bill Payments': 'transactions:view', // Renamed from Transactions
   'Reports': 'reports:view',
   'Suppliers': 'suppliers:view',

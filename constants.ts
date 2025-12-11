@@ -39,7 +39,7 @@ export const NAVIGATION_DATA: NavSection[] = [
   {
     title: 'ACCOUNTS PAYABLE',
     items: [
-      { name: 'Bills', icon: DocumentReportIcon },
+
       { name: 'Bill Payments', icon: TransactionIcon },
       { name: 'Suppliers', icon: SupplierIcon },
     ],
