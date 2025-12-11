@@ -125,6 +125,7 @@ export interface Order {
   companyId: string; // Multi-tenant
   cartId: string;
   cartName: string;
+  workOrderId?: string; // Derived from Cart
   submittedBy: string;
   submissionDate: string;
   totalCost: number;
@@ -136,6 +137,10 @@ export interface Order {
   statusHistory?: { status: OrderStatus; date: string }[];
   propertyId: string;
   threadId?: string;
+
+  // AR / Billback Fields
+  billingStatus?: 'Unbilled' | 'Partially Billed' | 'Billed';
+  invoiceId?: string;
 }
 
 export interface VendorAccount {
@@ -175,6 +180,7 @@ export interface PurchaseOrder {
   paymentMethod?: string;
   amountDue?: number;
   statusHistory?: { status: PurchaseOrderStatus; date: string }[];
+  created_at?: string;
 }
 
 export interface Account {
@@ -373,4 +379,168 @@ export interface InvoiceTypeMapping {
   companyId: string;
   invoiceType: string;
   paymentSettingsId: string;
+}
+
+// ACCOUNTS RECEIVABLE TYPES
+
+export interface Customer {
+  id: string;
+  companyId: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  billingAddress?: {
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
+    propertyId?: string; // Links customer to a property for billback
+  };
+  shippingAddress?: {
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
+  };
+  taxId?: string;
+  paymentTerms?: string;
+  notes?: string;
+}
+
+export type InvoiceStatus = 'Draft' | 'Sent' | 'Partially Paid' | 'Paid' | 'Overdue' | 'Cancelled' | 'Void';
+
+export interface Vendor {
+  id: string;
+  name: string;
+  rating?: number;
+  contactEmail?: string;
+  products?: ProductVendorOption[];
+  bankName?: string;
+  accountNumber?: string;
+  routingNumber?: string;
+  swiftCode?: string;
+  paymentPreference?: 'bank_transfer' | 'cheque' | 'qr';
+}
+
+export interface InvoiceItem {
+  id: string;
+  invoiceId: string;
+  productId?: string;
+  description: string;
+  quantity: number;
+  unitPrice: number; // Selling Price (Final)
+  costPrice?: number; // Original Cost
+  markupPercentage?: number; // e.g., 20 for 20%
+  taxRate?: number;
+  totalPrice: number; // Calculated
+}
+
+export interface Invoice {
+  id: string;
+  companyId: string;
+  customerId?: string; // Optional now, can be linked to Property/Unit instead
+  propertyId?: string;
+  unitId?: string;
+  invoiceNumber: string;
+  status: InvoiceStatus;
+  issueDate: string;
+  dueDate?: string;
+  subtotal: number;
+  taxTotal: number;
+  totalAmount: number;
+  amountPaid: number;
+  notes?: string;
+  paymentMethod?: string;
+  paymentDate?: string;
+  stripeSessionId?: string;
+  balanceDue?: number; // Calculated
+  createdBy?: string;
+  items?: InvoiceItem[];
+  customer?: Customer; // Joined
+  stripeInvoiceId?: string;
+  stripePaymentIntentId?: string;
+}
+
+// AP / AR New Systems
+
+export interface VendorInvoice {
+  id: string;
+  companyId: string;
+  vendorId: string;
+  vendorName?: string; // Enriched
+  purchaseOrderId?: string;
+  invoiceNumber: string;
+  invoiceDate: string; // ISO Date
+  dueDate?: string;
+  totalAmount: number;
+  status: 'Draft' | 'Pending Approval' | 'Approved' | 'Paid' | 'Rejected' | 'Void';
+  approvalStatus?: 'Pending' | 'Approved' | 'Rejected';
+  pdfUrl?: string;
+  items?: VendorInvoiceItem[];
+}
+
+export interface VendorInvoiceItem {
+  id: string;
+  vendorInvoiceId: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  propertyId?: string;
+  unitId?: string;
+  workOrderId?: string;
+  expenseCategory?: string;
+}
+
+export interface APLedgerEntry {
+  id: string;
+  companyId: string;
+  vendorId: string;
+  transactionDate: string; // ISO
+  type: 'Invoice' | 'Payment' | 'Credit' | 'Refund';
+  referenceId?: string;
+  description?: string;
+  amount: number;
+  balanceAfter?: number;
+}
+
+export interface BillableItem {
+  id: string;
+  companyId: string;
+  sourceType: 'Expense' | 'WorkOrder' | 'Manual' | 'Recurring' | 'VendorInvoice' | 'PurchaseOrder';
+  sourceId?: string;
+  propertyId?: string;
+  unitId?: string;
+  customerId?: string;
+  description: string;
+  costAmount: number;
+  markupAmount: number;
+  totalAmount: number;
+  status: 'Pending' | 'Invoiced' | 'Paid' | 'Waived';
+  invoiceId?: string;
+}
+
+export interface ARLedgerEntry {
+  id: string;
+  companyId: string;
+  customerId: string;
+  transactionDate: string;
+  type: 'Invoice' | 'Payment' | 'Adjustment' | 'CreditMemo';
+  referenceId?: string;
+  description?: string;
+  amount: number;
+  balanceAfter?: number;
+}
+
+export interface StripePaymentRecord {
+  id: string;
+  companyId: string;
+  stripePaymentIntentId: string;
+  stripeChargeId?: string;
+  stripeCustomerId?: string;
+  amount: number;
+  currency: string;
+  status: string;
+  metadata?: any;
+  createdAt: string;
 }

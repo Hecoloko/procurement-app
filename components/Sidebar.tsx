@@ -62,9 +62,12 @@ const navItemPermissions: Record<string, Permission> = {
   'Approvals': 'approvals:view',
   'Purchase Orders': 'purchaseOrders:view',
   'Receiving': 'receiving:view',
-  'Transactions': 'transactions:view',
+  'Bills': 'transactions:view',
+  'Bill Payments': 'transactions:view', // Renamed from Transactions
   'Reports': 'reports:view',
   'Suppliers': 'suppliers:view',
+  'Invoices': 'orders:view', // Reuse orders permission for now
+  'Property AR': 'suppliers:view', // Reuse suppliers permission for now
   'Integrations': 'integrations:view',
   'Company Settings': 'settings:view',
   'Payment Settings': 'settings:view',
@@ -113,7 +116,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, setActiveItem, isCollapse
   }, [can]);
 
   return (
-    <aside className={`bg-muted flex flex-col h-screen fixed top-0 left-0 transition-all duration-300 ease-in-out z-40 shadow-2xl ${isCollapsed ? 'w-20' : 'w-64'}`}>
+    <aside className={`glass flex flex-col fixed top-4 bottom-4 left-4 transition-all duration-300 ease-in-out z-40 shadow-2xl rounded-2xl border-white/20 ${isCollapsed ? 'w-20' : 'w-64'}`}>
       {/* Header */}
       <div className={`flex flex-col p-4 border-b border-border shrink-0 ${isCollapsed ? 'items-center' : ''}`}>
         <div className={`flex items-center justify-between w-full mb-4`}>
@@ -176,7 +179,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, setActiveItem, isCollapse
       </div>
 
       {/* Footer */}
-      <div className="p-4 border-t border-border bg-background/50">
+      <div className="p-4 border-t border-white/10 bg-transparent">
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center overflow-hidden">
             <div className="relative flex-shrink-0">

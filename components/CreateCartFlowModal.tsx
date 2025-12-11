@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Cart, CartType, Property, RecurringFrequency } from '../types';
+import { Cart, CartType, Property, RecurringFrequency, Unit } from '../types';
 import { XMarkIcon, CartIcon, RefreshIcon, CalendarIcon, ChevronLeftIcon } from './Icons';
 import { Select } from './ui/Select';
 import { CART_CATEGORIES } from '../constants';
@@ -10,6 +10,7 @@ interface CreateCartFlowModalProps {
     onClose: () => void;
     onSave: (data: Partial<Cart> & { type: CartType, propertyId: string }) => { success: boolean; message?: string } | Promise<{ success: boolean; message?: string }>;
     properties: Property[];
+    units: Unit[];
     userName: string;
 }
 
@@ -43,11 +44,13 @@ const CartTypeSelection: React.FC<{ onSelect: (type: CartType) => void }> = ({ o
 const CartDetailsForm: React.FC<{
     cartType: CartType;
     properties: Property[];
-    onSubmit: (data: Partial<Cart> & { propertyId: string, category?: string, name: string }) => { success: boolean; message?: string } | Promise<{ success: boolean; message?: string }>;
+    units: Unit[];
+    onSubmit: (data: Partial<Cart> & { propertyId: string, unitId?: string, category?: string, name: string }) => { success: boolean; message?: string } | Promise<{ success: boolean; message?: string }>;
     onBack: () => void;
     userName: string;
-}> = ({ cartType, properties, onSubmit, onBack, userName }) => {
+}> = ({ cartType, properties, units, onSubmit, onBack, userName }) => {
     const [propertyId, setPropertyId] = useState(properties[0]?.id || '');
+    const [unitId, setUnitId] = useState('');
     const [workOrderId, setWorkOrderId] = useState('');
 
     useEffect(() => {
@@ -60,8 +63,10 @@ const CartDetailsForm: React.FC<{
     useEffect(() => {
         if (properties.length > 0) {
             setPropertyId(properties[0].id);
+            setUnitId(''); // Reset unit when property changes defaults
         } else {
             setPropertyId('');
+            setUnitId('');
         }
     }, [properties]);
     const [category, setCategory] = useState('');
@@ -81,7 +86,7 @@ const CartDetailsForm: React.FC<{
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
-        console.log('[CreateCartFlowModal] handleSubmit called', { propertyId, needsCategory, category, cartName });
+        console.log('[CreateCartFlowModal] handleSubmit called', { propertyId, unitId, needsCategory, category, cartName });
 
         if (!propertyId || (needsCategory && !category)) {
             setError('Please fill in all required fields.');
@@ -101,8 +106,8 @@ const CartDetailsForm: React.FC<{
             if (frequency === 'Monthly') scheduleData.dayOfMonth = dayOfMonth;
         }
 
-        console.log('[CreateCartFlowModal] About to call onSubmit with data:', { propertyId, category, scheduleData, name: cartName.trim() || `${cartType} Cart` });
-        const result = await onSubmit({ propertyId, ...(needsCategory && { category }), ...scheduleData, name: cartName.trim() || `${cartType} Cart` });
+        console.log('[CreateCartFlowModal] About to call onSubmit with data:', { propertyId, unitId, category, scheduleData, name: cartName.trim() || `${cartType} Cart` });
+        const result = await onSubmit({ propertyId, unitId, ...(needsCategory && { category }), ...scheduleData, name: cartName.trim() || `${cartType} Cart` });
         console.log('[CreateCartFlowModal] onSubmit result:', result);
 
         if (result && !result.success) {
@@ -153,11 +158,31 @@ const CartDetailsForm: React.FC<{
                     <Select
                         id="property"
                         value={propertyId}
-                        onChange={e => setPropertyId(e.target.value)}
+                        onChange={e => {
+                            setPropertyId(e.target.value);
+                            setUnitId(''); // Reset unit when property changes
+                        }}
                         required
                         className="bg-white/10 text-white border-white/10 focus:ring-green-500"
                     >
                         {properties.map(prop => <option key={prop.id} value={prop.id} className="bg-gray-900 text-white">{prop.name}</option>)}
+                    </Select>
+                </div>
+
+                {/* Unit Selection (Optional or Required depending on logic, let's make it optional but recommended for specificity) */}
+                <div>
+                    <label htmlFor="unit" className="block text-sm font-medium text-white/90 mb-1">Unit (Optional)</label>
+                    <Select
+                        id="unit"
+                        value={unitId}
+                        onChange={e => setUnitId(e.target.value)}
+                        className="bg-white/10 text-white border-white/10 focus:ring-green-500"
+                        disabled={!propertyId}
+                    >
+                        <option value="" className="bg-gray-900 text-gray-400">Select a Unit (Optional)</option>
+                        {units.filter(u => u.propertyId === propertyId).map(u => (
+                            <option key={u.id} value={u.id} className="bg-gray-900 text-white">{u.name}</option>
+                        ))}
                     </Select>
                 </div>
                 {needsCategory && (
@@ -264,7 +289,7 @@ const CartDetailsForm: React.FC<{
     );
 };
 
-const CreateCartFlowModal: React.FC<CreateCartFlowModalProps> = ({ isOpen, onClose, onSave, properties, userName }) => {
+const CreateCartFlowModal: React.FC<CreateCartFlowModalProps> = ({ isOpen, onClose, onSave, properties, units, userName }) => {
     const [step, setStep] = useState<'select_type' | 'details'>('select_type');
     const [selectedType, setSelectedType] = useState<CartType>('Standard');
 
@@ -278,7 +303,7 @@ const CreateCartFlowModal: React.FC<CreateCartFlowModalProps> = ({ isOpen, onClo
         setTimeout(() => setStep('select_type'), 300);
     };
 
-    const handleSaveDetails = async (data: Partial<Cart> & { propertyId: string; category?: string; }) => {
+    const handleSaveDetails = async (data: Partial<Cart> & { propertyId: string; unitId?: string; category?: string; }) => {
         const result = await onSave({ type: selectedType, ...data });
         if (result.success) {
             handleClose();
@@ -306,6 +331,7 @@ const CreateCartFlowModal: React.FC<CreateCartFlowModalProps> = ({ isOpen, onClo
                         <CartDetailsForm
                             cartType={selectedType}
                             properties={properties}
+                            units={units}
                             onSubmit={handleSaveDetails}
                             onBack={() => setStep('select_type')}
                             userName={userName}

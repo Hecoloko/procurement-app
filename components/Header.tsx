@@ -33,7 +33,7 @@ const Header: React.FC<HeaderProps> = ({ onQuickCartClick, onCartIconClick, user
   };
 
   return (
-    <header className="bg-card/80 backdrop-blur-sm border-b border-border p-4 h-[68px] flex-shrink-0">
+    <header className="glass border-b border-white/10 p-4 h-[68px] flex-shrink-0 z-30 mb-6 mx-6 rounded-2xl mt-4">
       <div className="flex items-center justify-end h-full">
         <div className="flex items-center space-x-4">
           {can('carts:create') && (

@@ -24,17 +24,23 @@ export async function processPayment(invoiceId: string, paymentToken: string, am
         const companyId = 'comp-1'; // Hardcoded for this demo context
 
         // 2. Prepare Payload for Edge Function
-        // Using 'test-connection' which now supports dynamic payload
-
+        // Using 'process-payment' (unified)
         const settingsId = paymentMetadata?.settingsId;
+        const gateway = paymentMetadata?.gateway || 'stripe';
+        const methodId = gateway === 'stripe' ? paymentToken : undefined; // Start using valid param names
+        const solaToken = gateway === 'sola' ? paymentToken : undefined;
 
-        const { data, error } = await supabase.functions.invoke('test-connection', {
+        const { data, error } = await supabase.functions.invoke('process-payment', {
             body: {
                 company_id: companyId,
                 settings_id: settingsId,
                 amount: amount,
-                invoice_number: invoiceId, // Pass PO ID as invoice number
-                card_details: paymentMetadata?.newCardDetails,
+                invoice_id: invoiceId,
+
+                gateway: gateway,
+                method_id: methodId,
+                payment_token: solaToken, // For Sola
+
                 // New Features
                 save_card: paymentMetadata?.saveCard,
                 email_receipt: paymentMetadata?.emailReceipt
@@ -49,10 +55,10 @@ export async function processPayment(invoiceId: string, paymentToken: string, am
         const result = data;
         console.log('Payment Service Response:', result);
 
-        if (result.xResult === 'A') {
-            return { success: true, transactionId: result.xRefNum };
+        if (result.success === true) {
+            return { success: true, transactionId: result.paymentIntent?.id || result.transactionId };
         } else {
-            return { success: false, error: result.xError || result.xStatus };
+            return { success: false, error: result.error || 'Unknown Error' };
         }
 
     } catch (err: any) {

@@ -344,7 +344,7 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
 
   const ManagePOsView = (
     <div className="space-y-6">
-      {localOrder.purchaseOrders?.map(po => (
+      {localOrder.purchaseOrders?.slice().sort((a, b) => a.id.localeCompare(b.id)).map(po => (
         <div key={po.id} className="bg-white dark:bg-white/5 backdrop-blur-md p-6 rounded-2xl shadow-lg border border-gray-200 dark:border-white/10">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>

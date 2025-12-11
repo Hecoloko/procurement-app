@@ -20,8 +20,12 @@ import CreateCartFlowModal from './components/CreateCartFlowModal';
 import Properties from './components/Properties';
 import Integrations from './components/Integrations';
 import PaymentSettings from './components/PaymentSettings';
+import CustomerList from './components/pages/accounts-receivable/CustomerList';
+import InvoicesPage from './components/pages/accounts-receivable/InvoicesPage';
+import VendorInvoicesList from './components/pages/accounts-payable/VendorInvoicesList';
+import VendorInvoiceDetailModal from './components/pages/accounts-payable/VendorInvoiceDetailModal';
 
-import { Cart, Product, Order, OrderStatus, Vendor, Property, Unit, AdminUser, CommunicationThread, Message, CartType, CartItem, ItemApprovalStatus, Role, PurchaseOrder, Company, Account } from './types';
+import { Cart, Product, Order, OrderStatus, Vendor, Property, Unit, AdminUser, CommunicationThread, Message, CartType, CartItem, ItemApprovalStatus, Role, PurchaseOrder, Company, Account, Customer } from './types';
 import ProductDashboard from './components/ProductDashboard';
 import CommunicationCenter from './components/CommunicationCenter';
 import { DUMMY_THREADS, DUMMY_MESSAGES, DUMMY_ROLES } from './constants';
@@ -113,6 +117,22 @@ const mapVendor = (dbVendor: any): Vendor => ({
         accountNumber: acc.account_number
     }))
 });
+
+const mapCustomer = (dbCustomer: any): Customer => {
+    if (!dbCustomer) return {} as Customer;
+    return {
+        ...dbCustomer,
+        id: dbCustomer.id,
+        companyId: dbCustomer.company_id,
+        name: dbCustomer.name,
+        email: dbCustomer.email,
+        phone: dbCustomer.phone,
+        billingAddress: dbCustomer.billing_address,
+        shippingAddress: dbCustomer.shipping_address,
+        taxId: dbCustomer.tax_id,
+        paymentTerms: dbCustomer.payment_terms
+    };
+};
 
 const mapOrder = (dbOrder: any, products: Product[]): Order => {
     if (!dbOrder) return {} as Order;
@@ -214,6 +234,7 @@ export const App: React.FC = () => {
     const [users, setUsers] = useState<AdminUser[]>([]);
     const [roles, setRoles] = useState<Role[]>(DUMMY_ROLES);
     const [accounts, setAccounts] = useState<Account[]>([]);
+    const [customers, setCustomers] = useState<Customer[]>([]);
 
     const [threads, setThreads] = useState<CommunicationThread[]>(DUMMY_THREADS);
     const [messages, setMessages] = useState<Message[]>(DUMMY_MESSAGES);
@@ -231,6 +252,7 @@ export const App: React.FC = () => {
     const [isEditScheduleModalOpen, setIsEditScheduleModalOpen] = useState(false);
     const [cartForScheduleEdit, setCartForScheduleEdit] = useState<Cart | null>(null);
     const [activeCart, setActiveCart] = useState<Cart | null>(null);
+    const [selectedVendorInvoice, setSelectedVendorInvoice] = useState<any>(null); // Placeholder type for now, used in future
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
     useEffect(() => {
@@ -447,7 +469,8 @@ export const App: React.FC = () => {
                 supabase.from('communication_threads').select('*').eq('company_id', targetCompanyId).limit(100),
                 supabase.from('messages').select('*').limit(500),
                 supabase.from('accounts').select('*').eq('company_id', targetCompanyId),
-                supabase.from('product_vendors').select('*')
+                supabase.from('product_vendors').select('*'),
+                supabase.from('customers').select('*').eq('company_id', targetCompanyId).order('name')
             ];
 
             let completedCount = 0;
@@ -476,7 +499,8 @@ export const App: React.FC = () => {
                 threadsData,
                 messagesData,
                 accountsData,
-                productVendorsData
+                productVendorsData,
+                customersData
             ] = await Promise.all(trackedPromises);
 
             if (cartsData.error) throw cartsData.error;
@@ -564,6 +588,10 @@ export const App: React.FC = () => {
                     isActive: acc.is_active,
                     balance: acc.balance
                 })));
+            }
+
+            if (customersData.data) {
+                setCustomers(customersData.data.map(mapCustomer));
             }
 
             if (usersData.data) {
@@ -696,7 +724,7 @@ export const App: React.FC = () => {
         if (!targetCompany) return { success: false, message: 'No company selected' };
 
         const cartId = `cart-${Date.now()}`;
-        const { propertyId, items, name, scheduledDate, startDate, dayOfWeek, dayOfMonth, frequency, category } = additionalData || {};
+        const { propertyId, unitId, items, name, scheduledDate, startDate, dayOfWeek, dayOfMonth, frequency, category } = additionalData || {};
 
         // Generate globally unique Work Order ID
         let workOrderId = '';
@@ -742,6 +770,7 @@ export const App: React.FC = () => {
             type: cartType,
             status: 'Draft',
             property_id: propertyId || properties[0].id,
+            unit_id: unitId || null,
             created_by: session?.user?.id,
             total_cost: initialTotalCost,
             item_count: initialItemCount
@@ -942,7 +971,7 @@ export const App: React.FC = () => {
         }, 0);
         const calculatedCount = dbItems.length;
 
-        const { data: cartData } = await supabase.from('carts').select('name, type, property_id, created_by').eq('id', cartId).single();
+        const { data: cartData } = await supabase.from('carts').select('name, type, property_id, unit_id, created_by').eq('id', cartId).single();
         if (!cartData) return;
 
         const currentUser = impersonatingUser || users?.find(u => u.id === session?.user?.id);
@@ -960,6 +989,7 @@ export const App: React.FC = () => {
             total_cost: calculatedTotal,
             item_count: calculatedCount,
             property_id: cartData.property_id,
+            unit_id: cartData.unit_id,
             type: cartData.type,
             submission_date: new Date().toISOString()
         };
@@ -1533,10 +1563,11 @@ export const App: React.FC = () => {
         console.log("DEBUG: handleUpdatePoPaymentStatus called", { orderId, poId, updates });
 
         // 1. Process Payment via Sola (if metadata provided)
-        if (updates.paymentMetadata) {
+        // 1. Process Payment via Sola (if metadata provided AND explicitly requested)
+        if (updates.paymentMetadata && updates.paymentMetadata.processPayment) {
             try {
                 // Ensure we have an amount to charge
-                const amountToCharge = updates.amountDue;
+                const amountToCharge = updates.paymentMetadata.chargeAmount || updates.amountDue;
                 if (!amountToCharge) {
                     alert("Error: Payment amount is missing. Cannot process.");
                     return;
@@ -1577,6 +1608,19 @@ export const App: React.FC = () => {
             return;
         }
 
+        // NEW: If Payment Status is Paid, create Billable Items (AR)
+        if (updates.paymentStatus === 'Paid') {
+            try {
+                // Dynamically import to avoid circular dependencies if any (though App.tsx is top level)
+                const { billbackService } = await import('./services/billbackService');
+                await billbackService.createBillableItemsFromPurchaseOrder(poId);
+                console.log("Billable Items Created for PO:", poId);
+            } catch (err: any) {
+                console.error("Error creating billable items:", err);
+                alert(`Warning: Payment recorded, but failed to create AR Billable Items: ${err.message}`);
+            }
+        }
+
         const { data: freshOrderData, error: fetchError } = await supabase.from('orders').select('*, cart:carts(cart_items(*)), purchase_orders(*), order_status_history(*)').eq('id', orderId).single();
 
         if (fetchError) {
@@ -1613,7 +1657,13 @@ export const App: React.FC = () => {
         if (activeItem === 'Payment Settings') return <PaymentSettings companyId={viewingCompanyId || currentUser?.companyId || ''} />;
         if (activeItem === 'Suppliers') return <Suppliers vendors={vendors} products={products} orders={orders} properties={properties} companies={availableCompanies} currentCompanyId={viewingCompanyId || currentUser?.companyId || ''} onSwitchCompany={currentUser?.roleId === 'role-0' ? handleSwitchCompany : undefined} onSelectOrder={(o) => { setSelectedOrder(o); }} onAddVendor={handleAddVendor} onAddProduct={handleAddProduct} onAddVendorAccount={handleAddVendorAccount} />;
         if (activeItem === 'Chart of Accounts') return <ChartOfAccounts accounts={accounts} onAddAccount={handleAddAccount} onUpdateAccount={handleUpdateAccount} onDeleteAccount={handleDeleteAccount} />;
-        if (activeItem === 'Transactions') return <Transactions orders={orders} vendors={vendors} onUpdatePoPaymentStatus={handleUpdatePoPaymentStatus} />;
+
+        // AP & AR Routes
+        if (activeItem === 'Bills') return <VendorInvoicesList companyId={viewingCompanyId || currentUser?.companyId || ''} onViewDetail={(inv) => { setSelectedVendorInvoice(inv); console.log("Selected Invoice:", inv); }} />;
+        if (activeItem === 'Bill Payments') return <Transactions orders={orders} vendors={vendors} onUpdatePoPaymentStatus={handleUpdatePoPaymentStatus} />;
+        if (activeItem === 'Invoices') return <InvoicesPage currentCompanyId={viewingCompanyId || currentUser?.companyId || ''} currentUser={currentUser} products={products} customers={customers} properties={properties} units={units} />;
+        if (activeItem === 'Property AR') return <CustomerList currentCompanyId={viewingCompanyId || currentUser?.companyId || ''} />;
+
         if (activeItem === 'Reports') return <Reports orders={orders} vendors={vendors} products={products} />;
         if (activeItem === 'Integrations') return <Integrations />;
         if (activeItem === 'Properties') return <Properties properties={properties} units={units} orders={orders} users={users} onSelectOrder={setSelectedOrder} />;
@@ -1638,15 +1688,22 @@ export const App: React.FC = () => {
                     onSwitchCompany={handleSwitchCompany}
                     onLogout={handleLogout}
                 />
-                <div className={`flex-1 flex flex-col transition-all duration-300 ${isSidebarCollapsed ? 'ml-20' : 'ml-64'}`}>
+                <div className={`flex-1 flex flex-col transition-all duration-300 ${isSidebarCollapsed ? 'ml-28' : 'ml-72'}`}>
                     <Header onQuickCartClick={() => setIsQuickCartModalOpen(true)} onCartIconClick={() => setIsCartDrawerOpen(true)} user={currentUser} activeCart={activeCart} roles={roles} />
                     <main className="flex-1 p-6 lg:p-8 overflow-y-auto">{renderContent()}</main>
                 </div>
-                <CreateCartFlowModal isOpen={isCreateCartModalOpen} onClose={() => setIsCreateCartModalOpen(false)} onSave={async (data) => { const result = await handleAddCart(data.type, viewingCompanyId || currentUser?.companyId, data); return result; }} properties={properties} userName={currentUser?.name || 'Unknown User'} />
+                <CreateCartFlowModal isOpen={isCreateCartModalOpen} onClose={() => setIsCreateCartModalOpen(false)} onSave={async (data) => { const result = await handleAddCart(data.type, viewingCompanyId || currentUser?.companyId, data); return result; }} properties={properties} units={units} userName={currentUser?.name || 'Unknown User'} />
                 <QuickCartModal isOpen={isQuickCartModalOpen} onClose={() => setIsQuickCartModalOpen(false)} onSave={(data) => { handleAddCart('Standard', viewingCompanyId || currentUser?.companyId, { name: data.name, propertyId: data.propertyId, items: data.items as any }); setIsQuickCartModalOpen(false); }} properties={properties} />
                 <GlobalCartDrawer isOpen={isCartDrawerOpen} onClose={() => setIsCartDrawerOpen(false)} activeCart={activeCart} carts={carts?.filter(c => c.status === 'Draft' || c.status === 'Ready for Review')} onSelectCart={setActiveCart} onUpdateItem={(prod, qty, note) => activeCart && handleUpdateCartItem(activeCart.id, prod, qty, note)} onSubmitForApproval={(cartId) => { handleSubmitCart(cartId); setIsCartDrawerOpen(false); }} onViewFullCart={() => { if (activeCart) { setIsCartDrawerOpen(false); setActiveItem('My Carts'); setSelectedCart(activeCart); setView('detail'); } }} />
                 <OrderDetailsDrawer order={selectedOrder} onClose={() => setSelectedOrder(null)} properties={properties} users={users} threads={threads} messages={messages} currentUser={currentUser} onSendMessage={handleSendMessage} orders={orders} onSelectOrder={setSelectedOrder} onUpdateOrderStatus={handleUpdateOrderStatus} onApprovalDecision={handleApprovalDecision} onProcureOrder={(o) => { setSelectedOrder(null); setOrderForProcurement(o); }} vendors={vendors} />
                 <EditScheduleModal isOpen={isEditScheduleModalOpen} onClose={() => setIsEditScheduleModalOpen(false)} cart={cartForScheduleEdit} onSave={() => { setIsEditScheduleModalOpen(false); }} />
+                <VendorInvoiceDetailModal
+                    isOpen={!!selectedVendorInvoice}
+                    onClose={() => setSelectedVendorInvoice(null)}
+                    invoice={selectedVendorInvoice}
+                    companyId={viewingCompanyId || currentUser?.companyId || ''}
+                    onUpdate={() => session && fetchInitialData(session)}
+                />
             </div>
         </PermissionsProvider>
     );

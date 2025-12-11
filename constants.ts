@@ -35,12 +35,26 @@ export const NAVIGATION_DATA: NavSection[] = [
       { name: 'Receiving', icon: ReceivingIcon },
     ],
   },
+
   {
-    title: 'FINANCIAL',
+    title: 'ACCOUNTS PAYABLE',
     items: [
-      { name: 'Transactions', icon: TransactionIcon },
-      { name: 'Reports', icon: DocumentReportIcon },
+      { name: 'Bills', icon: DocumentReportIcon },
+      { name: 'Bill Payments', icon: TransactionIcon },
       { name: 'Suppliers', icon: SupplierIcon },
+    ],
+  },
+  {
+    title: 'ACCOUNTS RECEIVABLE',
+    items: [
+      { name: 'Invoices', icon: DocumentReportIcon }, // Using DocumentReportIcon for now
+      { name: 'Property AR', icon: PropertiesIcon },    // Using PropertiesIcon for now as generic user icon
+    ],
+  },
+  {
+    title: 'FINANCIAL REPORTS',
+    items: [
+      { name: 'Reports', icon: DocumentReportIcon },
       { name: 'Chart of Accounts', icon: DocumentReportIcon },
     ],
   },

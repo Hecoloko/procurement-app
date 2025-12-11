@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { SearchIcon, PaperClipIcon } from './Icons';
 import { Order, PurchaseOrder, Vendor } from '../types';
-import ProcessPaymentModal from './ProcessPaymentModal';
+import RecordPaymentModal from './pages/accounts-payable/RecordPaymentModal';
 
 interface TransactionsProps {
     orders: Order[];
@@ -14,7 +14,7 @@ const Transactions: React.FC<TransactionsProps> = ({ orders, vendors, onUpdatePo
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedPo, setSelectedPo] = useState<{ orderId: string, po: PurchaseOrder, vendorName: string } | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [modalType, setModalType] = useState<'Invoice' | 'Payment' | 'ProcessPayment'>('Invoice');
+    const [modalType, setModalType] = useState<'Invoice' | 'Payment'>('Invoice');
 
     // Form State (Invoice)
     const [invoiceNumber, setInvoiceNumber] = useState('');
@@ -22,10 +22,6 @@ const Transactions: React.FC<TransactionsProps> = ({ orders, vendors, onUpdatePo
     const [dueDate, setDueDate] = useState('');
     const [amountDue, setAmountDue] = useState<number>(0);
     const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
-
-    // Form State (Legacy Manual Payment Record)
-    const [paymentMethod, setPaymentMethod] = useState('ACH');
-    const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
 
     const allPurchaseOrders = useMemo(() => {
         // ... (existing logic)
@@ -87,32 +83,8 @@ const Transactions: React.FC<TransactionsProps> = ({ orders, vendors, onUpdatePo
 
     const handleOpenPaymentModal = (item: { orderId: string, po: PurchaseOrder, vendorName: string }) => {
         setSelectedPo(item);
-        setModalType('ProcessPayment'); // Use the new Modal
-        setIsModalOpen(false); // Close generic, render specific below or manage state
-    };
-
-    // Wrapper for legacy modal (if needed later) or just redirect logic?
-    // Let's keep isModalOpen for the generic Invoice modal, and a separate conditional for payment?
-    // Or reuse isModalOpen.
-
-    const handleProcessPayment = async (paymentData: any) => {
-        if (!selectedPo) return;
-
-        console.log("Processing Payment with Data:", paymentData);
-        // Pass the payment data (settingsId, cardDetails) up to the parent handler
-        // The parent (App.tsx) will call paymentService.processPayment
-        const totalAmount = selectedPo.po.amountDue || (selectedPo.po.items || []).reduce((sum, i) => sum + (i.totalPrice || 0), 0);
-
-        await onUpdatePoPaymentStatus(selectedPo.orderId, selectedPo.po.id, {
-            paymentStatus: 'Paid',
-            paymentDate: new Date().toISOString(),
-            paymentMethod: 'Credit Card (Sola)',
-            amountDue: totalAmount, // Critical for payment processing
-            paymentMetadata: paymentData // Pass this through!
-        });
-
-        setSelectedPo(null);
-        setModalType('Invoice'); // Reset
+        setModalType('Payment');
+        setIsModalOpen(true);
     };
 
     const handleSubmitInvoice = async () => {
@@ -127,6 +99,30 @@ const Transactions: React.FC<TransactionsProps> = ({ orders, vendors, onUpdatePo
             invoiceUrl: invoiceFile ? URL.createObjectURL(invoiceFile) : undefined
         });
         setIsModalOpen(false);
+    };
+
+    const handleRecordPayment = async (data: { paymentMethod: string; transactionRef: string; paymentDate: string; receiptUrl?: string }) => {
+        if (!selectedPo) return;
+
+        console.log("Recording Payment:", data);
+
+        // Append Ref to Method for visibility in History (since we lack a transaction_ref column)
+        const methodWithRef = data.transactionRef ? `${data.paymentMethod} (Ref: ${data.transactionRef})` : data.paymentMethod;
+
+        try {
+            await onUpdatePoPaymentStatus(selectedPo.orderId, selectedPo.po.id, {
+                paymentStatus: 'Paid',
+                paymentDate: data.paymentDate,
+                paymentMethod: methodWithRef,
+                amountDue: 0,
+                // Do NOT set processPayment: true here, as this is a manual record
+                paymentMetadata: { ref: data.transactionRef, method: data.paymentMethod, recordedManual: true }
+            });
+            alert("Payment Recorded Successfully!");
+            setIsModalOpen(false);
+        } catch (e: any) {
+            alert(`Error: ${e.message}`);
+        }
     };
 
     return (
@@ -185,7 +181,7 @@ const Transactions: React.FC<TransactionsProps> = ({ orders, vendors, onUpdatePo
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             {view === 'Bills' && <button onClick={() => handleOpenInvoiceModal(item)} className="text-primary hover:text-primary/80 font-medium text-xs bg-primary/10 px-3 py-1.5 rounded-md transition-colors">Receive Invoice</button>}
-                                            {view === 'Payments' && <button onClick={() => { setSelectedPo(item); setModalType('ProcessPayment'); }} className="text-green-600 hover:text-green-700 font-medium text-xs bg-green-100 dark:bg-green-900/30 px-3 py-1.5 rounded-md transition-colors">Pay Bill</button>}
+                                            {view === 'Payments' && <button onClick={() => handleOpenPaymentModal(item)} className="text-green-600 hover:text-green-700 font-medium text-xs bg-green-100 dark:bg-green-900/30 px-3 py-1.5 rounded-md transition-colors">Pay Bill</button>}
                                             {view === 'History' && <span className="text-muted-foreground text-xs">Completed</span>}
                                         </td>
                                     </tr>
@@ -221,15 +217,14 @@ const Transactions: React.FC<TransactionsProps> = ({ orders, vendors, onUpdatePo
                 </div>
             )}
 
-            {/* New Process Payment Modal (Sola Integration) */}
-            {selectedPo && modalType === 'ProcessPayment' && (
-                <ProcessPaymentModal
-                    invoice={{
-                        invoice_number: selectedPo.po.invoiceNumber,
-                        amount: selectedPo.po.amountDue || 0
-                    }}
-                    onClose={() => { setSelectedPo(null); setModalType('Invoice'); }}
-                    onProcess={handleProcessPayment}
+            {/* Online Payment Modal */}
+            {isModalOpen && selectedPo && modalType === 'Payment' && (
+                <RecordPaymentModal
+                    isOpen={true}
+                    onClose={() => setIsModalOpen(false)}
+                    onSave={handleRecordPayment}
+                    amountDue={selectedPo.po.amountDue || 0}
+                    vendorName={selectedPo.vendorName}
                 />
             )}
         </div>
