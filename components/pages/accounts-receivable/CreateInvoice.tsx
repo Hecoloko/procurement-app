@@ -20,12 +20,9 @@ interface CreateInvoiceProps {
     onSaveSuccess: () => void;
 }
 
-import DebugBillback from '../../DebugBillback';
-
 const CreateInvoice: React.FC<CreateInvoiceProps> = ({ currentCompanyId, currentUser, products, customers, properties, units, initialBillableItems, onBack, onSaveSuccess }) => {
     // Wizard State
     const [viewState, setViewState] = useState<'edit' | 'preview' | 'ordering'>('edit');
-    const [debugMode, setDebugMode] = useState(false); // Toggle for debug
     const [emailSubject, setEmailSubject] = useState('Invoice from Company');
     const [emailBody, setEmailBody] = useState('Please find attached your invoice.');
 
@@ -39,24 +36,6 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ currentCompanyId, current
     const [selectedPropertyId, setSelectedPropertyId] = useState('');
     const [selectedUnitId, setSelectedUnitId] = useState('');
 
-    // Testing Utils
-    const generateRandomEmail = () => {
-        const domains = ['gmail.com', 'yahoo.com', 'outlook.com', 'example.com'];
-        const randomName = Math.random().toString(36).substring(7);
-        return `test.${randomName}@${domains[Math.floor(Math.random() * domains.length)]}`;
-    };
-
-    const handleGenerateEmail = () => {
-        // Find current Unit or Customer and update their email (mock update in UI state or separate email field)
-        // For this task, we assume we just set the email state for the invoice
-        const email = generateRandomEmail();
-        // Since we don't have a direct 'recipientEmail' state on the invoice form yet (it uses customer.email), 
-        // we might want to allow editing the email.
-        // For now, let's just log it or alert it to prove the feature works as per task.
-        alert(`Generated Test Email: ${email}`);
-        // In a real scenario, we'd update a 'recipientEmail' state or the customer object temporarily.
-    };
-
     const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
     const [dueDate, setDueDate] = useState('');
     const [items, setItems] = useState<Partial<InvoiceItem>[]>([]);
@@ -64,14 +43,37 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ currentCompanyId, current
     const [loading, setLoading] = useState(false);
     const [taxRate, setTaxRate] = useState<number>(8);
 
+    // Auto-select Default Property (Alpha Headquarters) if creating new invoice
+    useEffect(() => {
+        if ((!initialBillableItems || initialBillableItems.length === 0) && !selectedPropertyId && properties.length > 0) {
+            const defaultProp = properties.find(p => p.name.includes('Alpha Headquarters')) || properties[0];
+            if (defaultProp) {
+                setRecipientType('property');
+                setSelectedPropertyId(defaultProp.id);
+            }
+        }
+    }, [properties, initialBillableItems]);
+
+
     // Initialize from billable items
     useEffect(() => {
         if (initialBillableItems && initialBillableItems.length > 0) {
-            const firstCustId = initialBillableItems[0].customerId;
-            if (firstCustId && initialBillableItems.every(i => i.customerId === firstCustId)) {
-                setSelectedCustomerId(firstCustId);
+            const firstItem = initialBillableItems[0];
+
+            // Auto-detect recipient type and pre-fill details
+            if (firstItem.propertyId && firstItem.unitId) {
+                setRecipientType('property');
+                setSelectedPropertyId(firstItem.propertyId);
+                setSelectedUnitId(firstItem.unitId);
+            } else if (firstItem.customerId) {
+                setRecipientType('customer');
+                setSelectedCustomerId(firstItem.customerId);
             }
+
             mapAndSetItems(initialBillableItems);
+        } else {
+            // Default Date Setup if not editing existing items
+            setInvoiceDate(new Date().toISOString().split('T')[0]);
         }
     }, [initialBillableItems]);
 
@@ -165,13 +167,9 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ currentCompanyId, current
             }
 
             if (status === 'Sent') {
-                // Simulate "Sending Email"
-                // In real app, call an API to send email with 'emailSubject' and 'emailBody'
-                // Simulate "Sending Email"
-                // In real app, call an API to send email with 'emailSubject' and 'emailBody'
                 const recipientEmail = recipientType === 'customer'
                     ? customers.find(c => c.id === selectedCustomerId)?.email
-                    : 'unit-resident@example.com'; // Placeholder for Unit email, could be fetched or generated
+                    : 'unit-resident@example.com';
 
                 console.log('Sending email:', { to: recipientEmail, subject: emailSubject, body: emailBody });
                 alert(`Invoice Sent! Email queued to ${recipientEmail}.`);
@@ -201,7 +199,7 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ currentCompanyId, current
                 ? `${property?.name || 'Property'} - ${unit?.name || 'Unit'}`
                 : 'your account';
 
-            const invoiceNum = `INV-${Date.now()}`; // Ideally this matches the one generated on save, but for preview/email draft this is fine or we can move generation up
+            const invoiceNum = `INV-${Date.now()}`;
             const formattedDate = new Date(invoiceDate).toLocaleDateString();
             const formattedDueDate = dueDate ? new Date(dueDate).toLocaleDateString() : 'Due Upon Receipt';
 
@@ -342,7 +340,7 @@ Accounts Department`;
                         <div className="pt-4 flex justify-end gap-3">
                             <button onClick={onBack} className="px-4 py-2 rounded-lg border hover:bg-muted transition-colors">Cancel</button>
                             <button onClick={() => handleSave('Sent')} disabled={loading} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-bold hover:shadow-lg transition-all">
-                                {loading ? 'Sending...' : 'Confirm & Send Type'}
+                                {loading ? 'Sending...' : 'Confirm & Send'}
                             </button>
                         </div>
                     </div>
@@ -353,72 +351,72 @@ Accounts Department`;
 
     // RENDER: EDIT MODE (Default)
     return (
-        <div className="animate-in fade-in duration-300 max-w-4xl mx-auto pb-20">
-            <div className="flex items-center gap-4 mb-6">
+        <div className="animate-in fade-in duration-300 max-w-5xl mx-auto pb-20">
+            <div className="flex items-center gap-4 mb-8">
                 <button onClick={onBack} className="p-2 hover:bg-muted rounded-full text-muted-foreground hover:text-foreground transition-colors">
                     <ChevronLeftIcon className="w-6 h-6" />
                 </button>
                 <h1 className="text-3xl font-bold text-foreground">New Invoice</h1>
             </div>
 
-            <div className="bg-card rounded-2xl shadow-lg border border-border p-6 space-y-6">
-                <div className="mb-4">
-                    <button onClick={() => setDebugMode(!debugMode)} className="text-xs text-red-500 underline">Toggle Debugger</button>
-                    {debugMode && <DebugBillback />}
-                </div>
+            <div className="bg-card rounded-2xl shadow-sm border border-border p-8 space-y-8">
+
                 {/* Header Info */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <div className="flex gap-4 mb-4">
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input type="radio" checked={recipientType === 'customer'} onChange={() => setRecipientType('customer')} className="w-4 h-4 text-primary" />
-                                <span className="text-sm font-medium">Customer</span>
-                            </label>
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input type="radio" checked={recipientType === 'property'} onChange={() => setRecipientType('property')} className="w-4 h-4 text-primary" />
-                                <span className="text-sm font-medium">Property / Unit</span>
-                            </label>
-                            {/* Random Email Generation Button for Testing */}
-                            <button onClick={handleGenerateEmail} className="text-xs text-blue-500 underline ml-auto">
-                                Generate Random Email (Test)
-                            </button>
-                        </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-6">
+                        {/* Recipient Toggle - Only show if manually editing or empty */}
+                        {!initialBillableItems?.length && (
+                            <div className="flex gap-4 p-1 bg-muted/50 rounded-lg w-fit">
+                                <button
+                                    onClick={() => setRecipientType('customer')}
+                                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${recipientType === 'customer' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                >
+                                    Customer
+                                </button>
+                                <button
+                                    onClick={() => setRecipientType('property')}
+                                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${recipientType === 'property' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                >
+                                    Property / Unit
+                                </button>
+                            </div>
+                        )}
 
                         {recipientType === 'customer' ? (
                             <div>
-                                <label className="block text-sm font-medium mb-1.5 text-foreground">Customer</label>
+                                <label className="block text-sm font-medium mb-2 text-foreground">Customer</label>
                                 <select
                                     value={selectedCustomerId}
                                     onChange={e => setSelectedCustomerId(e.target.value)}
-                                    className="w-full px-4 py-2.5 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-foreground"
+                                    className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-foreground transition-shadow shadow-sm"
                                 >
                                     <option value="">Select a Customer</option>
                                     {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                 </select>
                             </div>
                         ) : (
-                            <div className="space-y-4">
+                            <div className="space-y-5">
                                 <div>
-                                    <label className="block text-sm font-medium mb-1.5 text-foreground">Property</label>
+                                    <label className="block text-sm font-medium mb-2 text-foreground">Property</label>
                                     <select
                                         value={selectedPropertyId}
                                         onChange={e => {
                                             setSelectedPropertyId(e.target.value);
                                             setSelectedUnitId(''); // Reset unit when property changes
                                         }}
-                                        className="w-full px-4 py-2.5 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-foreground"
+                                        className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-foreground transition-shadow shadow-sm"
                                     >
                                         <option value="">Select a Property</option>
                                         {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium mb-1.5 text-foreground">Unit</label>
+                                    <label className="block text-sm font-medium mb-2 text-foreground">Unit</label>
                                     <select
                                         value={selectedUnitId}
                                         onChange={e => setSelectedUnitId(e.target.value)}
                                         disabled={!selectedPropertyId}
-                                        className="w-full px-4 py-2.5 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none disabled:opacity-50 text-foreground"
+                                        className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none disabled:opacity-50 text-foreground transition-shadow shadow-sm disabled:cursor-not-allowed"
                                     >
                                         <option value="">Select a Unit</option>
                                         {units.filter(u => u.propertyId === selectedPropertyId).map(u => (
@@ -429,140 +427,146 @@ Accounts Department`;
                             </div>
                         )}
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+
+                    <div className="grid grid-cols-2 gap-6">
                         <div>
-                            <label className="block text-sm font-medium mb-1.5 text-foreground">Issue Date</label>
+                            <label className="block text-sm font-medium mb-2 text-foreground">Issue Date</label>
                             <input
                                 type="date"
                                 value={invoiceDate}
                                 onChange={e => setInvoiceDate(e.target.value)}
-                                className="w-full px-4 py-2.5 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
+                                className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary outline-none text-foreground shadow-sm"
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium mb-1.5 text-foreground">Due Date</label>
+                            <label className="block text-sm font-medium mb-2 text-foreground">Due Date</label>
                             <input
                                 type="date"
                                 value={dueDate}
                                 onChange={e => setDueDate(e.target.value)}
-                                className="w-full px-4 py-2.5 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
+                                className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary outline-none text-foreground shadow-sm"
                             />
                         </div>
                     </div>
                 </div>
 
                 {/* Items */}
-                <div>
-                    <div className="flex justify-between items-center mb-2 mt-8">
-                        <div className='flex items-center gap-4'>
-                            <h3 className="text-lg font-bold text-foreground">Items</h3>
-                            <button
-                                onClick={() => setIsBillbackModalOpen(true)}
-                                className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 bg-blue-50 dark:bg-blue-900/20 px-3 py-1.5 rounded-lg border border-blue-100 dark:border-blue-800 transition-colors"
-                            >
-                                <BriefcaseIcon className="w-4 h-4" /> Import Billable Items
+                <div className="pt-4">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-xl font-bold text-foreground">Invoice Items</h3>
+
+                        <div className="flex items-center gap-4">
+                            {/* Tax Rate Control */}
+                            <div className="flex items-center gap-2 bg-muted/30 px-3 py-1.5 rounded-lg border border-border">
+                                <span className="text-xs font-medium text-muted-foreground">Tax Rate:</span>
+                                <div className="relative group">
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.1"
+                                        value={taxRate}
+                                        onChange={(e) => setTaxRate(Number(e.target.value))}
+                                        className="w-12 bg-transparent text-right text-sm font-bold focus:outline-none border-b border-transparent focus:border-primary transition-colors"
+                                    />
+                                    <span className="text-xs text-muted-foreground font-bold ml-0.5">%</span>
+                                </div>
+                            </div>
+
+                            <button onClick={handleAddItem} className="text-sm font-semibold text-primary hover:text-primary/80 flex items-center gap-1.5 px-3 py-1.5 hover:bg-primary/10 rounded-lg transition-colors">
+                                <PlusIcon className="w-4 h-4" /> Add Item
                             </button>
                         </div>
-
-                        {/* Tax Rate Control */}
-                        <div className="flex items-center gap-2 bg-muted/30 p-1.5 rounded-lg border border-border">
-                            <span className="text-xs font-medium pl-2 text-foreground">Tax Rate:</span>
-                            <div className="relative">
-                                <input
-                                    type="number"
-                                    min="0"
-                                    step="0.1"
-                                    value={taxRate}
-                                    onChange={(e) => setTaxRate(Number(e.target.value))}
-                                    className="w-16 px-2 py-1 text-right text-sm bg-background border border-border rounded focus:ring-1 focus:ring-primary outline-none text-foreground"
-                                />
-                                <span className="absolute right-6 top-1 text-xs text-muted-foreground">%</span>
-                            </div>
-                        </div>
-
-                        <button onClick={handleAddItem} className="text-sm font-semibold text-primary hover:underline flex items-center gap-1 ml-4">
-                            <PlusIcon className="w-4 h-4" /> Add Item
-                        </button>
                     </div>
-                    <div className="overflow-x-auto border border-border rounded-xl">
+
+                    <div className="overflow-hidden border border-border rounded-xl shadow-sm">
                         <table className="w-full text-sm text-left">
-                            <thead className="bg-muted/50 text-xs uppercase text-muted-foreground border-b border-border">
+                            <thead className="bg-muted/30 text-xs uppercase text-muted-foreground font-semibold border-b border-border">
                                 <tr>
-                                    <th className="px-4 py-3 w-1/3">Item / Description</th>
-                                    <th className="px-4 py-3 w-20 text-center">Qty</th>
-                                    <th className="px-4 py-3 w-32 text-right">Price</th>
-                                    <th className="px-4 py-3 w-32 text-right">Total</th>
-                                    <th className="px-4 py-3 w-10"></th>
+                                    <th className="px-6 py-4 w-5/12">Item / Description</th>
+                                    <th className="px-6 py-4 w-24 text-center">Qty</th>
+                                    <th className="px-6 py-4 w-32 text-right">Price</th>
+                                    <th className="px-6 py-4 w-32 text-right">Total</th>
+                                    <th className="px-6 py-4 w-12"></th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border bg-card">
                                 {items.map((item, idx) => (
-                                    <tr key={idx}>
-                                        <td className="px-4 py-2">
+                                    <tr key={idx} className="group hover:bg-muted/20 transition-colors">
+                                        <td className="px-6 py-4">
                                             <input
                                                 type="text"
                                                 value={item.description}
                                                 onChange={e => handleUpdateItem(idx, 'description', e.target.value)}
-                                                placeholder="Description"
-                                                className="w-full bg-background border border-border rounded px-2 py-1 text-sm text-foreground focus:ring-1 focus:ring-primary outline-none placeholder-muted-foreground"
+                                                placeholder="Enter item description"
+                                                className="w-full bg-transparent border-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50 focus:ring-0"
                                             />
                                         </td>
-                                        <td className="px-4 py-2 text-center">
+                                        <td className="px-6 py-4 text-center">
                                             <input
                                                 type="number"
                                                 min="1"
                                                 value={item.quantity}
                                                 onChange={e => handleUpdateItem(idx, 'quantity', e.target.value)}
-                                                className="w-16 text-center bg-background border border-border rounded p-1 text-foreground focus:ring-1 focus:ring-primary outline-none"
+                                                className="w-16 text-center bg-muted/30 border border-transparent hover:border-border rounded p-1 text-foreground focus:ring-1 focus:ring-primary outline-none transition-all"
                                             />
                                         </td>
-                                        <td className="px-4 py-2 text-right">
-                                            <input
-                                                type="number"
-                                                min="0"
-                                                step="0.01"
-                                                value={item.unitPrice}
-                                                onChange={e => handleUpdateItem(idx, 'unitPrice', e.target.value)}
-                                                className="w-24 text-right bg-background border border-border rounded p-1 text-foreground focus:ring-1 focus:ring-primary outline-none"
-                                            />
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="relative">
+                                                <span className="absolute left-2 top-1.5 text-muted-foreground text-xs">$</span>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    step="0.01"
+                                                    value={item.unitPrice}
+                                                    onChange={e => handleUpdateItem(idx, 'unitPrice', e.target.value)}
+                                                    className="w-24 text-right bg-muted/30 border border-transparent hover:border-border rounded p-1 pl-4 text-foreground focus:ring-1 focus:ring-primary outline-none transition-all"
+                                                />
+                                            </div>
                                         </td>
-                                        <td className="px-4 py-2 text-right font-semibold text-foreground">
+                                        <td className="px-6 py-4 text-right font-bold text-foreground">
                                             ${(item.totalPrice || 0).toFixed(2)}
                                         </td>
-                                        <td className="px-4 py-2 text-center">
-                                            <button onClick={() => handleRemoveItem(idx)} className="text-muted-foreground hover:text-red-500 transition-colors">
+                                        <td className="px-6 py-4 text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button onClick={() => handleRemoveItem(idx)} className="text-muted-foreground hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20">
                                                 <TrashIcon className="w-5 h-5" />
                                             </button>
                                         </td>
                                     </tr>
                                 ))}
+                                {items.length === 0 && (
+                                    <tr>
+                                        <td colSpan={5} className="py-12 text-center text-muted-foreground italic">
+                                            No items added. Click "Add Item" to start.
+                                        </td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
                     </div>
                 </div>
 
                 {/* Footer Totals */}
-                <div className="flex flex-col items-end border-t border-border pt-4">
-                    <div className="w-full max-w-xs space-y-2">
+                <div className="flex flex-col items-end border-t border-border pt-6">
+                    <div className="w-full max-w-sm space-y-4 bg-muted/10 p-6 rounded-xl border border-border/50">
                         <div className="flex justify-between text-sm text-muted-foreground">
                             <span>Subtotal</span>
-                            <span>${subtotal.toFixed(2)}</span>
+                            <span className="font-medium text-foreground">${subtotal.toFixed(2)}</span>
                         </div>
-                        <div className="flex justify-between text-sm text-muted-foreground">
+                        <div className="flex justify-between text-sm text-muted-foreground items-center">
                             <span>Tax ({taxRate}%)</span>
-                            <span>${taxTotal.toFixed(2)}</span>
+                            <span className="font-medium text-foreground">${taxTotal.toFixed(2)}</span>
                         </div>
-                        <div className="flex justify-between text-lg font-bold text-foreground border-t border-border pt-2 mt-2">
-                            <span>Total</span>
-                            <span>${totalAmount.toFixed(2)}</span>
+                        <div className="flex justify-between text-xl font-bold text-foreground border-t border-border pt-4 mt-2">
+                            <span>Total Due</span>
+                            <span className="text-primary">${totalAmount.toFixed(2)}</span>
                         </div>
                     </div>
                 </div>
 
-                <div className="border-t border-border pt-6 flex justify-end gap-3">
-                    <button onClick={onBack} className="px-6 py-2.5 rounded-xl border border-border text-foreground font-semibold hover:bg-muted transition-colors">Cancel</button>
-                    <button onClick={() => handleSave('Draft')} disabled={loading} className="px-6 py-2.5 rounded-xl bg-muted text-foreground font-bold hover:bg-muted/80 transition-colors">Save Draft</button>
-                    <button onClick={() => setViewState('preview')} className="px-6 py-2.5 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 shadow-lg active:scale-95 transition-all">Preview & Send</button>
+                <div className="border-t border-border pt-6 flex justify-end gap-4">
+                    <button onClick={onBack} className="px-6 py-3 rounded-xl border border-border text-foreground font-semibold hover:bg-muted transition-colors">Cancel</button>
+                    <button onClick={() => handleSave('Draft')} disabled={loading} className="px-6 py-3 rounded-xl bg-muted text-foreground font-bold hover:bg-muted/80 transition-colors">Save as Draft</button>
+                    <button onClick={() => setViewState('preview')} className="px-8 py-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-lg shadow-blue-500/20 active:scale-95 transition-all">Review & Send Invoice</button>
                 </div>
             </div >
 
