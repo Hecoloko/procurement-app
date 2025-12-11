@@ -518,6 +518,7 @@ export interface BillableItem {
   totalAmount: number;
   status: 'Pending' | 'Invoiced' | 'Paid' | 'Waived';
   invoiceId?: string;
+  createdAt?: string; // ISO date
 }
 
 export interface ARLedgerEntry {
