@@ -480,9 +480,9 @@ Accounts Department`;
                                         step="0.1"
                                         value={taxRate}
                                         onChange={(e) => setTaxRate(Number(e.target.value))}
-                                        className="w-16 bg-muted/30 text-right pr-6 py-1 rounded text-sm font-bold focus:outline-none focus:ring-1 focus:ring-primary border border-transparent focus:border-primary transition-all"
+                                        className="w-16 bg-white text-black text-right pr-6 py-1 rounded text-sm font-bold focus:outline-none focus:ring-1 focus:ring-primary border border-gray-200 focus:border-primary transition-all shadow-sm"
                                     />
-                                    <span className="absolute right-2 text-muted-foreground text-xs font-bold pointer-events-none">%</span>
+                                    <span className="absolute right-2 text-gray-500 text-xs font-bold pointer-events-none">%</span>
                                 </div>
                             </div>
 
@@ -521,7 +521,7 @@ Accounts Department`;
                                                 min="1"
                                                 value={item.quantity}
                                                 onChange={e => handleUpdateItem(idx, 'quantity', e.target.value)}
-                                                className="w-16 text-center bg-muted/30 border border-transparent hover:border-border rounded p-1 text-foreground focus:ring-1 focus:ring-primary outline-none transition-all"
+                                                className="w-16 text-center bg-white text-black border border-gray-200 hover:border-primary rounded p-1 focus:ring-1 focus:ring-primary outline-none transition-all shadow-sm"
                                             />
                                         </td>
                                         <td className="px-6 py-4 text-right">
@@ -533,7 +533,7 @@ Accounts Department`;
                                                     step="0.01"
                                                     value={item.unitPrice}
                                                     onChange={e => handleUpdateItem(idx, 'unitPrice', e.target.value)}
-                                                    className="w-24 text-right bg-muted/30 border border-transparent hover:border-border rounded p-1 pl-4 text-foreground focus:ring-1 focus:ring-primary outline-none transition-all"
+                                                    className="w-24 text-right bg-white text-black border border-gray-200 hover:border-primary rounded p-1 pl-4 focus:ring-1 focus:ring-primary outline-none transition-all shadow-sm"
                                                 />
                                             </div>
                                         </td>
