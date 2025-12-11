@@ -219,6 +219,7 @@ export const App: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [loadingProgress, setLoadingProgress] = useState(0);
     const [dataError, setDataError] = useState<string | null>(null);
+    const lastUserIdRef = React.useRef<string | undefined>(undefined);
 
     const [userProfile, setUserProfile] = useState<AdminUser | null>(null);
     const [availableCompanies, setAvailableCompanies] = useState<Company[]>([]);
@@ -286,11 +287,24 @@ export const App: React.FC = () => {
 
         initSession();
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            setSession(session);
-            if (session) {
-                fetchInitialData(session);
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
+            // Only trigger full data fetch if the user has actually changed.
+            // This prevents re-loading on 'TOKEN_REFRESHED' or window focus (SIGNED_IN) events when the user is the same.
+            const newUserId = newSession?.user?.id;
+
+            if (newUserId === lastUserIdRef.current) {
+                // User is the same, just update the session for token rotation but don't blocking-load
+                setSession(newSession);
+                return;
+            }
+
+            lastUserIdRef.current = newUserId;
+            setSession(newSession);
+
+            if (newSession) {
+                fetchInitialData(newSession);
             } else {
+                // Logout case
                 setSession(null);
                 setCarts([]);
                 setOrders([]);
