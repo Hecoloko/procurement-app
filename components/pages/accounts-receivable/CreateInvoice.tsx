@@ -16,11 +16,13 @@ interface CreateInvoiceProps {
     properties: any[];
     units: any[];
     initialBillableItems?: BillableItem[];
+    preSelectedPropertyId?: string | null;
+    preSelectedUnitId?: string | null;
     onBack: () => void;
     onSaveSuccess: () => void;
 }
 
-const CreateInvoice: React.FC<CreateInvoiceProps> = ({ currentCompanyId, currentUser, products, customers, properties, units, initialBillableItems, onBack, onSaveSuccess }) => {
+const CreateInvoice: React.FC<CreateInvoiceProps> = ({ currentCompanyId, currentUser, products, customers, properties, units, initialBillableItems, preSelectedPropertyId, preSelectedUnitId, onBack, onSaveSuccess }) => {
     // Wizard State
     const [viewState, setViewState] = useState<'edit' | 'preview' | 'ordering'>('edit');
     const [emailSubject, setEmailSubject] = useState('Invoice from Company');
@@ -45,14 +47,23 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ currentCompanyId, current
 
     // Auto-select Default Property (Alpha Headquarters) if creating new invoice
     useEffect(() => {
-        if ((!initialBillableItems || initialBillableItems.length === 0) && !selectedPropertyId && properties.length > 0) {
+        if (initialBillableItems && initialBillableItems.length > 0) return;
+
+        if (preSelectedPropertyId) {
+            setRecipientType('property');
+            setSelectedPropertyId(preSelectedPropertyId);
+            setSelectedUnitId(preSelectedUnitId || '');
+            return;
+        }
+
+        if (!selectedPropertyId && properties.length > 0) {
             const defaultProp = properties.find(p => p.name.includes('Alpha Headquarters')) || properties[0];
             if (defaultProp) {
                 setRecipientType('property');
                 setSelectedPropertyId(defaultProp.id);
             }
         }
-    }, [properties, initialBillableItems]);
+    }, [properties, initialBillableItems, preSelectedPropertyId, preSelectedUnitId]);
 
 
     // Initialize from billable items

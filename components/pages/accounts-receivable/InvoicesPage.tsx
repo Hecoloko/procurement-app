@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import InvoiceList from './InvoiceList';
 import CreateInvoice from './CreateInvoice';
 import BillableItemsList from './BillableItemsList';
@@ -11,10 +11,19 @@ interface InvoicesPageProps {
     customers: Customer[];
     properties: any[];
     units: any[];
+    preSelectedPropertyId?: string | null;
+    preSelectedUnitId?: string | null;
+    onClearPreSelectedProperty?: () => void;
 }
-const InvoicesPage: React.FC<InvoicesPageProps> = ({ currentCompanyId, currentUser, products, customers, properties, units }) => {
+const InvoicesPage: React.FC<InvoicesPageProps> = ({ currentCompanyId, currentUser, products, customers, properties, units, preSelectedPropertyId, preSelectedUnitId, onClearPreSelectedProperty }) => {
     const [view, setView] = useState<'billable' | 'create'>('billable');
     const [selectedBillableItems, setSelectedBillableItems] = useState<BillableItem[]>([]);
+
+    useEffect(() => {
+        if (preSelectedPropertyId) {
+            setView('create');
+        }
+    }, [preSelectedPropertyId]);
 
     const handleCreateInvoiceFromBillable = (items: BillableItem[]) => {
         setSelectedBillableItems(items);
@@ -31,13 +40,17 @@ const InvoicesPage: React.FC<InvoicesPageProps> = ({ currentCompanyId, currentUs
                 properties={properties || []}
                 units={units || []}
                 initialBillableItems={selectedBillableItems}
+                preSelectedPropertyId={preSelectedPropertyId}
+                preSelectedUnitId={preSelectedUnitId}
                 onBack={() => {
                     setView('billable');
                     setSelectedBillableItems([]);
+                    if (onClearPreSelectedProperty) onClearPreSelectedProperty();
                 }}
                 onSaveSuccess={() => {
                     setView('billable');
                     setSelectedBillableItems([]);
+                    if (onClearPreSelectedProperty) onClearPreSelectedProperty();
                 }}
             />
         );

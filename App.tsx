@@ -20,7 +20,7 @@ import CreateCartFlowModal from './components/CreateCartFlowModal';
 import Properties from './components/Properties';
 import Integrations from './components/Integrations';
 import PaymentSettings from './components/PaymentSettings';
-import CustomerList from './components/pages/accounts-receivable/CustomerList';
+import PropertyARList from './components/pages/accounts-receivable/PropertyARList';
 import InvoicesPage from './components/pages/accounts-receivable/InvoicesPage';
 import VendorInvoicesList from './components/pages/accounts-payable/VendorInvoicesList';
 import VendorInvoiceDetailModal from './components/pages/accounts-payable/VendorInvoiceDetailModal';
@@ -224,6 +224,8 @@ export const App: React.FC = () => {
     const [userProfile, setUserProfile] = useState<AdminUser | null>(null);
     const [availableCompanies, setAvailableCompanies] = useState<Company[]>([]);
     const [viewingCompanyId, setViewingCompanyId] = useState<string | null>(null);
+    const [invoicePreSelectedPropertyId, setInvoicePreSelectedPropertyId] = useState<string | null>(null);
+    const [invoicePreSelectedUnitId, setInvoicePreSelectedUnitId] = useState<string | null>(null);
     const [currentCompanyName, setCurrentCompanyName] = useState<string>('ProcurePro');
 
     const [carts, setCarts] = useState<Cart[]>([]);
@@ -1454,6 +1456,12 @@ export const App: React.FC = () => {
         }
     };
 
+    const handleNavigateToPropertyInvoice = (propertyId: string, unitId?: string) => {
+        setInvoicePreSelectedPropertyId(propertyId);
+        setInvoicePreSelectedUnitId(unitId || null);
+        setActiveItem('Invoices');
+    };
+
     const handleAddVendorAccount = async (vendorId: string, accountData: { propertyId: string, accountNumber: string }) => {
         const id = `vacc-${Date.now()}`;
         const { data: newAcc } = await supabase.from('vendor_accounts').insert({ id, vendor_id: vendorId, property_id: accountData.propertyId, account_number: accountData.accountNumber }).select().single();
@@ -1675,8 +1683,23 @@ export const App: React.FC = () => {
         // AP & AR Routes
         if (activeItem === 'Bills') return <VendorInvoicesList companyId={viewingCompanyId || currentUser?.companyId || ''} onViewDetail={(inv) => { setSelectedVendorInvoice(inv); console.log("Selected Invoice:", inv); }} />;
         if (activeItem === 'Bill Payments') return <Transactions orders={orders} vendors={vendors} onUpdatePoPaymentStatus={handleUpdatePoPaymentStatus} />;
-        if (activeItem === 'Invoices') return <InvoicesPage currentCompanyId={viewingCompanyId || currentUser?.companyId || ''} currentUser={currentUser} products={products} customers={customers} properties={properties} units={units} />;
-        if (activeItem === 'Property AR') return <CustomerList currentCompanyId={viewingCompanyId || currentUser?.companyId || ''} />;
+        if (activeItem === 'Invoices') return (
+            <InvoicesPage
+                currentCompanyId={viewingCompanyId || currentUser?.companyId || ''}
+                currentUser={currentUser}
+                products={products}
+                customers={customers}
+                properties={properties}
+                units={units}
+                preSelectedPropertyId={invoicePreSelectedPropertyId}
+                preSelectedUnitId={invoicePreSelectedUnitId}
+                onClearPreSelectedProperty={() => {
+                    setInvoicePreSelectedPropertyId(null);
+                    setInvoicePreSelectedUnitId(null);
+                }}
+            />
+        );
+        if (activeItem === 'Property AR') return <PropertyARList properties={properties} units={units} onSelectProperty={handleNavigateToPropertyInvoice} onSelectUnit={(pid, uid) => handleNavigateToPropertyInvoice(pid, uid)} />;
 
         if (activeItem === 'Reports') return <Reports orders={orders} vendors={vendors} products={products} />;
         if (activeItem === 'Integrations') return <Integrations />;
