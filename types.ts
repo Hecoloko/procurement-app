@@ -457,6 +457,8 @@ export interface Invoice {
   createdBy?: string;
   items?: InvoiceItem[];
   customer?: Customer; // Joined
+  property?: Property; // Joined
+  unit?: Unit; // Joined
   stripeInvoiceId?: string;
   stripePaymentIntentId?: string;
 }

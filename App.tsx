@@ -24,6 +24,9 @@ import PropertyARList from './components/pages/accounts-receivable/PropertyARLis
 import InvoicesPage from './components/pages/accounts-receivable/InvoicesPage';
 import VendorInvoicesList from './components/pages/accounts-payable/VendorInvoicesList';
 import VendorInvoiceDetailModal from './components/pages/accounts-payable/VendorInvoiceDetailModal';
+import InvoiceTrackingList from './components/pages/accounts-receivable/InvoiceTrackingList';
+import InvoicePaymentPage from './components/pages/public/InvoicePaymentPage';
+const InvoiceHistoryPage = React.lazy(() => import('./components/pages/accounts-receivable/InvoiceHistoryPage'));
 
 import { Cart, Product, Order, OrderStatus, Vendor, Property, Unit, AdminUser, CommunicationThread, Message, CartType, CartItem, ItemApprovalStatus, Role, PurchaseOrder, Company, Account, Customer } from './types';
 import ProductDashboard from './components/ProductDashboard';
@@ -1478,6 +1481,11 @@ export const App: React.FC = () => {
     const originalUser = userProfile;
     const currentUser = impersonatingUser || originalUser;
 
+    // Public Routes (Bypass Auth)
+    if (window.location.hash.startsWith('#/pay/')) {
+        return <InvoicePaymentPage />;
+    }
+
     if (loading || (session && !currentUser && !dataError)) {
         return (
             <div className="flex h-screen flex-col items-center justify-center bg-background text-foreground px-6 font-sans">
@@ -1700,7 +1708,14 @@ export const App: React.FC = () => {
             />
         );
         if (activeItem === 'Property AR') return <PropertyARList properties={properties} units={units} onSelectProperty={handleNavigateToPropertyInvoice} onSelectUnit={(pid, uid) => handleNavigateToPropertyInvoice(pid, uid)} />;
-
+        if (activeItem === 'Invoice History') {
+            return (
+                <React.Suspense fallback={<div className="p-8 text-center">Loading...</div>}>
+                    <InvoiceHistoryPage companyId={viewingCompanyId || currentUser?.companyId || ''} />
+                </React.Suspense>
+            );
+        }
+        if (activeItem === 'Property AR') return <PropertyARList properties={properties} units={units} onSelectProperty={handleNavigateToPropertyInvoice} onSelectUnit={(pid, uid) => handleNavigateToPropertyInvoice(pid, uid)} />;
         if (activeItem === 'Reports') return <Reports orders={orders} vendors={vendors} products={products} />;
         if (activeItem === 'Integrations') return <Integrations />;
         if (activeItem === 'Properties') return <Properties properties={properties} units={units} orders={orders} users={users} onSelectOrder={setSelectedOrder} />;

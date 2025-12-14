@@ -48,6 +48,7 @@ export const NAVIGATION_DATA: NavSection[] = [
     title: 'ACCOUNTS RECEIVABLE',
     items: [
       { name: 'Invoices', icon: DocumentReportIcon }, // Using DocumentReportIcon for now
+      { name: 'Invoice History', icon: DocumentReportIcon }, // Tracking Feature
       { name: 'Property AR', icon: PropertiesIcon },    // Using PropertiesIcon for now as generic user icon
     ],
   },

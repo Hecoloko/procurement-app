@@ -32,6 +32,11 @@ Deno.serve(async (req) => {
                 amount: Math.round(amount * 100), // convert to cents
                 currency: currency || 'usd',
                 automatic_payment_methods: { enabled: true },
+                metadata: {
+                    invoiceId: invoiceId,
+                    companyId: 'comp-1', // Todo: pass actual companyId
+                    customerId: customerId
+                }
             })
 
             return new Response(

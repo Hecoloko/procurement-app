@@ -54,6 +54,18 @@ serve(async (req) => {
 
                     if (invoiceError) console.error("Error updating invoice:", invoiceError);
 
+                    // 1b. Log Activity
+                    await supabaseClient.from('invoice_activities').insert({
+                        invoice_id: invoiceId,
+                        activity_type: 'PAYMENT_RECEIVED',
+                        description: `Payment received via Stripe Invoice`,
+                        metadata: {
+                            stripe_id: invoice.id,
+                            amount: invoice.amount_paid / 100,
+                            currency: invoice.currency
+                        }
+                    });
+
                     // 2. Create AR Ledger Entry
                     if (customerId) {
                         const { error: ledgerError } = await supabaseClient
@@ -62,8 +74,7 @@ serve(async (req) => {
                                 company_id: companyId,
                                 customer_id: customerId,
                                 type: 'Payment',
-                                amount: -(invoice.amount_paid / 100), // Payment reduces balance? Or Ledger tracks movements. Usually Payment is Credit (-). 
-                                // Let's simplify: In AR, Debit (+) is Invoice, Credit (-) is Payment.
+                                amount: -(invoice.amount_paid / 100),
                                 description: `Payment for Invoice #${invoice.number}`,
                                 reference_id: invoiceId,
                                 transaction_date: new Date().toISOString()
@@ -89,6 +100,34 @@ serve(async (req) => {
                         status: pi.status,
                         metadata: pi.metadata
                     });
+
+                    // Log Activity if invoiceId is present
+                    const invoiceId = pi.metadata?.invoiceId;
+                    if (invoiceId) {
+                        // Update Invoice as Paid
+                        await supabaseClient
+                            .from("invoices")
+                            .update({
+                                status: "Paid",
+                                stripe_payment_intent_id: pi.id,
+                                amount_paid: pi.amount / 100,
+                                payment_date: new Date().toISOString(),
+                                balance_due: 0
+                            })
+                            .eq("id", invoiceId);
+
+                        // Log Activity
+                        await supabaseClient.from('invoice_activities').insert({
+                            invoice_id: invoiceId,
+                            activity_type: 'PAYMENT_RECEIVED',
+                            description: `Payment received via Card`,
+                            metadata: {
+                                stripe_pi_id: pi.id,
+                                amount: pi.amount / 100,
+                                card: pi.payment_method_types?.[0] || 'card'
+                            }
+                        });
+                    }
                 }
                 break;
             }

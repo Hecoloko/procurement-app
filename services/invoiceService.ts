@@ -2,10 +2,33 @@ import { supabase } from '../supabaseClient';
 import { Invoice, InvoiceItem } from '../types';
 
 export const invoiceService = {
+    async logActivity(invoiceId: string, activityType: string, description: string, metadata: any = {}) {
+        const { error } = await supabase
+            .from('invoice_activities')
+            .insert([{
+                invoice_id: invoiceId,
+                activity_type: activityType,
+                description: description,
+                metadata: metadata
+            }]);
+        if (error) console.error("Failed to log activity:", error);
+    },
+
+    async getActivities(invoiceId: string) {
+        const { data, error } = await supabase
+            .from('invoice_activities')
+            .select('*')
+            .eq('invoice_id', invoiceId)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        return data;
+    },
+
     async getInvoices(companyId: string) {
         const { data, error } = await supabase
             .from('invoices')
-            .select('*, customer:customers(name)')
+            .select('*, customer:customers(name), property:properties(name), unit:units(name)')
             .eq('company_id', companyId)
             .order('created_at', { ascending: false });
 
@@ -15,18 +38,22 @@ export const invoiceService = {
             id: inv.id,
             companyId: inv.company_id,
             customerId: inv.customer_id,
+            propertyId: inv.property_id,
+            unitId: inv.unit_id,
             invoiceNumber: inv.invoice_number,
             status: inv.status,
             issueDate: inv.issue_date,
             dueDate: inv.due_date,
             subtotal: inv.subtotal,
             taxTotal: inv.tax_total,
-            totalAmount: inv.total_amount,
+            totalAmount: inv.amount, // Correct mapping from DB column 'amount'
             amountPaid: inv.amount_paid,
             balanceDue: inv.balance_due,
             notes: inv.notes,
             createdBy: inv.created_by,
-            customer: { name: inv.customer?.name } // flattened for list view
+            customer: { name: inv.customer?.name },
+            property: inv.property ? { name: inv.property.name } : undefined,
+            unit: inv.unit ? { name: inv.unit.name } : undefined
         })) as Invoice[];
     },
 
@@ -81,13 +108,16 @@ export const invoiceService = {
             .insert([{
                 company_id: invoice.companyId,
                 customer_id: invoice.customerId,
+                property_id: invoice.propertyId, // Add property linking
+                unit_id: invoice.unitId,         // Add unit linking
                 invoice_number: invoice.invoiceNumber,
                 status: invoice.status || 'Draft',
                 issue_date: invoice.issueDate,
                 due_date: invoice.dueDate,
                 subtotal: invoice.subtotal,
                 tax_total: invoice.taxTotal,
-                total_amount: invoice.totalAmount,
+                amount: invoice.totalAmount,     // Map to DB column 'amount'
+                invoice_type: 'Standard',        // Required DB column
                 notes: invoice.notes,
                 created_by: invoice.createdBy
             }])
@@ -115,7 +145,7 @@ export const invoiceService = {
             throw itemsError;
         }
 
-        return invoiceId;
+        return invData;
     },
 
     async createPaymentIntent(amount: number) {

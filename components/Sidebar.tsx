@@ -67,6 +67,7 @@ const navItemPermissions: Record<string, Permission> = {
   'Reports': 'reports:view',
   'Suppliers': 'suppliers:view',
   'Invoices': 'orders:view', // Reuse orders permission for now
+  'Invoice History': 'orders:view',
   'Property AR': 'suppliers:view', // Reuse suppliers permission for now
   'Integrations': 'integrations:view',
   'Company Settings': 'settings:view',

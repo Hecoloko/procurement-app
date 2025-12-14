@@ -3,6 +3,7 @@ import { Customer, Product, Invoice, InvoiceItem } from '../../../types';
 import { customerService } from '../../../services/customerService';
 import { invoiceService } from '../../../services/invoiceService';
 import { billbackService } from '../../../services/billbackService';
+import { supabase } from '../../../supabaseClient';
 import UnbilledItemsModal from './UnbilledItemsModal';
 import { ChevronLeftIcon, PlusIcon, TrashIcon, BriefcaseIcon } from '../../Icons';
 
@@ -27,6 +28,8 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ currentCompanyId, current
     const [viewState, setViewState] = useState<'edit' | 'preview' | 'ordering'>('edit');
     const [emailSubject, setEmailSubject] = useState('Invoice from Company');
     const [emailBody, setEmailBody] = useState('Please find attached your invoice.');
+    const [emailMode, setEmailMode] = useState<'edit' | 'preview'>('edit');
+    const [recipientEmail, setRecipientEmail] = useState('');
 
     // Billback State
     const [isBillbackModalOpen, setIsBillbackModalOpen] = useState(false);
@@ -179,12 +182,100 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ currentCompanyId, current
             }
 
             if (status === 'Sent') {
-                const recipientEmail = recipientType === 'customer'
-                    ? customers.find(c => c.id === selectedCustomerId)?.email
-                    : 'unit-resident@example.com';
+                // Use the state variable 'recipientEmail' which the user can edit
+                if (!recipientEmail) {
+                    alert('Please enter a recipient email.');
+                    setLoading(false);
+                    return;
+                }
 
-                console.log('Sending email:', { to: recipientEmail, subject: emailSubject, body: emailBody });
-                alert(`Invoice Sent! Email queued to ${recipientEmail}.`);
+                // Finalize the email body with the real invoice ID
+                // Use dynamic origin to ensure links work in all environments (Local, Preview, Prod)
+                const baseUrl = window.location.origin;
+                const finalLink = `${baseUrl}/#/pay/${invoiceResponse.id}`;
+
+                // Replace both the Handlebars style and Markdown link style for robust support
+                let finalBody = emailBody.replace('{{PAYMENT_LINK}}', finalLink);
+
+                // Match [Label](URL) pattern
+                const markdownLinkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+                const parsedBody = finalBody.replace(markdownLinkRegex, (match, label, url) => {
+                    return `<a href="${url}" style="color: #0070f3; text-decoration: underline;">${label}</a>`;
+                });
+
+                // Improved Email Template with Brand Theme (Yellow/White)
+                const brandYellow = '#FAC02E'; // Approximate Rivian Yellow from OKLCH
+                const brandBlack = '#1a1a1a';
+
+                const emailHtml = `
+                    <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f9f9f9; padding: 40px 0;">
+                        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                            
+                            <!-- Header with Logo -->
+                            <div style="background-color: ${brandYellow}; padding: 30px 20px; text-align: center;">
+                                <img src="https://ui-avatars.com/api/?name=Procurement+Pro&background=ffffff&color=1a1a1a&size=80&rounded=true&font-size=0.4" alt="Procurement Pro" style="width: 80px; height: 80px; border-radius: 50%; border: 4px solid #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            </div>
+
+                            <!-- Content -->
+                            <div style="padding: 40px 30px; color: ${brandBlack};">
+                                <h2 style="margin: 0 0 20px 0; font-size: 24px; font-weight: 700; color: ${brandBlack}; text-align: center;">
+                                    ${emailSubject}
+                                </h2>
+                                
+                                <div style="font-size: 16px; line-height: 1.6; color: #4a4a4a; white-space: pre-wrap;">${parsedBody}</div>
+
+                                <!-- Call to Action -->
+                                <div style="text-align: center; margin-top: 40px; padding-top: 30px; border-top: 1px solid #f0f0f0;">
+                                    <a href="${finalLink}" style="background-color: ${brandYellow}; color: ${brandBlack}; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 18px; display: inline-block; transition: background-color 0.2s;">
+                                        Pay Invoice Now
+                                    </a>
+                                    <p style="margin-top: 15px; font-size: 14px; color: #888;">
+                                        Or <a href="${finalLink}" style="color: ${brandBlack}; text-decoration: underline;">view invoice details</a>
+                                    </p>
+                                    
+                                    <div style="margin-top: 30px;">
+                                        <p style="font-size: 12px; color: #aaa; margin-bottom: 10px;">Scan to Pay</p>
+                                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(finalLink)}" alt="Payment QR Code" style="width: 120px; height: 120px; border: 4px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Footer -->
+                            <div style="background-color: #1a1a1a; padding: 20px; text-align: center; color: #888; font-size: 12px;">
+                                <p style="margin: 0 0 10px 0; color: #aaa; font-weight: bold;">Alpha Property Management</p>
+                                <p style="margin: 0;">123 Business Rd, Commerce City</p>
+                                <p style="margin: 10px 0 0 0;">&copy; ${new Date().getFullYear()} Procurement Pro. All rights reserved.</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                try {
+                    console.log('Invoking send-email function...');
+                    const { data, error } = await supabase.functions.invoke('send-email', {
+                        body: {
+                            to: recipientEmail,
+                            subject: emailSubject,
+                            html: emailHtml
+                        }
+                    });
+
+                    if (error) {
+                        console.error('Email function error:', error);
+                        // FORCE HMR UPDATE: Showing specific error in alert
+                        alert(`Invoice Created, but Email failed to send: ${JSON.stringify(error)}\n\nInvoice ID: ${invoiceResponse.id}`);
+                    } else {
+                        console.log('Email sent successfully:', data);
+                        // Log activity
+                        const { invoiceService } = await import('../../../services/invoiceService');
+                        await invoiceService.logActivity(invoiceResponse.id, 'EMAIL_SENT', `Invoice email sent to ${recipientEmail}`, { recipient: recipientEmail, subject: emailSubject });
+
+                        alert(`Invoice Sent! Email dispatch confirmed to ${recipientEmail}`);
+                    }
+                } catch (invokeErr: any) {
+                    console.error('Invocation failed:', invokeErr);
+                    alert('Invoice saved, but email service failed: ' + (invokeErr?.message || JSON.stringify(invokeErr)));
+                }
             }
 
             onSaveSuccess();
@@ -201,8 +292,12 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ currentCompanyId, current
 
     // Auto-generate email when entering preview
     useEffect(() => {
+        const customer = customers.find(c => c.id === selectedCustomerId);
+        if (customer) {
+            setRecipientEmail(customer.email || '');
+        }
+
         if (viewState === 'preview') {
-            const customer = customers.find(c => c.id === selectedCustomerId);
             const property = properties.find(p => p.id === selectedPropertyId);
             const unit = units.find(u => u.id === selectedUnitId);
 
@@ -239,6 +334,14 @@ Due Date:       ${formattedDueDate}
 Total Amount Due: $${currentTotal.toFixed(2)}
 
 Please arrange for payment by the due date to ensure continued service.
+
+Payment Options:
+----------------------------------------
+You can pay this invoice online instantly via Credit Card or Bank Transfer:
+
+[Click Here to Pay Online]({{PAYMENT_LINK}})
+
+Or scan the QR code attached to this email.
 
 If you have any questions regarding this invoice, please contact our
 Accounts Receivable team at billing@mycompany.com.
@@ -334,24 +437,88 @@ Accounts Department`;
                     </div>
 
                     {/* Email Preview */}
-                    <div className="bg-card p-6 rounded-xl border border-border space-y-6 h-fit sticky top-6">
-                        <h3 className="font-bold text-lg">Email Composer</h3>
+                    {/* Email Composer */}
+                    <div className="bg-card p-6 rounded-xl border border-border space-y-6 h-fit sticky top-6 flex flex-col">
+                        <div className="flex justify-between items-center">
+                            <h3 className="font-bold text-lg">Email Composer</h3>
+                            <div className="flex bg-muted rounded-lg p-1">
+                                <button
+                                    onClick={() => setEmailMode('edit')}
+                                    className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${emailMode === 'edit' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                >
+                                    Edit
+                                </button>
+                                <button
+                                    onClick={() => setEmailMode('preview')}
+                                    className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${emailMode === 'preview' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                >
+                                    Preview
+                                </button>
+                            </div>
+                        </div>
+
                         <div>
                             <label className="block text-sm font-medium mb-1">To</label>
-                            <input disabled value={customer?.email || 'customer@example.com'} className="w-full p-2 rounded border bg-muted text-muted-foreground" />
+                            <input
+                                value={recipientEmail}
+                                onChange={e => setRecipientEmail(e.target.value)}
+                                placeholder="customer@example.com"
+                                className="w-full p-2 rounded border bg-background text-foreground"
+                            />
                         </div>
                         <div>
                             <label className="block text-sm font-medium mb-1">Subject</label>
                             <input value={emailSubject} onChange={e => setEmailSubject(e.target.value)} className="w-full p-2 rounded border bg-background text-foreground" />
                         </div>
-                        <div>
+
+                        <div className="flex-1 min-h-[300px]">
                             <label className="block text-sm font-medium mb-1">Message</label>
-                            <textarea rows={15} value={emailBody} onChange={e => setEmailBody(e.target.value)} className="w-full p-2 rounded border bg-background text-foreground font-mono text-sm" />
+                            {emailMode === 'edit' ? (
+                                <textarea
+                                    rows={15}
+                                    value={emailBody}
+                                    onChange={e => setEmailBody(e.target.value)}
+                                    className="w-full h-full p-2 rounded border bg-background text-foreground font-mono text-sm resize-none focus:ring-2 focus:ring-primary outline-none"
+                                />
+                            ) : (
+                                <div className="w-full h-full p-4 rounded border bg-white text-gray-900 font-sans text-sm whitespace-pre-wrap leading-relaxed overflow-y-auto border-dashed border-gray-300">
+                                    {/* Advanced Markdown Link & Placeholder Rendering */}
+                                    {(() => {
+                                        // 1. Replace placeholder with demo link for preview
+                                        const demoUrl = `${window.location.origin}/#/pay/preview-${Date.now()}`;
+                                        const contentWithLink = emailBody.replace('{{PAYMENT_LINK}}', demoUrl);
+
+                                        // 2. Split by Markdown Links: [Text](URL)
+                                        return contentWithLink.split(/(\[[^\]]+\]\([^)]+\))/g).map((part, i) => {
+                                            const mdLinkMatch = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+
+                                            if (mdLinkMatch) {
+                                                const [_, text, url] = mdLinkMatch;
+                                                return (
+                                                    <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 font-bold underline" title={url}>
+                                                        {text}
+                                                    </a>
+                                                );
+                                            }
+
+                                            // 3. Fallback: Detect bare URLs in text that wasn't a Markdown link
+                                            return part.split(/(https?:\/\/[^\s]+)/g).map((subPart, j) =>
+                                                subPart.match(/^https?:\/\/[^\s]+$/) ? (
+                                                    <a key={`${i}-${j}`} href={subPart} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">
+                                                        {subPart}
+                                                    </a>
+                                                ) : subPart
+                                            );
+                                        });
+                                    })()}
+                                </div>
+                            )}
                         </div>
 
-                        <div className="pt-4 flex justify-end gap-3">
+                        <div className="pt-4 flex justify-end gap-3 border-t border-border">
                             <button onClick={onBack} className="px-4 py-2 rounded-lg border hover:bg-muted transition-colors">Cancel</button>
-                            <button onClick={() => handleSave('Sent')} disabled={loading} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-bold hover:shadow-lg transition-all">
+                            <button onClick={() => handleSave('Sent')} disabled={loading} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-bold hover:shadow-lg transition-all flex items-center gap-2">
+                                {loading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                                 {loading ? 'Sending...' : 'Confirm & Send'}
                             </button>
                         </div>
