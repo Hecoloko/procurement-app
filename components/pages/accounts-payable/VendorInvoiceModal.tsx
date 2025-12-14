@@ -112,10 +112,32 @@ const VendorInvoiceModal: React.FC<VendorInvoiceModalProps> = ({ isOpen, onClose
         setItems(items.filter((_, i) => i !== index));
     };
 
-    const handleLinkPO = (poId: string) => {
+    const handleLinkPO = async (poId: string) => {
         setSelectedPoId(poId);
-        // Logic to pull items from PO could go here
-        // For now just setting the ID
+        if (!poId) return;
+
+        // Fetch items from cart_items where purchase_order_id = poId
+        const { data: poItems, error } = await supabase
+            .from('cart_items')
+            .select('*')
+            .eq('purchase_order_id', poId);
+
+        if (error) {
+            console.error('Error fetching PO items:', error);
+            // alert('Failed to fetch PO items'); // Optional
+            return;
+        }
+
+        if (poItems && poItems.length > 0) {
+            const mappedItems: FormLineItem[] = poItems.map((item: any) => ({
+                id: item.id, // Use real ID
+                description: item.name || item.description || 'Item', // Fallback
+                quantity: item.quantity,
+                unit_price: item.unit_price,
+                total: (item.quantity * item.unit_price) // or item.total_price
+            }));
+            setItems(mappedItems);
+        }
     };
 
     const handleSubmit = async () => {

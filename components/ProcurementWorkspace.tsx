@@ -41,6 +41,7 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
   const [itemPriceOverrides, setItemPriceOverrides] = useState<Record<string, number>>({});
   const [comparisonProduct, setComparisonProduct] = useState<Product | null>(null);
   const [comparisonItemId, setComparisonItemId] = useState<string | null>(null);
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const { can } = usePermissions();
 
   const canCreatePOs = can('purchaseOrders:create');
@@ -137,10 +138,19 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
     const posByVendor: Record<string, CartItem[]> = {};
     const assignedItemIds = Object.keys(itemVendorAssignments);
 
-    itemsToAssign.forEach(item => {
+    const assignedItemIds = Object.keys(itemVendorAssignments);
+    const selectedList = itemsToAssign.filter(item => selectedItems.has(item.id));
+
+    if (selectedList.length === 0) {
+      alert("Please select at least one item to convert to PO.");
+      return;
+    }
+
+    selectedList.forEach(item => {
       // Use direct lookup to be safe against potential type mismatches (string vs number)
       // and to avoid O(N*M) complexity (though N is small here)
-      const vendorId = itemVendorAssignments[item.id];
+      const product = products.find(p => p.sku === item.sku);
+      const vendorId = itemVendorAssignments[item.id] || product?.vendorId || item.vendorId;
 
       if (vendorId) {
         if (!posByVendor[vendorId]) {
@@ -185,6 +195,7 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
     onOrderComplete(updatedOrder);
     setItemVendorAssignments({});
     setItemPriceOverrides({}); // Reset overrides
+    setSelectedItems(new Set());
     setActiveTab('manage');
   };
 
@@ -212,7 +223,21 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
         <table className="w-full text-sm border-collapse min-w-[600px]">
           <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-50 dark:bg-white/5">
             <tr>
-              <th className="px-6 py-3 text-left font-bold rounded-tl-2xl">Product</th>
+              <th className="px-6 py-3 text-left font-bold rounded-tl-2xl">
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedItems(new Set(itemsToAssign.map(i => i.id)));
+                    } else {
+                      setSelectedItems(new Set());
+                    }
+                  }}
+                  checked={itemsToAssign.length > 0 && selectedItems.size === itemsToAssign.length}
+                />
+              </th>
+              <th className="px-6 py-3 text-left font-bold">Product</th>
               <th className="px-6 py-3 text-center font-bold">Qty</th>
               <th className="px-6 py-3 text-right font-bold">Unit Price</th>
               <th className="px-6 py-3 text-right font-bold">Total Price</th>
@@ -232,7 +257,20 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
 
               return (
                 <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
-                  <td className={`px-6 py-4 font-bold text-gray-900 dark:text-white ${isLast ? 'rounded-bl-2xl' : ''}`}>{item.name}</td>
+                  <td className={`px-6 py-4 ${isLast ? 'rounded-bl-2xl' : ''}`}>
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                      checked={selectedItems.has(item.id)}
+                      onChange={(e) => {
+                        const newSet = new Set(selectedItems);
+                        if (e.target.checked) newSet.add(item.id);
+                        else newSet.delete(item.id);
+                        setSelectedItems(newSet);
+                      }}
+                    />
+                  </td>
+                  <td className="px-6 py-4 font-bold text-gray-900 dark:text-white">{item.name}</td>
                   <td className="px-6 py-4 text-center font-medium">{item.quantity}</td>
                   <td className="px-6 py-4 text-right font-medium">
                     <div className="flex items-center justify-end gap-1">
@@ -332,10 +370,10 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
         <div className="flex justify-end mt-6">
           <button
             onClick={handleCreatePOs}
-            disabled={Object.keys(itemVendorAssignments).length === 0}
+            disabled={selectedItems.size === 0}
             className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-xl transition-colors duration-200 active:scale-95 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed shadow-lg shadow-green-500/20"
           >
-            Create Purchase Order(s)
+            Create Purchase Order(s) ({selectedItems.size})
           </button>
         </div>
       )}

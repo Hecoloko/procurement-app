@@ -31,6 +31,7 @@ export interface CartItem {
   approvalStatus?: ItemApprovalStatus;
   rejectionReason?: string;
   vendorId?: string;
+  purchaseOrderId?: string;
 }
 
 export type RecurringFrequency = 'Weekly' | 'Bi-weekly' | 'Monthly' | 'Quarterly';
