@@ -154,6 +154,7 @@ const mapOrder = (dbOrder: any, products: Product[]): Order => {
     const purchaseOrders: PurchaseOrder[] = (dbOrder.purchase_orders || []).map((dbPO: any) => {
         const poItems = items.filter(item => {
             if (item.purchaseOrderId) {
+                console.log("DEBUG: mapOrder mapping by PO ID", { itemId: item.id, itemPoId: item.purchaseOrderId, dbPoId: dbPO.id, match: item.purchaseOrderId === dbPO.id });
                 return item.purchaseOrderId === dbPO.id;
             }
             const product = products.find(p => p.sku === item.sku);
@@ -1110,35 +1111,61 @@ export const App: React.FC = () => {
             else await fetchInitialData(session);
         } else await fetchInitialData(session);
     };
-
     const handleSaveOrder = async (updatedOrder: Order) => {
+        // Optimistic update to prevent UI flash/reset
+        setOrderForProcurement(updatedOrder);
+        setOrders(prev => prev.map(o => o.id === updatedOrder.id ? updatedOrder : o));
+        if (selectedOrder?.id === updatedOrder.id) setSelectedOrder(updatedOrder);
+
         if (updatedOrder.status) await supabase.from('orders').update({ status: updatedOrder.status }).eq('id', updatedOrder.id);
         if (updatedOrder.purchaseOrders) {
             for (const po of updatedOrder.purchaseOrders) {
                 const calculatedAmount = (po.items || []).reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+                const finalAmount = po.amountDue || calculatedAmount;
+                const roundedAmount = Math.round(finalAmount * 100) / 100; // Round to 2 decimals
+
                 const poPayload = {
                     id: po.id,
                     original_order_id: updatedOrder.id,
                     vendor_id: po.vendorId,
-                    status: po.status,
+                    status: po.status || 'Issued',
                     eta: po.eta,
                     carrier: po.carrier,
                     tracking_number: po.trackingNumber,
                     vendor_confirmation_number: po.vendorConfirmationNumber,
                     invoice_number: po.invoiceNumber,
                     invoice_url: po.invoiceUrl,
-                    amount_due: po.amountDue || calculatedAmount
+                    amount_due: roundedAmount
                 };
-                await supabase.from('purchase_orders').upsert(poPayload);
+
+                console.log("DEBUG: Upserting PO", poPayload);
+                const { error: poError } = await supabase.from('purchase_orders').upsert(poPayload);
+
+                if (poError) {
+                    console.error("FATAL: Failed to create/update PO", { poId: po.id, error: poError.message, details: poError.details, hint: poError.hint });
+                    // If PO creation fails, item linking WILL fail with FK violation. Stop here?
+                    // continue; 
+                }
 
                 if (po.items && po.items.length > 0) {
                     for (const item of po.items) {
-                        await supabase.from('cart_items').update({
-                            purchase_order_id: po.id,
-                            vendor_id: po.vendorId,
-                            unit_price: item.unitPrice,
-                            total_price: item.quantity * item.unitPrice
-                        }).eq('id', item.id);
+                        // Real Fix: 'total_price' is a GENERATED column in DB. Do not update it.
+                        // Only update unit_price (if needed) and linking IDs.
+                        const itemUpdatePayload = {
+                            purchase_order_id: po.id?.trim(),
+                            vendor_id: po.vendorId?.trim(),
+                            unit_price: safeNumber(item.unitPrice)
+                        };
+
+                        const { error: itemUpdateError } = await supabase.from('cart_items').update(itemUpdatePayload).eq('id', item.id);
+
+                        if (itemUpdateError) {
+                            console.error("FATAL: Failed to link item to PO", {
+                                itemId: item.id,
+                                error: JSON.stringify(itemUpdateError, null, 2),
+                                payload: itemUpdatePayload
+                            });
+                        }
                     }
                 }
             }
@@ -1151,682 +1178,683 @@ export const App: React.FC = () => {
         }
     };
 
-    const update: any = { status: newStatus };
-    if (proofUrl) update.delivery_proof_url = proofUrl;
-    await supabase.from('purchase_orders').update(update).eq('id', poId);
+    const handleUpdatePoStatus = async (orderId: string, poId: string, newStatus: any, proofUrl?: string) => {
+        const update: any = { status: newStatus };
+        if (proofUrl) update.delivery_proof_url = proofUrl;
+        await supabase.from('purchase_orders').update(update).eq('id', poId);
 
-    // Auto-create Bill on Received
-    if (newStatus === 'Received') {
+        // Auto-create Bill on Received
+        if (newStatus === 'Received') {
+            const currentUser = impersonatingUser || users?.find(u => u.id === session?.user?.id);
+            const targetCompany = viewingCompanyId || currentUser?.companyId;
+
+            // Check if bill exists
+            const { data: existingBills } = await supabase.from('vendor_invoices').select('id').eq('purchase_order_id', poId);
+            if (!existingBills || existingBills.length === 0) {
+                // Fetch PO details for Bill creation
+                const { data: poData } = await supabase.from('purchase_orders').select('*, purchase_order_items:cart_items(*)').eq('id', poId).single();
+
+                if (poData && poData.purchase_order_items) {
+                    const totalAmount = poData.purchase_order_items.reduce((sum: number, item: any) => sum + (item.quantity * item.unit_price), 0);
+
+                    // Create Draft Invoice
+                    const { data: newBill, error: billError } = await supabase.from('vendor_invoices').insert({
+                        company_id: targetCompany,
+                        vendor_id: poData.vendor_id,
+                        invoice_number: `BILL-${poId.slice(0, 8).toUpperCase()}`, // Temp number
+                        invoice_date: new Date().toISOString().split('T')[0],
+                        total_amount: totalAmount,
+                        status: 'Draft',
+                        purchase_order_id: poId
+                    }).select().single();
+
+                    if (newBill && !billError) {
+                        // Create Invoice Items
+                        const invoiceItems = poData.purchase_order_items.map((item: any) => ({
+                            invoice_id: newBill.id,
+                            description: item.name,
+                            quantity: item.quantity,
+                            unit_price: item.unit_price,
+                            total_price: item.quantity * item.unit_price
+                        }));
+                        await supabase.from('vendor_invoice_items').insert(invoiceItems);
+                    }
+                }
+            }
+        }
+
+        const { data: freshOrderData } = await supabase.from('orders').select('*, cart:carts(cart_items(*)), purchase_orders(*), order_status_history(*)').eq('id', orderId).single();
+
+        if (freshOrderData && freshOrderData.purchase_orders) {
+            const freshOrder = mapOrder(freshOrderData, products);
+            const purchaseOrders = freshOrder.purchaseOrders || [];
+            const allReceived = purchaseOrders.every((po: any) => po.status === 'Received');
+            const allShipped = purchaseOrders.every((po: any) => ['In Transit', 'Received'].includes(po.status));
+            let newOrderStatus = freshOrder.status;
+            if (allReceived && freshOrder.status !== 'Completed') {
+                newOrderStatus = 'Completed';
+            } else if (allShipped && freshOrder.status !== 'Completed' && freshOrder.status !== 'Shipped') {
+                newOrderStatus = 'Shipped';
+            }
+            if (newOrderStatus !== freshOrder.status) {
+                await handleUpdateOrderStatus(orderId, newOrderStatus);
+            } else {
+                setOrders(prev => prev.map(o => o.id === orderId ? freshOrder : o));
+                if (selectedOrder?.id === orderId) setSelectedOrder(freshOrder);
+            }
+        }
+    };
+
+    const handleSendMessage = async (threadId: string, content: string, taggedUserIds?: string[]) => {
+        await supabase.from('messages').insert({ id: `msg-${Date.now()}`, thread_id: threadId, sender_id: session.user.id, content: content, tagged_user_ids: taggedUserIds || [] });
+        await supabase.from('communication_threads').update({ last_message_at: new Date().toISOString(), last_message_snippet: content.substring(0, 50) }).eq('id', threadId);
+        const { data } = await supabase.from('messages').select('*');
+        if (data) setMessages(data.map(mapMessage));
+        const targetCompany = viewingCompanyId || users?.find(u => u.id === session?.user?.id)?.companyId;
+        if (targetCompany) {
+            const { data: tData } = await supabase.from('communication_threads').select('*').eq('company_id', targetCompany);
+            if (tData) setThreads(tData.map(mapThread));
+        }
+    };
+
+    const handleStartThread = async (participantIds: string[]): Promise<string> => {
         const currentUser = impersonatingUser || users?.find(u => u.id === session?.user?.id);
         const targetCompany = viewingCompanyId || currentUser?.companyId;
+        const newThreadId = `thread-${Date.now()}`;
+        const allParticipants = Array.from(new Set([...participantIds, session.user.id]));
+        const { data } = await supabase.from('communication_threads').insert({
+            id: newThreadId,
+            company_id: targetCompany,
+            participant_ids: allParticipants,
+            subject: 'New Conversation',
+            last_message_snippet: 'Started a new thread',
+            is_read: true
+        }).select().single();
+        if (data) {
+            setThreads(prev => [mapThread(data), ...prev]);
+            return data.id;
+        }
+        return '';
+    };
 
-        // Check if bill exists
-        const { data: existingBills } = await supabase.from('vendor_invoices').select('id').eq('purchase_order_id', poId);
-        if (!existingBills || existingBills.length === 0) {
-            // Fetch PO details for Bill creation
-            const { data: poData } = await supabase.from('purchase_orders').select('*, purchase_order_items:cart_items(*)').eq('id', poId).single();
+    const handleNavigation = (newItem: string) => {
+        setActiveItem(newItem);
+        setOrderForProcurement(null);
+        setIsCartDrawerOpen(false);
+        setIsQuickCartModalOpen(false);
+        setIsCreateCartModalOpen(false);
+    };
 
-            if (poData && poData.purchase_order_items) {
-                const totalAmount = poData.purchase_order_items.reduce((sum: number, item: any) => sum + (item.quantity * item.unit_price), 0);
+    const handleAddProperty = async (data: { name: string; userIds?: string[] }) => {
+        const currentUser = impersonatingUser || users?.find(u => u.id === session?.user?.id);
+        const targetCompany = viewingCompanyId || currentUser?.companyId;
+        if (!targetCompany) return;
+        const id = `prop-${Date.now()}`;
+        const { data: newProp } = await supabase.from('properties').insert({ id, company_id: targetCompany, name: data.name }).select().single();
 
-                // Create Draft Invoice
-                const { data: newBill, error: billError } = await supabase.from('vendor_invoices').insert({
-                    company_id: targetCompany,
-                    vendor_id: poData.vendor_id,
-                    invoice_number: `BILL-${poId.slice(0, 8).toUpperCase()}`, // Temp number
-                    invoice_date: new Date().toISOString().split('T')[0],
-                    total_amount: totalAmount,
-                    status: 'Draft',
-                    purchase_order_id: poId
-                }).select().single();
+        if (newProp) {
+            setProperties(prev => [...prev, { id: newProp.id, companyId: newProp.company_id, name: newProp.name, address: newProp.address }]);
 
-                if (newBill && !billError) {
-                    // Create Invoice Items
-                    const invoiceItems = poData.purchase_order_items.map((item: any) => ({
-                        invoice_id: newBill.id,
-                        description: item.name,
-                        quantity: item.quantity,
-                        unit_price: item.unit_price,
-                        total_price: item.quantity * item.unit_price
-                    }));
-                    await supabase.from('vendor_invoice_items').insert(invoiceItems);
-                }
+            // Assign users if selected
+            if (data.userIds && data.userIds.length > 0) {
+                const updates = data.userIds.map(async (userId) => {
+                    const user = users?.find(u => u.id === userId);
+                    if (user) {
+                        const newPropertyIds = [...(user.propertyIds || []), newProp.id];
+                        // Update Supabase
+                        await supabase.from('profiles').update({ property_ids: newPropertyIds }).eq('id', userId);
+                        // Update Local State
+                        setUsers(prev => prev.map(u => u.id === userId ? { ...u, propertyIds: newPropertyIds } : u));
+                    }
+                });
+                await Promise.all(updates);
             }
         }
-    }
+    };
 
-    const { data: freshOrderData } = await supabase.from('orders').select('*, cart:carts(cart_items(*)), purchase_orders(*), order_status_history(*)').eq('id', orderId).single();
+    const handleDeleteProperty = async (propertyId: string) => {
+        // Optimistically remove
+        setProperties(prev => prev.filter(p => p.id !== propertyId));
+        // Also remove units associated with this property
+        setUnits(prev => prev.filter(u => u.propertyId !== propertyId));
 
-    if (freshOrderData && freshOrderData.purchase_orders) {
-        const freshOrder = mapOrder(freshOrderData, products);
-        const purchaseOrders = freshOrder.purchaseOrders || [];
-        const allReceived = purchaseOrders.every((po: any) => po.status === 'Received');
-        const allShipped = purchaseOrders.every((po: any) => ['In Transit', 'Received'].includes(po.status));
-        let newOrderStatus = freshOrder.status;
-        if (allReceived && freshOrder.status !== 'Completed') {
-            newOrderStatus = 'Completed';
-        } else if (allShipped && freshOrder.status !== 'Completed' && freshOrder.status !== 'Shipped') {
-            newOrderStatus = 'Shipped';
+        const { error } = await supabase.from('properties').delete().eq('id', propertyId);
+        if (error) {
+            console.error("Error deleting property:", error);
+            alert(`Failed to delete property: ${error.message}`);
+            if (session) fetchInitialData(session);
         }
-        if (newOrderStatus !== freshOrder.status) {
-            await handleUpdateOrderStatus(orderId, newOrderStatus);
-        } else {
-            setOrders(prev => prev.map(o => o.id === orderId ? freshOrder : o));
-            if (selectedOrder?.id === orderId) setSelectedOrder(freshOrder);
-        }
-    }
-};
+    };
 
-const handleSendMessage = async (threadId: string, content: string, taggedUserIds?: string[]) => {
-    await supabase.from('messages').insert({ id: `msg-${Date.now()}`, thread_id: threadId, sender_id: session.user.id, content: content, tagged_user_ids: taggedUserIds || [] });
-    await supabase.from('communication_threads').update({ last_message_at: new Date().toISOString(), last_message_snippet: content.substring(0, 50) }).eq('id', threadId);
-    const { data } = await supabase.from('messages').select('*');
-    if (data) setMessages(data.map(mapMessage));
-    const targetCompany = viewingCompanyId || users?.find(u => u.id === session?.user?.id)?.companyId;
-    if (targetCompany) {
-        const { data: tData } = await supabase.from('communication_threads').select('*').eq('company_id', targetCompany);
-        if (tData) setThreads(tData.map(mapThread));
-    }
-};
+    const handleAddUnit = async (data: { propertyId: string, name: string }) => {
+        const id = `unit-${Date.now()}`;
+        const { data: newUnit } = await supabase.from('units').insert({ id, property_id: data.propertyId, name: data.name }).select().single();
+        if (newUnit) setUnits(prev => [...prev, { id: newUnit.id, propertyId: newUnit.property_id, name: newUnit.name }]);
+    };
 
-const handleStartThread = async (participantIds: string[]): Promise<string> => {
-    const currentUser = impersonatingUser || users?.find(u => u.id === session?.user?.id);
-    const targetCompany = viewingCompanyId || currentUser?.companyId;
-    const newThreadId = `thread-${Date.now()}`;
-    const allParticipants = Array.from(new Set([...participantIds, session.user.id]));
-    const { data } = await supabase.from('communication_threads').insert({
-        id: newThreadId,
-        company_id: targetCompany,
-        participant_ids: allParticipants,
-        subject: 'New Conversation',
-        last_message_snippet: 'Started a new thread',
-        is_read: true
-    }).select().single();
-    if (data) {
-        setThreads(prev => [mapThread(data), ...prev]);
-        return data.id;
-    }
-    return '';
-};
+    const handleDeleteUser = async (userId: string) => {
+        // Optimistically remove from local state
+        setUsers(prev => prev.filter(u => u.id !== userId));
 
-const handleNavigation = (newItem: string) => {
-    setActiveItem(newItem);
-    setOrderForProcurement(null);
-    setIsCartDrawerOpen(false);
-    setIsQuickCartModalOpen(false);
-    setIsCreateCartModalOpen(false);
-};
-
-const handleAddProperty = async (data: { name: string; userIds?: string[] }) => {
-    const currentUser = impersonatingUser || users?.find(u => u.id === session?.user?.id);
-    const targetCompany = viewingCompanyId || currentUser?.companyId;
-    if (!targetCompany) return;
-    const id = `prop-${Date.now()}`;
-    const { data: newProp } = await supabase.from('properties').insert({ id, company_id: targetCompany, name: data.name }).select().single();
-
-    if (newProp) {
-        setProperties(prev => [...prev, { id: newProp.id, companyId: newProp.company_id, name: newProp.name, address: newProp.address }]);
-
-        // Assign users if selected
-        if (data.userIds && data.userIds.length > 0) {
-            const updates = data.userIds.map(async (userId) => {
-                const user = users?.find(u => u.id === userId);
-                if (user) {
-                    const newPropertyIds = [...(user.propertyIds || []), newProp.id];
-                    // Update Supabase
-                    await supabase.from('profiles').update({ property_ids: newPropertyIds }).eq('id', userId);
-                    // Update Local State
-                    setUsers(prev => prev.map(u => u.id === userId ? { ...u, propertyIds: newPropertyIds } : u));
-                }
-            });
-            await Promise.all(updates);
-        }
-    }
-};
-
-const handleDeleteProperty = async (propertyId: string) => {
-    // Optimistically remove
-    setProperties(prev => prev.filter(p => p.id !== propertyId));
-    // Also remove units associated with this property
-    setUnits(prev => prev.filter(u => u.propertyId !== propertyId));
-
-    const { error } = await supabase.from('properties').delete().eq('id', propertyId);
-    if (error) {
-        console.error("Error deleting property:", error);
-        alert(`Failed to delete property: ${error.message}`);
-        if (session) fetchInitialData(session);
-    }
-};
-
-const handleAddUnit = async (data: { propertyId: string, name: string }) => {
-    const id = `unit-${Date.now()}`;
-    const { data: newUnit } = await supabase.from('units').insert({ id, property_id: data.propertyId, name: data.name }).select().single();
-    if (newUnit) setUnits(prev => [...prev, { id: newUnit.id, propertyId: newUnit.property_id, name: newUnit.name }]);
-};
-
-const handleDeleteUser = async (userId: string) => {
-    // Optimistically remove from local state
-    setUsers(prev => prev.filter(u => u.id !== userId));
-
-    const { error } = await supabase.from('profiles').delete().eq('id', userId);
-
-    if (error) {
-        console.error("Error deleting user:", error);
-        alert(`Failed to delete user: ${error.message}`);
-        // Re-fetch to sync state if failed
-        if (session) fetchInitialData(session);
-    }
-}
-
-const handleAddUser = async (userData: { name: string; email: string; password?: string; roleId: string; propertyIds: string[]; sendInvite?: boolean }) => {
-    const currentUser = impersonatingUser || users?.find(u => u.id === session?.user?.id);
-    const targetCompany = viewingCompanyId || currentUser?.companyId;
-    if (!targetCompany) return;
-
-    let newUserId = `user-${Date.now()}`;
-    let authError = null;
-
-    // If a password is provided, try to create the Auth User using a temporary client to avoid logging out the admin.
-    if (userData.password) {
-        // Create a temporary client that DOES NOT persist session (so we don't log out the admin)
-        const tempSupabase = createClient(supabaseUrl, supabaseKey, {
-            auth: {
-                persistSession: false,
-                autoRefreshToken: false,
-                detectSessionInUrl: false
-            }
-        });
-
-        const { data: authData, error } = await tempSupabase.auth.signUp({
-            email: userData.email,
-            password: userData.password,
-            options: {
-                data: {
-                    full_name: userData.name
-                }
-            }
-        });
+        const { error } = await supabase.from('profiles').delete().eq('id', userId);
 
         if (error) {
-            console.error("Auth creation error:", error);
-            alert(`Failed to create login account: ${error.message}. Profile will be created anyway.`);
-            authError = error;
-        } else if (authData.user) {
-            newUserId = authData.user.id; // Use the real UUID
+            console.error("Error deleting user:", error);
+            alert(`Failed to delete user: ${error.message}`);
+            // Re-fetch to sync state if failed
+            if (session) fetchInitialData(session);
         }
     }
 
-    // Insert (or Update if the trigger already created it from signUp) the Profile
-    // Upsert is safer here because if signUp succeeded, the trigger might have inserted a row already.
-    const { data: newUser, error: profileError } = await supabase.from('profiles').upsert({
-        id: newUserId,
-        company_id: targetCompany,
-        full_name: userData.name,
-        email: userData.email,
-        role_id: userData.roleId,
-        property_ids: userData.propertyIds,
-        status: 'Active'
-    }).select().single();
+    const handleAddUser = async (userData: { name: string; email: string; password?: string; roleId: string; propertyIds: string[]; sendInvite?: boolean }) => {
+        const currentUser = impersonatingUser || users?.find(u => u.id === session?.user?.id);
+        const targetCompany = viewingCompanyId || currentUser?.companyId;
+        if (!targetCompany) return;
 
-    if (profileError) {
-        console.error("Profile creation error:", profileError);
-        if (!authError) alert("Failed to save user profile.");
-        return;
-    }
+        let newUserId = `user-${Date.now()}`;
+        let authError = null;
 
-    if (newUser) {
-        // Update local state (handle both insert and update cases)
-        setUsers(prev => {
-            const existingIndex = prev.findIndex(u => u.id === newUser.id);
-            const userObj: AdminUser = {
-                id: newUser.id,
-                companyId: newUser.company_id,
-                name: newUser.full_name,
-                email: newUser.email,
-                roleId: newUser.role_id,
-                propertyIds: newUser.property_ids || [],
-                avatarUrl: 'https://via.placeholder.com/150',
-                status: newUser.status
-            };
+        // If a password is provided, try to create the Auth User using a temporary client to avoid logging out the admin.
+        if (userData.password) {
+            // Create a temporary client that DOES NOT persist session (so we don't log out the admin)
+            const tempSupabase = createClient(supabaseUrl, supabaseKey, {
+                auth: {
+                    persistSession: false,
+                    autoRefreshToken: false,
+                    detectSessionInUrl: false
+                }
+            });
 
-            if (existingIndex >= 0) {
-                const newArr = [...prev];
-                newArr[existingIndex] = userObj;
-                return newArr;
+            const { data: authData, error } = await tempSupabase.auth.signUp({
+                email: userData.email,
+                password: userData.password,
+                options: {
+                    data: {
+                        full_name: userData.name
+                    }
+                }
+            });
+
+            if (error) {
+                console.error("Auth creation error:", error);
+                alert(`Failed to create login account: ${error.message}. Profile will be created anyway.`);
+                authError = error;
+            } else if (authData.user) {
+                newUserId = authData.user.id; // Use the real UUID
             }
-            return [...prev, userObj];
-        });
-
-        // Invitation Logic
-        if (userData.sendInvite) {
-            const roleName = roles.find(r => r.id === userData.roleId)?.name || 'User';
-            const inviteUrl = window.location.origin; // e.g. http://localhost:5173 or https://your-app.com
-            const subject = encodeURIComponent("Invitation to ProcurePro");
-            let body = '';
-
-            if (userData.password) {
-                body = encodeURIComponent(`Hi ${userData.name},\n\nYou have been invited to join the ProcurePro platform as a ${roleName}.\n\nYour account has been created.\n\nEmail: ${userData.email}\nPassword: ${userData.password}\n\nLog in here: ${inviteUrl}\n\nBest,\nThe ProcurePro Team`);
-            } else {
-                body = encodeURIComponent(`Hi ${userData.name},\n\nYou have been invited to join the ProcurePro platform as a ${roleName}.\n\nPlease create your account and set your password by visiting the link below:\n\n${inviteUrl}\n\nIMPORTANT: When you see the login screen, please click "Sign Up" (not Sign In) and use the following email address:\n\n${userData.email}\n\nBest,\nThe ProcurePro Team`);
-            }
-
-            // Open the user's default email client
-            window.open(`mailto:${userData.email}?subject=${subject}&body=${body}`, '_blank');
         }
-    }
-};
 
-const handleAddCompany = async (companyData: { name: string }, userData: { name: string; email: string; password: string; roleId: string }) => {
-    try {
-        setLoading(true);
-        const companyId = `comp-${Date.now()}`;
-
-        // 1. Create Company
-        await supabase.from('companies').insert({
-            id: companyId,
-            name: companyData.name
-        });
-
-        // 2. Create Admin User (Simulated Auth User for demo purposes, as actual Auth requires admin API)
-        const userId = `user-${Date.now()}`;
-
-        await supabase.from('profiles').insert({
-            id: userId,
-            company_id: companyId,
+        // Insert (or Update if the trigger already created it from signUp) the Profile
+        // Upsert is safer here because if signUp succeeded, the trigger might have inserted a row already.
+        const { data: newUser, error: profileError } = await supabase.from('profiles').upsert({
+            id: newUserId,
+            company_id: targetCompany,
             full_name: userData.name,
             email: userData.email,
             role_id: userData.roleId,
-            status: 'Active',
-            property_ids: [] // Admins usually access all via roles, but can be specific
-        });
+            property_ids: userData.propertyIds,
+            status: 'Active'
+        }).select().single();
 
-        // Refresh data
-        if (viewingCompanyId) {
-            // If we are viewing a company, just reload
-            fetchInitialData(session);
-        } else {
-            // If owner view, reload companies list
-            const { data: companiesData } = await supabase.from('companies').select('*');
-            if (companiesData) setAvailableCompanies(companiesData);
-        }
-
-        alert(`Company "${companyData.name}" created successfully with admin user "${userData.name}".`);
-
-    } catch (error: any) {
-        console.error("Error creating company:", error);
-        alert("Failed to create company.");
-    } finally {
-        setLoading(false);
-    }
-};
-
-const handleAddRole = async (roleData: Omit<Role, 'id'>) => {
-    const id = `role-${Date.now()}`;
-    const { data: newRole } = await supabase.from('roles').insert({ id, ...roleData }).select().single();
-    if (newRole) setRoles(prev => [...prev, newRole]);
-};
-
-const handleUpdateRole = async (role: Role) => {
-    const { data: updatedRole } = await supabase.from('roles').update(role).eq('id', role.id).select().single();
-    if (updatedRole) setRoles(prev => prev.map(r => r.id === role.id ? updatedRole : r));
-};
-
-const handleDeleteRole = async (roleId: string) => {
-    await supabase.from('roles').delete().eq('id', roleId);
-    setRoles(prev => prev.filter(r => r.id !== roleId));
-};
-
-const handleAddVendor = async (vendorData: { name: string; phone?: string; email?: string }) => {
-    const currentUser = impersonatingUser || users?.find(u => u.id === session?.user?.id);
-    const targetCompany = viewingCompanyId || currentUser?.companyId;
-    if (!targetCompany) return;
-    const id = `vendor-${Date.now()}`;
-    const { data: newVendor } = await supabase.from('vendors').insert({ id, company_id: targetCompany, ...vendorData }).select('*, vendor_accounts(*)').single();
-    if (newVendor) setVendors(prev => [...prev, mapVendor(newVendor)]);
-};
-
-const handleAddProduct = async (product: Omit<Product, 'id'>) => {
-    const currentUser = impersonatingUser || users?.find(u => u.id === session?.user?.id);
-    const targetCompany = viewingCompanyId || currentUser?.companyId;
-    if (!targetCompany) return;
-    const id = `prod-${Date.now()}`;
-    const payload = {
-        id,
-        company_id: targetCompany,
-        name: product.name,
-        sku: product.sku,
-        description: product.description,
-        unit_price: product.unitPrice,
-        image_url: product.imageUrl,
-        vendor_id: product.vendorId,
-        primary_category: product.primaryCategory,
-        secondary_category: product.secondaryCategory,
-        rating: product.rating,
-        tags: product.tags
-    };
-    const { data: newProd } = await supabase.from('products').insert(payload).select().single();
-    if (newProd) setProducts(prev => [...prev, mapProduct(newProd)]);
-};
-
-const handleUpdateProduct = async (product: Product) => {
-    const payload = {
-        name: product.name,
-        sku: product.sku,
-        description: product.description,
-        unit_price: product.unitPrice,
-        image_url: product.imageUrl,
-        vendor_id: product.vendorId,
-        primary_category: product.primaryCategory,
-        secondary_category: product.secondaryCategory,
-        rating: product.rating,
-        tags: product.tags
-    };
-    const { data: updatedProd } = await supabase.from('products').update(payload).eq('id', product.id).select().single();
-    if (updatedProd) {
-        setProducts(prev => prev.map(p => p.id === product.id ? mapProduct(updatedProd) : p));
-    }
-};
-
-const handleNavigateToPropertyInvoice = (propertyId: string, unitId?: string) => {
-    setInvoicePreSelectedPropertyId(propertyId);
-    setInvoicePreSelectedUnitId(unitId || null);
-    setActiveItem('Invoices');
-};
-
-const handleAddVendorAccount = async (vendorId: string, accountData: { propertyId: string, accountNumber: string }) => {
-    const id = `vacc-${Date.now()}`;
-    const { data: newAcc } = await supabase.from('vendor_accounts').insert({ id, vendor_id: vendorId, property_id: accountData.propertyId, account_number: accountData.accountNumber }).select().single();
-    if (newAcc) {
-        const currentUser = impersonatingUser || users?.find(u => u.id === session?.user?.id);
-        const targetCompany = viewingCompanyId || currentUser?.companyId;
-        if (targetCompany) {
-            const { data } = await supabase.from('vendors').select('*, vendor_accounts(*)').eq('company_id', targetCompany);
-            if (data) setVendors(data.map(mapVendor));
-        }
-    }
-};
-
-const originalUser = userProfile;
-const currentUser = impersonatingUser || originalUser;
-
-// Public Routes (Bypass Auth)
-if (window.location.hash.startsWith('#/pay/')) {
-    return <InvoicePaymentPage />;
-}
-
-if (loading || (session && !currentUser && !dataError)) {
-    return (
-        <div className="flex h-screen flex-col items-center justify-center bg-background text-foreground px-6 font-sans">
-            <div className="mb-8 p-5 bg-background/50 dark:bg-foreground/10 rounded-3xl backdrop-blur-md shadow-2xl border border-border">
-                <ProcureProLogoIcon className="w-20 h-20 text-foreground drop-shadow-lg" />
-            </div>
-            <h2 className="text-3xl font-bold mb-2 tracking-tight text-center">Company Database is loading</h2>
-            <p className="text-muted-foreground text-sm mb-10 text-center max-w-xs">Synchronizing assets, orders, and user permissions...</p>
-
-            <div className="w-full max-w-xs bg-muted rounded-full h-2 overflow-hidden border border-border shadow-inner">
-                <div
-                    className="h-full bg-primary transition-all duration-300 ease-out shadow-[0_0_15px_hsl(var(--primary)_/_0.6)] relative"
-                    style={{ width: `${loadingProgress}%` }}
-                >
-                    <div className="absolute top-0 left-0 w-full h-full bg-primary-foreground/30 animate-pulse"></div>
-                </div>
-            </div>
-            <div className="flex justify-between w-full max-w-xs mt-3 px-1">
-                <span className="text-xs font-medium text-muted-foreground">System Sync</span>
-                <span className="text-xs font-bold text-primary font-mono">{loadingProgress}%</span>
-            </div>
-        </div>
-    );
-}
-
-if (!session) return <Auth />;
-
-if (!currentUser) {
-    return (
-        <div className="flex h-screen flex-col items-center justify-center bg-background p-8 text-center">
-            <div className="bg-card/40 p-8 rounded-2xl backdrop-blur-lg border border-red-500/30 max-w-md">
-                <h2 className="text-2xl font-bold text-foreground mb-4">Setup Issue</h2>
-                <p className="text-muted-foreground mb-6">
-                    {dataError || "Could not load profile. Please try refreshing."}
-                </p>
-                <button onClick={() => window.location.reload()} className="bg-primary hover:opacity-90 text-primary-foreground font-bold py-3 px-6 rounded-xl transition-all shadow-lg">Retry Connection</button>
-            </div>
-        </div>
-    );
-}
-
-if (isMobile) {
-    return (
-        <PermissionsProvider user={currentUser} roles={roles}>
-            <MobileApp
-                orders={orders}
-                carts={carts}
-                products={products}
-                users={users}
-                threads={threads}
-                messages={messages}
-                properties={properties}
-                currentUser={currentUser}
-                activeCart={activeCart}
-                onUpdateOrderStatus={handleUpdateOrderStatus}
-                onApprovalDecision={handleApprovalDecision}
-                onUpdateCartItem={(prod, qty, note) => activeCart && handleUpdateCartItem(activeCart.id, prod, qty, note)}
-                onSendMessage={handleSendMessage}
-                onSelectCart={setActiveCart}
-                onStartNewThread={handleStartThread}
-                onNewCart={(type) => handleAddCart(type)}
-                // Add Props for Full Parity
-                vendors={vendors}
-                units={units}
-                roles={roles}
-                availableCompanies={availableCompanies}
-                currentCompanyId={viewingCompanyId || currentUser.companyId}
-                companyName={currentCompanyName}
-                onSwitchCompany={handleSwitchCompany}
-                onAddProperty={handleAddProperty}
-                onAddUnit={handleAddUnit}
-                onAddUser={handleAddUser}
-                onAddRole={handleAddRole}
-                onUpdateRole={handleUpdateRole}
-                onDeleteRole={handleDeleteRole}
-                onAddVendor={handleAddVendor}
-                onAddProduct={handleAddProduct}
-                onAddVendorAccount={handleAddVendorAccount}
-                onUpdatePoStatus={handleUpdatePoStatus}
-                onProcureOrder={(o) => setOrderForProcurement(o)}
-                onSelectOrder={(o) => setSelectedOrder(o)}
-                onLogout={handleLogout}
-                impersonatingUser={impersonatingUser}
-                onImpersonate={setImpersonatingUser}
-                onRefresh={() => session && fetchInitialData(session)}
-            />
-        </PermissionsProvider>
-    )
-}
-
-const handleDeleteOrder = async (orderId: string) => {
-    // Optimistically remove
-    setOrders(prev => prev.filter(o => o.id !== orderId));
-    if (selectedOrder?.id === orderId) setSelectedOrder(null);
-
-    const { error } = await supabase.from('orders').delete().eq('id', orderId);
-    if (error) {
-        console.error("Error deleting order:", error);
-        alert(`Failed to delete order: ${error.message}`);
-        if (session) fetchInitialData(session);
-    }
-};
-
-const handleUpdatePoPaymentStatus = async (orderId: string, poId: string, updates: Partial<PurchaseOrder> & { paymentMetadata?: any }) => {
-    console.log("DEBUG: handleUpdatePoPaymentStatus called", { orderId, poId, updates });
-
-    // 1. Process Payment via Sola (if metadata provided)
-    // 1. Process Payment via Sola (if metadata provided AND explicitly requested)
-    if (updates.paymentMetadata && updates.paymentMetadata.processPayment) {
-        try {
-            // Ensure we have an amount to charge
-            const amountToCharge = updates.paymentMetadata.chargeAmount || updates.amountDue;
-            if (!amountToCharge) {
-                alert("Error: Payment amount is missing. Cannot process.");
-                return;
-            }
-
-            // We use a placeholder token for now as per previous design
-            const paymentResult = await processPayment(poId, 'placeholder-token', amountToCharge, updates.paymentMetadata);
-
-            if (!paymentResult.success) {
-                alert(`Payment Failed: ${paymentResult.error}`);
-                return; // Abort DB update
-            }
-
-            console.log("Payment Successful:", paymentResult.transactionId);
-            // Optionally store transactionId in DB if schema supports it
-        } catch (err: any) {
-            console.error("Critical Payment Error:", err);
-            alert(`System Error during payment: ${err.message}`);
+        if (profileError) {
+            console.error("Profile creation error:", profileError);
+            if (!authError) alert("Failed to save user profile.");
             return;
         }
-    }
 
-    const dbUpdates: any = {};
-    if (updates.paymentStatus) dbUpdates.payment_status = updates.paymentStatus;
-    if (updates.invoiceNumber) dbUpdates.invoice_number = updates.invoiceNumber;
-    if (updates.invoiceDate) dbUpdates.invoice_date = updates.invoiceDate;
-    if (updates.dueDate) dbUpdates.due_date = updates.dueDate;
-    if (updates.amountDue) dbUpdates.amount_due = updates.amountDue;
-    if (updates.paymentDate) dbUpdates.payment_date = updates.paymentDate;
-    if (updates.paymentMethod) dbUpdates.payment_method = updates.paymentMethod;
-    if (updates.invoiceUrl) dbUpdates.invoice_url = updates.invoiceUrl;
+        if (newUser) {
+            // Update local state (handle both insert and update cases)
+            setUsers(prev => {
+                const existingIndex = prev.findIndex(u => u.id === newUser.id);
+                const userObj: AdminUser = {
+                    id: newUser.id,
+                    companyId: newUser.company_id,
+                    name: newUser.full_name,
+                    email: newUser.email,
+                    roleId: newUser.role_id,
+                    propertyIds: newUser.property_ids || [],
+                    avatarUrl: 'https://via.placeholder.com/150',
+                    status: newUser.status
+                };
 
-    const { error: updateError } = await supabase.from('purchase_orders').update(dbUpdates).eq('id', poId);
+                if (existingIndex >= 0) {
+                    const newArr = [...prev];
+                    newArr[existingIndex] = userObj;
+                    return newArr;
+                }
+                return [...prev, userObj];
+            });
 
-    if (updateError) {
-        console.error("Error updating PO status:", updateError);
-        alert(`Failed to update status: ${updateError.message}`);
-        return;
-    }
+            // Invitation Logic
+            if (userData.sendInvite) {
+                const roleName = roles.find(r => r.id === userData.roleId)?.name || 'User';
+                const inviteUrl = window.location.origin; // e.g. http://localhost:5173 or https://your-app.com
+                const subject = encodeURIComponent("Invitation to ProcurePro");
+                let body = '';
 
-    // NEW: If Payment Status is Paid, create Billable Items (AR)
-    if (updates.paymentStatus === 'Paid') {
+                if (userData.password) {
+                    body = encodeURIComponent(`Hi ${userData.name},\n\nYou have been invited to join the ProcurePro platform as a ${roleName}.\n\nYour account has been created.\n\nEmail: ${userData.email}\nPassword: ${userData.password}\n\nLog in here: ${inviteUrl}\n\nBest,\nThe ProcurePro Team`);
+                } else {
+                    body = encodeURIComponent(`Hi ${userData.name},\n\nYou have been invited to join the ProcurePro platform as a ${roleName}.\n\nPlease create your account and set your password by visiting the link below:\n\n${inviteUrl}\n\nIMPORTANT: When you see the login screen, please click "Sign Up" (not Sign In) and use the following email address:\n\n${userData.email}\n\nBest,\nThe ProcurePro Team`);
+                }
+
+                // Open the user's default email client
+                window.open(`mailto:${userData.email}?subject=${subject}&body=${body}`, '_blank');
+            }
+        }
+    };
+
+    const handleAddCompany = async (companyData: { name: string }, userData: { name: string; email: string; password: string; roleId: string }) => {
         try {
-            // Dynamically import to avoid circular dependencies if any (though App.tsx is top level)
-            const { billbackService } = await import('./services/billbackService');
-            await billbackService.createBillableItemsFromPurchaseOrder(poId);
-            console.log("Billable Items Created for PO:", poId);
-        } catch (err: any) {
-            console.error("Error creating billable items:", err);
-            alert(`Warning: Payment recorded, but failed to create AR Billable Items: ${err.message}`);
+            setLoading(true);
+            const companyId = `comp-${Date.now()}`;
+
+            // 1. Create Company
+            await supabase.from('companies').insert({
+                id: companyId,
+                name: companyData.name
+            });
+
+            // 2. Create Admin User (Simulated Auth User for demo purposes, as actual Auth requires admin API)
+            const userId = `user-${Date.now()}`;
+
+            await supabase.from('profiles').insert({
+                id: userId,
+                company_id: companyId,
+                full_name: userData.name,
+                email: userData.email,
+                role_id: userData.roleId,
+                status: 'Active',
+                property_ids: [] // Admins usually access all via roles, but can be specific
+            });
+
+            // Refresh data
+            if (viewingCompanyId) {
+                // If we are viewing a company, just reload
+                fetchInitialData(session);
+            } else {
+                // If owner view, reload companies list
+                const { data: companiesData } = await supabase.from('companies').select('*');
+                if (companiesData) setAvailableCompanies(companiesData);
+            }
+
+            alert(`Company "${companyData.name}" created successfully with admin user "${userData.name}".`);
+
+        } catch (error: any) {
+            console.error("Error creating company:", error);
+            alert("Failed to create company.");
+        } finally {
+            setLoading(false);
         }
-    }
+    };
 
-    const { data: freshOrderData, error: fetchError } = await supabase.from('orders').select('*, cart:carts(cart_items(*)), purchase_orders(*), order_status_history(*)').eq('id', orderId).single();
+    const handleAddRole = async (roleData: Omit<Role, 'id'>) => {
+        const id = `role-${Date.now()}`;
+        const { data: newRole } = await supabase.from('roles').insert({ id, ...roleData }).select().single();
+        if (newRole) setRoles(prev => [...prev, newRole]);
+    };
 
-    if (fetchError) {
-        console.error("Error fetching fresh order data:", fetchError);
-        return;
-    }
+    const handleUpdateRole = async (role: Role) => {
+        const { data: updatedRole } = await supabase.from('roles').update(role).eq('id', role.id).select().single();
+        if (updatedRole) setRoles(prev => prev.map(r => r.id === role.id ? updatedRole : r));
+    };
 
-    if (freshOrderData && freshOrderData.purchase_orders) {
-        const freshOrder = mapOrder(freshOrderData, products);
-        setOrders(prev => prev.map(o => o.id === orderId ? freshOrder : o));
-        if (selectedOrder?.id === orderId) setSelectedOrder(freshOrder);
-    }
-};
+    const handleDeleteRole = async (roleId: string) => {
+        await supabase.from('roles').delete().eq('id', roleId);
+        setRoles(prev => prev.filter(r => r.id !== roleId));
+    };
 
-const renderContent = () => {
-    if (orderForProcurement) return <ProcurementWorkspace key={orderForProcurement.id} order={orderForProcurement} vendors={vendors} products={products} onBack={(updated) => { setOrderForProcurement(null); if (updated) handleSaveOrder(updated); }} onOrderComplete={handleSaveOrder} />;
+    const handleAddVendor = async (vendorData: { name: string; phone?: string; email?: string }) => {
+        const currentUser = impersonatingUser || users?.find(u => u.id === session?.user?.id);
+        const targetCompany = viewingCompanyId || currentUser?.companyId;
+        if (!targetCompany) return;
+        const id = `vendor-${Date.now()}`;
+        const { data: newVendor } = await supabase.from('vendors').insert({ id, company_id: targetCompany, ...vendorData }).select('*, vendor_accounts(*)').single();
+        if (newVendor) setVendors(prev => [...prev, mapVendor(newVendor)]);
+    };
 
-    if (activeItem === 'My Carts' || activeItem === 'Carts to Submit') {
-        if (view === 'detail' && selectedCart) {
-            return <CartDetail cart={selectedCart} onBack={() => setView('list')} onOpenCatalog={() => setView('catalog')} properties={properties} products={products} onUpdateCartName={handleUpdateCartName} onUpdateCartItem={(prod, qty, note) => handleUpdateCartItem(selectedCart.id, prod, qty, note)} onSubmitForApproval={handleSubmitCart} onRevertToDraft={handleRevertCartToDraft} onOpenEditSchedule={(cart) => { setCartForScheduleEdit(cart); setIsEditScheduleModalOpen(true); }} onManualAdd={(item) => handleUpdateCartItem(selectedCart.id, { sku: item.sku, name: item.name, unitPrice: item.unitPrice }, item.quantity, item.note)} />;
+    const handleAddProduct = async (product: Omit<Product, 'id'>) => {
+        const currentUser = impersonatingUser || users?.find(u => u.id === session?.user?.id);
+        const targetCompany = viewingCompanyId || currentUser?.companyId;
+        if (!targetCompany) return;
+        const id = `prod-${Date.now()}`;
+        const payload = {
+            id,
+            company_id: targetCompany,
+            name: product.name,
+            sku: product.sku,
+            description: product.description,
+            unit_price: product.unitPrice,
+            image_url: product.imageUrl,
+            vendor_id: product.vendorId,
+            primary_category: product.primaryCategory,
+            secondary_category: product.secondaryCategory,
+            rating: product.rating,
+            tags: product.tags
+        };
+        const { data: newProd } = await supabase.from('products').insert(payload).select().single();
+        if (newProd) setProducts(prev => [...prev, mapProduct(newProd)]);
+    };
+
+    const handleUpdateProduct = async (product: Product) => {
+        const payload = {
+            name: product.name,
+            sku: product.sku,
+            description: product.description,
+            unit_price: product.unitPrice,
+            image_url: product.imageUrl,
+            vendor_id: product.vendorId,
+            primary_category: product.primaryCategory,
+            secondary_category: product.secondaryCategory,
+            rating: product.rating,
+            tags: product.tags
+        };
+        const { data: updatedProd } = await supabase.from('products').update(payload).eq('id', product.id).select().single();
+        if (updatedProd) {
+            setProducts(prev => prev.map(p => p.id === product.id ? mapProduct(updatedProd) : p));
         }
-        if (view === 'catalog' && selectedCart) {
-            return <ProductDashboard products={products} companies={availableCompanies} currentCompanyId={viewingCompanyId || currentUser?.companyId || ''} activeCart={selectedCart} onUpdateItem={(prod, qty, note) => handleUpdateCartItem(selectedCart.id, prod, qty, note)} onBack={() => setView('detail')} onRefresh={() => session && fetchInitialData(session)} />;
+    };
+
+    const handleNavigateToPropertyInvoice = (propertyId: string, unitId?: string) => {
+        setInvoicePreSelectedPropertyId(propertyId);
+        setInvoicePreSelectedUnitId(unitId || null);
+        setActiveItem('Invoices');
+    };
+
+    const handleAddVendorAccount = async (vendorId: string, accountData: { propertyId: string, accountNumber: string }) => {
+        const id = `vacc-${Date.now()}`;
+        const { data: newAcc } = await supabase.from('vendor_accounts').insert({ id, vendor_id: vendorId, property_id: accountData.propertyId, account_number: accountData.accountNumber }).select().single();
+        if (newAcc) {
+            const currentUser = impersonatingUser || users?.find(u => u.id === session?.user?.id);
+            const targetCompany = viewingCompanyId || currentUser?.companyId;
+            if (targetCompany) {
+                const { data } = await supabase.from('vendors').select('*, vendor_accounts(*)').eq('company_id', targetCompany);
+                if (data) setVendors(data.map(mapVendor));
+            }
         }
-        return <MyCarts carts={carts} setCarts={setCarts} onSelectCart={(c) => { const freshCart = carts.find(cart => cart.id === c.id) || c; setSelectedCart(freshCart); setView('detail'); }} onOpenCreateCartModal={() => setIsCreateCartModalOpen(true)} onBulkSubmit={handleBulkSubmit} properties={properties} initialStatusFilter={activeItem === 'Carts to Submit' ? 'Needs Attention' : 'All'} orders={orders} onDeleteCart={handleDeleteCart} onDeleteOrder={handleDeleteOrder} onBulkDeleteCarts={handleBulkDeleteCarts} onReuseCart={handleReuseCart} />;
+    };
+
+    const originalUser = userProfile;
+    const currentUser = impersonatingUser || originalUser;
+
+    // Public Routes (Bypass Auth)
+    if (window.location.hash.startsWith('#/pay/')) {
+        return <InvoicePaymentPage />;
     }
 
-    if (activeItem === 'All Orders') return <AllOrders orders={orders} onProcureOrder={(o) => setOrderForProcurement(o)} onSelectOrder={(o) => { setSelectedOrder(o); }} properties={properties} onDeleteOrder={handleDeleteOrder} users={users} />;
-    if (activeItem === 'Purchase Orders') return <PurchaseOrders orders={orders} vendors={vendors} onSelectOrder={(o) => { setSelectedOrder(o); }} properties={properties} />;
-    if (activeItem === 'Approvals') return <Approvals orders={orders} onUpdateOrderStatus={handleUpdateOrderStatus} onSelectOrder={(o) => { setSelectedOrder(o); }} users={users} properties={properties} />;
-    if (activeItem === 'Receiving') return <Receiving orders={orders} vendors={vendors} onUpdatePoStatus={handleUpdatePoStatus} onSelectOrder={(o) => setSelectedOrder(o)} />;
-    if (activeItem === 'Communications') return <CommunicationCenter threads={threads} messages={messages} users={users} orders={orders} currentUser={currentUser} onSendMessage={handleSendMessage} onStartNewThread={handleStartThread} onSelectOrder={setSelectedOrder} />;
-    if (activeItem === 'Company Settings') return <AdminSettings vendors={vendors} properties={properties} units={units} users={users} roles={roles} companies={availableCompanies} currentUser={currentUser} onAddProperty={handleAddProperty} onDeleteProperty={handleDeleteProperty} onAddUnit={handleAddUnit} onAddRole={handleAddRole} onUpdateRole={handleUpdateRole} onDeleteRole={handleDeleteRole} onViewAsUser={setImpersonatingUser} onAddUser={handleAddUser} onAddCompany={handleAddCompany} onDeleteUser={handleDeleteUser} products={products} onUpdateProduct={handleUpdateProduct} />;
-    if (activeItem === 'Payment Settings') return <PaymentSettings companyId={viewingCompanyId || currentUser?.companyId || ''} />;
-    if (activeItem === 'Suppliers') return <Suppliers vendors={vendors} products={products} orders={orders} properties={properties} companies={availableCompanies} currentCompanyId={viewingCompanyId || currentUser?.companyId || ''} onSwitchCompany={currentUser?.roleId === 'role-0' ? handleSwitchCompany : undefined} onSelectOrder={(o) => { setSelectedOrder(o); }} onAddVendor={handleAddVendor} onAddProduct={handleAddProduct} onAddVendorAccount={handleAddVendorAccount} />;
-    if (activeItem === 'Chart of Accounts') return <ChartOfAccounts accounts={accounts} onAddAccount={handleAddAccount} onUpdateAccount={handleUpdateAccount} onDeleteAccount={handleDeleteAccount} />;
-
-    // AP & AR Routes
-    if (activeItem === 'Bills') return <VendorInvoicesList companyId={viewingCompanyId || currentUser?.companyId || ''} onViewDetail={(inv) => { setSelectedVendorInvoice(inv); console.log("Selected Invoice:", inv); }} />;
-    if (activeItem === 'Bill Payments') return <Transactions orders={orders} vendors={vendors} onUpdatePoPaymentStatus={handleUpdatePoPaymentStatus} />;
-    if (activeItem === 'Invoices') return (
-        <InvoicesPage
-            currentCompanyId={viewingCompanyId || currentUser?.companyId || ''}
-            currentUser={currentUser}
-            products={products}
-            customers={customers}
-            properties={properties}
-            units={units}
-            preSelectedPropertyId={invoicePreSelectedPropertyId}
-            preSelectedUnitId={invoicePreSelectedUnitId}
-            onClearPreSelectedProperty={() => {
-                setInvoicePreSelectedPropertyId(null);
-                setInvoicePreSelectedUnitId(null);
-            }}
-        />
-    );
-    if (activeItem === 'Property AR') return <PropertyARList properties={properties} units={units} onSelectProperty={handleNavigateToPropertyInvoice} onSelectUnit={(pid, uid) => handleNavigateToPropertyInvoice(pid, uid)} />;
-    if (activeItem === 'Invoice History') {
+    if (loading || (session && !currentUser && !dataError)) {
         return (
-            <React.Suspense fallback={<div className="p-8 text-center">Loading...</div>}>
-                <InvoiceHistoryPage companyId={viewingCompanyId || currentUser?.companyId || ''} />
-            </React.Suspense>
+            <div className="flex h-screen flex-col items-center justify-center bg-background text-foreground px-6 font-sans">
+                <div className="mb-8 p-5 bg-background/50 dark:bg-foreground/10 rounded-3xl backdrop-blur-md shadow-2xl border border-border">
+                    <ProcureProLogoIcon className="w-20 h-20 text-foreground drop-shadow-lg" />
+                </div>
+                <h2 className="text-3xl font-bold mb-2 tracking-tight text-center">Company Database is loading</h2>
+                <p className="text-muted-foreground text-sm mb-10 text-center max-w-xs">Synchronizing assets, orders, and user permissions...</p>
+
+                <div className="w-full max-w-xs bg-muted rounded-full h-2 overflow-hidden border border-border shadow-inner">
+                    <div
+                        className="h-full bg-primary transition-all duration-300 ease-out shadow-[0_0_15px_hsl(var(--primary)_/_0.6)] relative"
+                        style={{ width: `${loadingProgress}%` }}
+                    >
+                        <div className="absolute top-0 left-0 w-full h-full bg-primary-foreground/30 animate-pulse"></div>
+                    </div>
+                </div>
+                <div className="flex justify-between w-full max-w-xs mt-3 px-1">
+                    <span className="text-xs font-medium text-muted-foreground">System Sync</span>
+                    <span className="text-xs font-bold text-primary font-mono">{loadingProgress}%</span>
+                </div>
+            </div>
         );
     }
-    if (activeItem === 'Property AR') return <PropertyARList properties={properties} units={units} onSelectProperty={handleNavigateToPropertyInvoice} onSelectUnit={(pid, uid) => handleNavigateToPropertyInvoice(pid, uid)} />;
-    if (activeItem === 'Reports') return <Reports orders={orders} vendors={vendors} products={products} />;
-    if (activeItem === 'Integrations') return <Integrations />;
-    if (activeItem === 'Properties') return <Properties properties={properties} units={units} orders={orders} users={users} onSelectOrder={setSelectedOrder} />;
-    if (activeItem === 'Product Dashboard') return <ProductDashboard products={products} companies={availableCompanies} currentCompanyId={viewingCompanyId || currentUser?.companyId || ''} onSwitchCompany={currentUser?.roleId === 'role-0' ? handleSwitchCompany : undefined} onRefresh={() => session && fetchInitialData(session)} />;
 
-    return <Dashboard orders={orders} carts={carts} onNavigateToApprovals={() => handleNavigation('Approvals')} onNavigateToOrdersInTransit={() => handleNavigation('Receiving')} onNavigateToCartsToSubmit={() => handleNavigation('Carts to Submit')} onNavigateToCompletedOrders={() => handleNavigation('All Orders')} onNavigateToMyOrders={() => handleNavigation('All Orders')} onOpenCreateCartModal={() => setIsCreateCartModalOpen(true)} onGenerateReport={() => { }} />;
-};
+    if (!session) return <Auth />;
 
-return (
-    <PermissionsProvider user={currentUser} roles={roles}>
-        <div className="flex h-screen bg-background font-sans text-foreground">
-            <Sidebar
-                activeItem={activeItem}
-                setActiveItem={handleNavigation}
-                isCollapsed={isSidebarCollapsed}
-                onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
-                user={currentUser}
-                roles={roles}
-                companies={availableCompanies}
-                currentCompanyId={viewingCompanyId || ''}
-                companyName={currentCompanyName}
-                onSwitchCompany={handleSwitchCompany}
-                onLogout={handleLogout}
-            />
-            <div className={`flex-1 flex flex-col transition-all duration-300 ${isSidebarCollapsed ? 'ml-28' : 'ml-72'}`}>
-                <Header onQuickCartClick={() => setIsQuickCartModalOpen(true)} onCartIconClick={() => setIsCartDrawerOpen(true)} user={currentUser} activeCart={activeCart} roles={roles} />
-                <main className="flex-1 p-6 lg:p-8 overflow-y-auto">{renderContent()}</main>
+    if (!currentUser) {
+        return (
+            <div className="flex h-screen flex-col items-center justify-center bg-background p-8 text-center">
+                <div className="bg-card/40 p-8 rounded-2xl backdrop-blur-lg border border-red-500/30 max-w-md">
+                    <h2 className="text-2xl font-bold text-foreground mb-4">Setup Issue</h2>
+                    <p className="text-muted-foreground mb-6">
+                        {dataError || "Could not load profile. Please try refreshing."}
+                    </p>
+                    <button onClick={() => window.location.reload()} className="bg-primary hover:opacity-90 text-primary-foreground font-bold py-3 px-6 rounded-xl transition-all shadow-lg">Retry Connection</button>
+                </div>
             </div>
-            <CreateCartFlowModal isOpen={isCreateCartModalOpen} onClose={() => setIsCreateCartModalOpen(false)} onSave={async (data) => { const result = await handleAddCart(data.type, viewingCompanyId || currentUser?.companyId, data); return result; }} properties={properties} units={units} userName={currentUser?.name || 'Unknown User'} />
-            <QuickCartModal isOpen={isQuickCartModalOpen} onClose={() => setIsQuickCartModalOpen(false)} onSave={(data) => { handleAddCart('Standard', viewingCompanyId || currentUser?.companyId, { name: data.name, propertyId: data.propertyId, items: data.items as any }); setIsQuickCartModalOpen(false); }} properties={properties} />
-            <GlobalCartDrawer isOpen={isCartDrawerOpen} onClose={() => setIsCartDrawerOpen(false)} activeCart={activeCart} carts={carts?.filter(c => c.status === 'Draft' || c.status === 'Ready for Review')} onSelectCart={setActiveCart} onUpdateItem={(prod, qty, note) => activeCart && handleUpdateCartItem(activeCart.id, prod, qty, note)} onSubmitForApproval={(cartId) => { handleSubmitCart(cartId); setIsCartDrawerOpen(false); }} onViewFullCart={() => { if (activeCart) { setIsCartDrawerOpen(false); setActiveItem('My Carts'); setSelectedCart(activeCart); setView('detail'); } }} />
-            <OrderDetailsDrawer order={selectedOrder} onClose={() => setSelectedOrder(null)} properties={properties} users={users} threads={threads} messages={messages} currentUser={currentUser} onSendMessage={handleSendMessage} orders={orders} onSelectOrder={setSelectedOrder} onUpdateOrderStatus={handleUpdateOrderStatus} onApprovalDecision={handleApprovalDecision} onProcureOrder={(o) => { setSelectedOrder(null); setOrderForProcurement(o); }} vendors={vendors} />
-            <EditScheduleModal isOpen={isEditScheduleModalOpen} onClose={() => setIsEditScheduleModalOpen(false)} cart={cartForScheduleEdit} onSave={() => { setIsEditScheduleModalOpen(false); }} />
-            <VendorInvoiceDetailModal
-                isOpen={!!selectedVendorInvoice}
-                onClose={() => setSelectedVendorInvoice(null)}
-                invoice={selectedVendorInvoice}
-                companyId={viewingCompanyId || currentUser?.companyId || ''}
-                onUpdate={() => session && fetchInitialData(session)}
+        );
+    }
+
+    if (isMobile) {
+        return (
+            <PermissionsProvider user={currentUser} roles={roles}>
+                <MobileApp
+                    orders={orders}
+                    carts={carts}
+                    products={products}
+                    users={users}
+                    threads={threads}
+                    messages={messages}
+                    properties={properties}
+                    currentUser={currentUser}
+                    activeCart={activeCart}
+                    onUpdateOrderStatus={handleUpdateOrderStatus}
+                    onApprovalDecision={handleApprovalDecision}
+                    onUpdateCartItem={(prod, qty, note) => activeCart && handleUpdateCartItem(activeCart.id, prod, qty, note)}
+                    onSendMessage={handleSendMessage}
+                    onSelectCart={setActiveCart}
+                    onStartNewThread={handleStartThread}
+                    onNewCart={(type) => handleAddCart(type)}
+                    // Add Props for Full Parity
+                    vendors={vendors}
+                    units={units}
+                    roles={roles}
+                    availableCompanies={availableCompanies}
+                    currentCompanyId={viewingCompanyId || currentUser.companyId}
+                    companyName={currentCompanyName}
+                    onSwitchCompany={handleSwitchCompany}
+                    onAddProperty={handleAddProperty}
+                    onAddUnit={handleAddUnit}
+                    onAddUser={handleAddUser}
+                    onAddRole={handleAddRole}
+                    onUpdateRole={handleUpdateRole}
+                    onDeleteRole={handleDeleteRole}
+                    onAddVendor={handleAddVendor}
+                    onAddProduct={handleAddProduct}
+                    onAddVendorAccount={handleAddVendorAccount}
+                    onUpdatePoStatus={handleUpdatePoStatus}
+                    onProcureOrder={(o) => setOrderForProcurement(o)}
+                    onSelectOrder={(o) => setSelectedOrder(o)}
+                    onLogout={handleLogout}
+                    impersonatingUser={impersonatingUser}
+                    onImpersonate={setImpersonatingUser}
+                    onRefresh={() => session && fetchInitialData(session)}
+                />
+            </PermissionsProvider>
+        )
+    }
+
+    const handleDeleteOrder = async (orderId: string) => {
+        // Optimistically remove
+        setOrders(prev => prev.filter(o => o.id !== orderId));
+        if (selectedOrder?.id === orderId) setSelectedOrder(null);
+
+        const { error } = await supabase.from('orders').delete().eq('id', orderId);
+        if (error) {
+            console.error("Error deleting order:", error);
+            alert(`Failed to delete order: ${error.message}`);
+            if (session) fetchInitialData(session);
+        }
+    };
+
+    const handleUpdatePoPaymentStatus = async (orderId: string, poId: string, updates: Partial<PurchaseOrder> & { paymentMetadata?: any }) => {
+        console.log("DEBUG: handleUpdatePoPaymentStatus called", { orderId, poId, updates });
+
+        // 1. Process Payment via Sola (if metadata provided)
+        // 1. Process Payment via Sola (if metadata provided AND explicitly requested)
+        if (updates.paymentMetadata && updates.paymentMetadata.processPayment) {
+            try {
+                // Ensure we have an amount to charge
+                const amountToCharge = updates.paymentMetadata.chargeAmount || updates.amountDue;
+                if (!amountToCharge) {
+                    alert("Error: Payment amount is missing. Cannot process.");
+                    return;
+                }
+
+                // We use a placeholder token for now as per previous design
+                const paymentResult = await processPayment(poId, 'placeholder-token', amountToCharge, updates.paymentMetadata);
+
+                if (!paymentResult.success) {
+                    alert(`Payment Failed: ${paymentResult.error}`);
+                    return; // Abort DB update
+                }
+
+                console.log("Payment Successful:", paymentResult.transactionId);
+                // Optionally store transactionId in DB if schema supports it
+            } catch (err: any) {
+                console.error("Critical Payment Error:", err);
+                alert(`System Error during payment: ${err.message}`);
+                return;
+            }
+        }
+
+        const dbUpdates: any = {};
+        if (updates.paymentStatus) dbUpdates.payment_status = updates.paymentStatus;
+        if (updates.invoiceNumber) dbUpdates.invoice_number = updates.invoiceNumber;
+        if (updates.invoiceDate) dbUpdates.invoice_date = updates.invoiceDate;
+        if (updates.dueDate) dbUpdates.due_date = updates.dueDate;
+        if (updates.amountDue) dbUpdates.amount_due = updates.amountDue;
+        if (updates.paymentDate) dbUpdates.payment_date = updates.paymentDate;
+        if (updates.paymentMethod) dbUpdates.payment_method = updates.paymentMethod;
+        if (updates.invoiceUrl) dbUpdates.invoice_url = updates.invoiceUrl;
+
+        const { error: updateError } = await supabase.from('purchase_orders').update(dbUpdates).eq('id', poId);
+
+        if (updateError) {
+            console.error("Error updating PO status:", updateError);
+            alert(`Failed to update status: ${updateError.message}`);
+            return;
+        }
+
+        // NEW: If Payment Status is Paid, create Billable Items (AR)
+        if (updates.paymentStatus === 'Paid') {
+            try {
+                // Dynamically import to avoid circular dependencies if any (though App.tsx is top level)
+                const { billbackService } = await import('./services/billbackService');
+                await billbackService.createBillableItemsFromPurchaseOrder(poId);
+                console.log("Billable Items Created for PO:", poId);
+            } catch (err: any) {
+                console.error("Error creating billable items:", err);
+                alert(`Warning: Payment recorded, but failed to create AR Billable Items: ${err.message}`);
+            }
+        }
+
+        const { data: freshOrderData, error: fetchError } = await supabase.from('orders').select('*, cart:carts(cart_items(*)), purchase_orders(*), order_status_history(*)').eq('id', orderId).single();
+
+        if (fetchError) {
+            console.error("Error fetching fresh order data:", fetchError);
+            return;
+        }
+
+        if (freshOrderData && freshOrderData.purchase_orders) {
+            const freshOrder = mapOrder(freshOrderData, products);
+            setOrders(prev => prev.map(o => o.id === orderId ? freshOrder : o));
+            if (selectedOrder?.id === orderId) setSelectedOrder(freshOrder);
+        }
+    };
+
+    const renderContent = () => {
+        if (orderForProcurement) return <ProcurementWorkspace key={orderForProcurement.id} order={orderForProcurement} vendors={vendors} products={products} onBack={(updated) => { setOrderForProcurement(null); if (updated) handleSaveOrder(updated); }} onOrderComplete={handleSaveOrder} />;
+
+        if (activeItem === 'My Carts' || activeItem === 'Carts to Submit') {
+            if (view === 'detail' && selectedCart) {
+                return <CartDetail cart={selectedCart} onBack={() => setView('list')} onOpenCatalog={() => setView('catalog')} properties={properties} products={products} onUpdateCartName={handleUpdateCartName} onUpdateCartItem={(prod, qty, note) => handleUpdateCartItem(selectedCart.id, prod, qty, note)} onSubmitForApproval={handleSubmitCart} onRevertToDraft={handleRevertCartToDraft} onOpenEditSchedule={(cart) => { setCartForScheduleEdit(cart); setIsEditScheduleModalOpen(true); }} onManualAdd={(item) => handleUpdateCartItem(selectedCart.id, { sku: item.sku, name: item.name, unitPrice: item.unitPrice }, item.quantity, item.note)} />;
+            }
+            if (view === 'catalog' && selectedCart) {
+                return <ProductDashboard products={products} companies={availableCompanies} currentCompanyId={viewingCompanyId || currentUser?.companyId || ''} activeCart={selectedCart} onUpdateItem={(prod, qty, note) => handleUpdateCartItem(selectedCart.id, prod, qty, note)} onBack={() => setView('detail')} onRefresh={() => session && fetchInitialData(session)} />;
+            }
+            return <MyCarts carts={carts} setCarts={setCarts} onSelectCart={(c) => { const freshCart = carts.find(cart => cart.id === c.id) || c; setSelectedCart(freshCart); setView('detail'); }} onOpenCreateCartModal={() => setIsCreateCartModalOpen(true)} onBulkSubmit={handleBulkSubmit} properties={properties} initialStatusFilter={activeItem === 'Carts to Submit' ? 'Needs Attention' : 'All'} orders={orders} onDeleteCart={handleDeleteCart} onDeleteOrder={handleDeleteOrder} onBulkDeleteCarts={handleBulkDeleteCarts} onReuseCart={handleReuseCart} />;
+        }
+
+        if (activeItem === 'All Orders') return <AllOrders orders={orders} onProcureOrder={(o) => setOrderForProcurement(o)} onSelectOrder={(o) => { setSelectedOrder(o); }} properties={properties} onDeleteOrder={handleDeleteOrder} users={users} />;
+        if (activeItem === 'Purchase Orders') return <PurchaseOrders orders={orders} vendors={vendors} onSelectOrder={(o) => { setSelectedOrder(o); }} properties={properties} />;
+        if (activeItem === 'Approvals') return <Approvals orders={orders} onUpdateOrderStatus={handleUpdateOrderStatus} onSelectOrder={(o) => { setSelectedOrder(o); }} users={users} properties={properties} />;
+        if (activeItem === 'Receiving') return <Receiving orders={orders} vendors={vendors} onUpdatePoStatus={handleUpdatePoStatus} onSelectOrder={(o) => setSelectedOrder(o)} />;
+        if (activeItem === 'Communications') return <CommunicationCenter threads={threads} messages={messages} users={users} orders={orders} currentUser={currentUser} onSendMessage={handleSendMessage} onStartNewThread={handleStartThread} onSelectOrder={setSelectedOrder} />;
+        if (activeItem === 'Company Settings') return <AdminSettings vendors={vendors} properties={properties} units={units} users={users} roles={roles} companies={availableCompanies} currentUser={currentUser} onAddProperty={handleAddProperty} onDeleteProperty={handleDeleteProperty} onAddUnit={handleAddUnit} onAddRole={handleAddRole} onUpdateRole={handleUpdateRole} onDeleteRole={handleDeleteRole} onViewAsUser={setImpersonatingUser} onAddUser={handleAddUser} onAddCompany={handleAddCompany} onDeleteUser={handleDeleteUser} products={products} onUpdateProduct={handleUpdateProduct} />;
+        if (activeItem === 'Payment Settings') return <PaymentSettings companyId={viewingCompanyId || currentUser?.companyId || ''} />;
+        if (activeItem === 'Suppliers') return <Suppliers vendors={vendors} products={products} orders={orders} properties={properties} companies={availableCompanies} currentCompanyId={viewingCompanyId || currentUser?.companyId || ''} onSwitchCompany={currentUser?.roleId === 'role-0' ? handleSwitchCompany : undefined} onSelectOrder={(o) => { setSelectedOrder(o); }} onAddVendor={handleAddVendor} onAddProduct={handleAddProduct} onAddVendorAccount={handleAddVendorAccount} />;
+        if (activeItem === 'Chart of Accounts') return <ChartOfAccounts accounts={accounts} onAddAccount={handleAddAccount} onUpdateAccount={handleUpdateAccount} onDeleteAccount={handleDeleteAccount} />;
+
+        // AP & AR Routes
+        if (activeItem === 'Bills') return <VendorInvoicesList companyId={viewingCompanyId || currentUser?.companyId || ''} onViewDetail={(inv) => { setSelectedVendorInvoice(inv); console.log("Selected Invoice:", inv); }} />;
+        if (activeItem === 'Bill Payments') return <Transactions orders={orders} vendors={vendors} onUpdatePoPaymentStatus={handleUpdatePoPaymentStatus} />;
+        if (activeItem === 'Invoices') return (
+            <InvoicesPage
+                currentCompanyId={viewingCompanyId || currentUser?.companyId || ''}
+                currentUser={currentUser}
+                products={products}
+                customers={customers}
+                properties={properties}
+                units={units}
+                preSelectedPropertyId={invoicePreSelectedPropertyId}
+                preSelectedUnitId={invoicePreSelectedUnitId}
+                onClearPreSelectedProperty={() => {
+                    setInvoicePreSelectedPropertyId(null);
+                    setInvoicePreSelectedUnitId(null);
+                }}
             />
-        </div>
-    </PermissionsProvider>
-);
+        );
+        if (activeItem === 'Property AR') return <PropertyARList properties={properties} units={units} onSelectProperty={handleNavigateToPropertyInvoice} onSelectUnit={(pid, uid) => handleNavigateToPropertyInvoice(pid, uid)} />;
+        if (activeItem === 'Invoice History') {
+            return (
+                <React.Suspense fallback={<div className="p-8 text-center">Loading...</div>}>
+                    <InvoiceHistoryPage companyId={viewingCompanyId || currentUser?.companyId || ''} />
+                </React.Suspense>
+            );
+        }
+        if (activeItem === 'Property AR') return <PropertyARList properties={properties} units={units} onSelectProperty={handleNavigateToPropertyInvoice} onSelectUnit={(pid, uid) => handleNavigateToPropertyInvoice(pid, uid)} />;
+        if (activeItem === 'Reports') return <Reports orders={orders} vendors={vendors} products={products} />;
+        if (activeItem === 'Integrations') return <Integrations />;
+        if (activeItem === 'Properties') return <Properties properties={properties} units={units} orders={orders} users={users} onSelectOrder={setSelectedOrder} />;
+        if (activeItem === 'Product Dashboard') return <ProductDashboard products={products} companies={availableCompanies} currentCompanyId={viewingCompanyId || currentUser?.companyId || ''} onSwitchCompany={currentUser?.roleId === 'role-0' ? handleSwitchCompany : undefined} onRefresh={() => session && fetchInitialData(session)} />;
+
+        return <Dashboard orders={orders} carts={carts} onNavigateToApprovals={() => handleNavigation('Approvals')} onNavigateToOrdersInTransit={() => handleNavigation('Receiving')} onNavigateToCartsToSubmit={() => handleNavigation('Carts to Submit')} onNavigateToCompletedOrders={() => handleNavigation('All Orders')} onNavigateToMyOrders={() => handleNavigation('All Orders')} onOpenCreateCartModal={() => setIsCreateCartModalOpen(true)} onGenerateReport={() => { }} />;
+    };
+
+    return (
+        <PermissionsProvider user={currentUser} roles={roles}>
+            <div className="flex h-screen bg-background font-sans text-foreground">
+                <Sidebar
+                    activeItem={activeItem}
+                    setActiveItem={handleNavigation}
+                    isCollapsed={isSidebarCollapsed}
+                    onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
+                    user={currentUser}
+                    roles={roles}
+                    companies={availableCompanies}
+                    currentCompanyId={viewingCompanyId || ''}
+                    companyName={currentCompanyName}
+                    onSwitchCompany={handleSwitchCompany}
+                    onLogout={handleLogout}
+                />
+                <div className={`flex-1 flex flex-col transition-all duration-300 ${isSidebarCollapsed ? 'ml-28' : 'ml-72'}`}>
+                    <Header onQuickCartClick={() => setIsQuickCartModalOpen(true)} onCartIconClick={() => setIsCartDrawerOpen(true)} user={currentUser} activeCart={activeCart} roles={roles} />
+                    <main className="flex-1 p-6 lg:p-8 overflow-y-auto">{renderContent()}</main>
+                </div>
+                <CreateCartFlowModal isOpen={isCreateCartModalOpen} onClose={() => setIsCreateCartModalOpen(false)} onSave={async (data) => { const result = await handleAddCart(data.type, viewingCompanyId || currentUser?.companyId, data); return result; }} properties={properties} units={units} userName={currentUser?.name || 'Unknown User'} />
+                <QuickCartModal isOpen={isQuickCartModalOpen} onClose={() => setIsQuickCartModalOpen(false)} onSave={(data) => { handleAddCart('Standard', viewingCompanyId || currentUser?.companyId, { name: data.name, propertyId: data.propertyId, items: data.items as any }); setIsQuickCartModalOpen(false); }} properties={properties} />
+                <GlobalCartDrawer isOpen={isCartDrawerOpen} onClose={() => setIsCartDrawerOpen(false)} activeCart={activeCart} carts={carts?.filter(c => c.status === 'Draft' || c.status === 'Ready for Review')} onSelectCart={setActiveCart} onUpdateItem={(prod, qty, note) => activeCart && handleUpdateCartItem(activeCart.id, prod, qty, note)} onSubmitForApproval={(cartId) => { handleSubmitCart(cartId); setIsCartDrawerOpen(false); }} onViewFullCart={() => { if (activeCart) { setIsCartDrawerOpen(false); setActiveItem('My Carts'); setSelectedCart(activeCart); setView('detail'); } }} />
+                <OrderDetailsDrawer order={selectedOrder} onClose={() => setSelectedOrder(null)} properties={properties} users={users} threads={threads} messages={messages} currentUser={currentUser} onSendMessage={handleSendMessage} orders={orders} onSelectOrder={setSelectedOrder} onUpdateOrderStatus={handleUpdateOrderStatus} onApprovalDecision={handleApprovalDecision} onProcureOrder={(o) => { setSelectedOrder(null); setOrderForProcurement(o); }} vendors={vendors} />
+                <EditScheduleModal isOpen={isEditScheduleModalOpen} onClose={() => setIsEditScheduleModalOpen(false)} cart={cartForScheduleEdit} onSave={() => { setIsEditScheduleModalOpen(false); }} />
+                <VendorInvoiceDetailModal
+                    isOpen={!!selectedVendorInvoice}
+                    onClose={() => setSelectedVendorInvoice(null)}
+                    invoice={selectedVendorInvoice}
+                    companyId={viewingCompanyId || currentUser?.companyId || ''}
+                    onUpdate={() => session && fetchInitialData(session)}
+                />
+            </div>
+        </PermissionsProvider>
+    );
 };
 
 export default App;

@@ -63,6 +63,16 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
     });
   }, [order]);
 
+  // FIX: Auto-switch to 'manage' tab if PO count increases (e.g. fresh data arrived after remount)
+  const prevPoCountRef = React.useRef(order.purchaseOrders?.length || 0);
+  useEffect(() => {
+    const currentCount = order.purchaseOrders?.length || 0;
+    if (currentCount > prevPoCountRef.current) {
+      setActiveTab('manage');
+    }
+    prevPoCountRef.current = currentCount;
+  }, [order.purchaseOrders]);
+
   // Sync state to cache
   useEffect(() => {
     assignmentCache[order.id] = itemVendorAssignments;
@@ -87,10 +97,17 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
     [localOrder.purchaseOrders]
   );
 
-  const itemsToAssign = useMemo(() =>
-    localOrder.items.filter(item => !assignedItemIdsInPOs.has(item.id)),
-    [localOrder.items, assignedItemIdsInPOs]
-  );
+  const itemsToAssign = useMemo(() => {
+    console.log("DEBUG: Recalculating itemsToAssign", {
+      poCount: localOrder.purchaseOrders?.length,
+      allItemsCount: localOrder.items.length,
+      assignedIDs: Array.from(assignedItemIdsInPOs),
+      itemIDs: localOrder.items.map(i => i.id)
+    });
+    return localOrder.items.filter(item => !assignedItemIdsInPOs.has(item.id));
+  }, [localOrder.items, assignedItemIdsInPOs]);
+
+  console.log("DEBUG: Render ProcurementWorkspace", { activeTab, itemsToAssignCount: itemsToAssign.length, assignedCount: assignedItemIdsInPOs.size });
 
   // Pre-fill vendor assignments with default vendorId
   const initializedItems = React.useRef<Set<string>>(new Set());
@@ -138,7 +155,7 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
     const posByVendor: Record<string, CartItem[]> = {};
     const assignedItemIds = Object.keys(itemVendorAssignments);
 
-    const assignedItemIds = Object.keys(itemVendorAssignments);
+
     const selectedList = itemsToAssign.filter(item => selectedItems.has(item.id));
 
     if (selectedList.length === 0) {
@@ -158,7 +175,8 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
         }
 
         // Apply price override if exists
-        const finalUnitPrice = itemPriceOverrides[item.id] ?? item.unitPrice;
+        const rawOverride = itemPriceOverrides[item.id];
+        const finalUnitPrice = (rawOverride !== undefined && !isNaN(rawOverride)) ? rawOverride : item.unitPrice;
         const finalTotalPrice = finalUnitPrice * item.quantity;
 
         posByVendor[vendorId].push({
