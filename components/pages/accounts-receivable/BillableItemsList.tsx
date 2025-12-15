@@ -97,11 +97,20 @@ const BillableItemsList: React.FC<BillableItemsListProps> = ({ companyId, custom
         return null;
     };
 
+    const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+
     // Grouping Logic
     const groupedItems = useMemo(() => {
         const groups: Record<string, BillableItem[]> = {};
 
-        items.forEach(item => {
+        // First, sort the master list based on preference
+        const sortedItems = [...items].sort((a, b) => {
+            const dateA = new Date(a.createdAt).getTime();
+            const dateB = new Date(b.createdAt).getTime();
+            return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
+        });
+
+        sortedItems.forEach(item => {
             const groupName = getCustomerName(item);
             // Filter by search term
             if (searchTerm && !groupName.toLowerCase().includes(searchTerm.toLowerCase()) && !item.description.toLowerCase().includes(searchTerm.toLowerCase())) {
@@ -115,7 +124,7 @@ const BillableItemsList: React.FC<BillableItemsListProps> = ({ companyId, custom
         });
 
         return groups;
-    }, [items, searchTerm, properties, units, customers]);
+    }, [items, searchTerm, properties, units, customers, sortOrder]);
 
     const sortedGroupKeys = Object.keys(groupedItems).sort();
 
@@ -174,6 +183,22 @@ const BillableItemsList: React.FC<BillableItemsListProps> = ({ companyId, custom
                     <p className="text-sm text-muted-foreground mt-1">Review and invoice expenses to tenants.</p>
                 </div>
                 <div className="flex gap-3 w-full sm:w-auto">
+                    {/* Sort Toggle */}
+                    <div className="flex items-center bg-white dark:bg-slate-800 border border-border rounded-lg p-1 shadow-sm">
+                        <button
+                            onClick={() => setSortOrder('newest')}
+                            className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${sortOrder === 'newest' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-300'}`}
+                        >
+                            Latest
+                        </button>
+                        <button
+                            onClick={() => setSortOrder('oldest')}
+                            className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${sortOrder === 'oldest' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-300'}`}
+                        >
+                            Oldest
+                        </button>
+                    </div>
+
                     <button
                         onClick={async () => {
                             setLoading(true);
@@ -191,6 +216,25 @@ const BillableItemsList: React.FC<BillableItemsListProps> = ({ companyId, custom
                         className="flex-1 sm:flex-none justify-center px-4 py-2 bg-white dark:bg-slate-800 border border-border text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition items-center gap-2 shadow-sm"
                     >
                         <RefreshIcon className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Sync
+                    </button>
+                    <button
+                        onClick={async () => {
+                            if (!window.confirm("This will reset markups to 0% for ALL Pending items. Continue?")) return;
+                            setLoading(true);
+                            try {
+                                const count = await billbackService.resetPendingMarkups(companyId);
+                                alert(`Reset markups for ${count} items.`);
+                                await fetchItems();
+                            } catch (e) {
+                                console.error(e);
+                                alert('Reset failed. Check console.');
+                            } finally {
+                                setLoading(false);
+                            }
+                        }}
+                        className="flex-1 sm:flex-none justify-center px-4 py-2 bg-white dark:bg-slate-800 border border-border text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition items-center gap-2 shadow-sm text-red-600 hover:text-red-700"
+                    >
+                        <RefreshIcon className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Fix Markups
                     </button>
                     {selectedItemIds.size > 0 && (
                         <button

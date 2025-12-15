@@ -203,50 +203,104 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ currentCompanyId, current
                     return `<a href="${url}" style="color: #0070f3; text-decoration: underline;">${label}</a>`;
                 });
 
-                // Improved Email Template with Brand Theme (Yellow/White)
-                const brandYellow = '#FAC02E'; // Approximate Rivian Yellow from OKLCH
-                const brandBlack = '#1a1a1a';
+                // Calculate details for email
+                const customer = customers.find(c => c.id === selectedCustomerId);
+                const property = properties.find(p => p.id === selectedPropertyId);
+                const unit = units.find(u => u.id === selectedUnitId);
+
+                const billToName = recipientType === 'customer' ? (customer?.name || 'Valued Customer') : `${property?.name || 'Property'} - ${unit?.name || 'Unit'}`;
+                const billToAddress = recipientType === 'customer'
+                    ? `${customer?.billingAddress?.street || '123 Main St'}, ${customer?.billingAddress?.city || 'City'}`
+                    : `${property?.address?.street || property?.name || '123 Property Ln'}`;
 
                 const emailHtml = `
-                    <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f9f9f9; padding: 40px 0;">
-                        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                    <div style="font-family: Arial, sans-serif; background-color: #ffffff; padding: 40px; color: #333333;">
+                        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 800px; margin: 0 auto;">
+                            <!-- Header -->
+                            <tr>
+                                <td valign="top" style="padding-bottom: 40px;">
+                                   <h1 style="font-size: 32px; font-weight: bold; color: #1a3b5c; margin: 0;">INVOICE</h1>
+                                </td>
+                                <td valign="top" align="right" style="padding-bottom: 40px; color: #333;">
+                                   <strong style="font-size: 16px;">My Company</strong><br>
+                                   <div style="margin-top: 5px; color: #555;">
+                                       123 Business Rd<br>
+                                       Commerce City, CA 90000
+                                   </div>
+                                </td>
+                            </tr>
+                        
+                            <!-- Bill To -->
+                            <tr>
+                                <td colspan="2" style="padding-bottom: 40px;">
+                                    <div style="color: #888; font-size: 14px; margin-bottom: 8px;">Bill To:</div>
+                                    <div style="font-weight: bold; font-size: 18px; color: #1a3b5c; margin-bottom: 4px;">${billToName}</div>
+                                    <div style="font-size: 15px; color: #555;">${billToAddress}</div>
+                                </td>
+                            </tr>
+                        
+                            <!-- Grid Header -->
+                            <tr>
+                                <td style="border-bottom: 1px solid #ddd; padding-bottom: 10px; font-weight: bold; color: #555;">Description</td>
+                                <td align="right" style="border-bottom: 1px solid #ddd; padding-bottom: 10px; font-weight: bold; color: #555;">Amount</td>
+                            </tr>
+                        
+                            <!-- Items Loop -->
+                            ${items.map(item => `
+                                <tr>
+                                    <td style="padding: 15px 0; border-bottom: 1px solid #f5f5f5; color: #333;">
+                                        ${item.description}
+                                        ${item.quantity > 1 ? `<span style="color: #777;"> (Qty: ${item.quantity})</span>` : ''}
+                                    </td>
+                                    <td align="right" style="padding: 15px 0; border-bottom: 1px solid #f5f5f5; font-weight: bold; color: #333;">
+                                        $${(item.totalPrice || 0).toFixed(2)}
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        
+                            <!-- Totals Section (Right Aligned) -->
+                            <tr>
+                                <td colspan="2" align="right" style="padding-top: 30px;">
+                                    <table cellpadding="4" cellspacing="0">
+                                        <tr>
+                                            <td style="color: #666; padding-right: 20px;">Subtotal</td>
+                                            <td style="text-align: right; font-weight: bold;">$${totals.subtotal.toFixed(2)}</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="color: #666; padding-right: 20px;">Tax (${taxRate}%)</td>
+                                            <td style="text-align: right; font-weight: bold;">$${totals.taxTotal.toFixed(2)}</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="color: #1a3b5c; font-weight: bold; font-size: 18px; padding-top: 10px; padding-right: 20px;">Total</td>
+                                            <td style="color: #1a3b5c; font-weight: bold; font-size: 24px; padding-top: 10px; text-align: right;">$${totals.totalAmount.toFixed(2)}</td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        
+                            <!-- Payment Footer -->
+                            <tr>
+                                <td colspan="2" style="padding-top: 50px; border-top: 1px solid #eee; margin-top: 30px;">
+                                   <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #1a3b5c;">Payment Methods</h3>
+                                   <div style="color: #666; line-height: 1.5;">
+                                       <div>Bank Transfer: Chase Bank</div>
+                                       <div>Routing: 123456789 | Account: 987654321</div>
+                                   </div>
+                                </td>
+                            </tr>
                             
-                            <!-- Header with Logo -->
-                            <div style="background-color: ${brandYellow}; padding: 30px 20px; text-align: center;">
-                                <img src="https://ui-avatars.com/api/?name=Procurement+Pro&background=ffffff&color=1a1a1a&size=80&rounded=true&font-size=0.4" alt="Procurement Pro" style="width: 80px; height: 80px; border-radius: 50%; border: 4px solid #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                            </div>
-
-                            <!-- Content -->
-                            <div style="padding: 40px 30px; color: ${brandBlack};">
-                                <h2 style="margin: 0 0 20px 0; font-size: 24px; font-weight: 700; color: ${brandBlack}; text-align: center;">
-                                    ${emailSubject}
-                                </h2>
-                                
-                                <div style="font-size: 16px; line-height: 1.6; color: #4a4a4a; white-space: pre-wrap;">${parsedBody}</div>
-
-                                <!-- Call to Action -->
-                                <div style="text-align: center; margin-top: 40px; padding-top: 30px; border-top: 1px solid #f0f0f0;">
-                                    <a href="${finalLink}" style="background-color: ${brandYellow}; color: ${brandBlack}; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 18px; display: inline-block; transition: background-color 0.2s;">
-                                        Pay Invoice Now
+                             <!-- Pay Button Call to Action -->
+                            <tr>
+                                <td colspan="2" align="center" style="padding-top: 40px;">
+                                    <a href="${finalLink}" style="background-color: #1a3b5c; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;">
+                                        Pay Invoice Online
                                     </a>
-                                    <p style="margin-top: 15px; font-size: 14px; color: #888;">
-                                        Or <a href="${finalLink}" style="color: ${brandBlack}; text-decoration: underline;">view invoice details</a>
-                                    </p>
-                                    
-                                    <div style="margin-top: 30px;">
-                                        <p style="font-size: 12px; color: #aaa; margin-bottom: 10px;">Scan to Pay</p>
-                                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(finalLink)}" alt="Payment QR Code" style="width: 120px; height: 120px; border: 4px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                                    <div style="margin-top: 15px;">
+                                        <a href="${finalLink}" style="color: #1a3b5c; text-decoration: underline; font-size: 14px;">View Invoice Details</a>
                                     </div>
-                                </div>
-                            </div>
-
-                            <!-- Footer -->
-                            <div style="background-color: #1a1a1a; padding: 20px; text-align: center; color: #888; font-size: 12px;">
-                                <p style="margin: 0 0 10px 0; color: #aaa; font-weight: bold;">Alpha Property Management</p>
-                                <p style="margin: 0;">123 Business Rd, Commerce City</p>
-                                <p style="margin: 10px 0 0 0;">&copy; ${new Date().getFullYear()} Procurement Pro. All rights reserved.</p>
-                            </div>
-                        </div>
+                                </td>
+                            </tr>
+                        </table>
                     </div>
                 `;
 

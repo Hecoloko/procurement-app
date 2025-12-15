@@ -134,8 +134,8 @@ export const billbackService = {
             source_id: vendorInvoiceId,
             description: item.description,
             cost_amount: item.total_price,
-            markup_amount: item.total_price * 0.20,
-            total_amount: item.total_price * 1.20,
+            markup_amount: 0, // Removed auto 20% markup
+            total_amount: item.total_price, // Total = Cost
             status: 'Pending'
         }));
 
@@ -207,8 +207,8 @@ export const billbackService = {
                 source_id: poId,
                 description: `${item.name} (Qty: ${item.quantity})`,
                 cost_amount: cost,
-                markup_amount: cost * 0.20, // 20% Markup
-                total_amount: cost * 1.20,
+                markup_amount: 0, // Removed auto 20% markup
+                total_amount: cost, // Total = Cost
                 status: 'Pending'
             };
         });
@@ -279,5 +279,40 @@ export const billbackService = {
             }
         }
         return successCount;
+    },
+
+    // MAINTENANCE: Reset Markups for all Pending Items
+    async resetPendingMarkups(companyId: string) {
+        console.log("Resetting markups for company:", companyId);
+
+        // Fetch all pending items first to minimize logic mismatch? 
+        // Or efficient SQL update? Supabase doesn't support 'update item set total = cost' directly via simple JS client 
+        // without a stored proc or raw sql unless we do it row-by-row or if the logic is constant.
+        // But we can't reference another column in the update value easily in JS client (e.g. total_amount = cost_amount).
+        // So we must fetch, Iterate, and Update. 
+
+        const { data: items, error } = await supabase
+            .from('billable_items')
+            .select('id, cost_amount')
+            .eq('company_id', companyId)
+            .eq('status', 'Pending');
+
+        if (error) throw error;
+        if (!items || items.length === 0) return 0;
+
+        let count = 0;
+        // Batch updates? Or parallel?
+        for (const item of items) {
+            const { error: updateError } = await supabase
+                .from('billable_items')
+                .update({
+                    markup_amount: 0,
+                    total_amount: item.cost_amount
+                })
+                .eq('id', item.id);
+
+            if (!updateError) count++;
+        }
+        return count;
     }
 };

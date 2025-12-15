@@ -43,6 +43,7 @@ import Auth from './components/Auth';
 import { ProcureProLogoIcon, RefreshIcon } from './components/Icons';
 import { useTheme } from './hooks/useTheme';
 import { processPayment } from './services/paymentService';
+import { backfillVendorPrices } from './services/priceBackfillService';
 
 // ... (Helper functions remain same)
 const safeNumber = (val: any): number => {
@@ -485,7 +486,7 @@ export const App: React.FC = () => {
             const requests = [
                 supabase.from('carts').select('*, cart_items(*)').eq('company_id', targetCompanyId).order('created_at', { ascending: false }).limit(100),
                 supabase.from('orders').select('*, cart:carts(cart_items(*)), purchase_orders(*), order_status_history(*)').eq('company_id', targetCompanyId).order('created_at', { ascending: false }).limit(100),
-                supabase.from('products').select('*').eq('company_id', targetCompanyId).limit(500),
+                supabase.from('products').select('*').eq('company_id', targetCompanyId).limit(5000),
                 supabase.from('vendors').select('*, vendor_accounts(*)').eq('company_id', targetCompanyId),
                 supabase.from('properties').select('*').eq('company_id', targetCompanyId),
                 supabase.from('profiles').select('*').eq('company_id', targetCompanyId),
@@ -494,7 +495,7 @@ export const App: React.FC = () => {
                 supabase.from('communication_threads').select('*').eq('company_id', targetCompanyId).limit(100),
                 supabase.from('messages').select('*').limit(500),
                 supabase.from('accounts').select('*').eq('company_id', targetCompanyId),
-                supabase.from('product_vendors').select('*'),
+                supabase.from('product_vendors').select('*').limit(5000),
                 supabase.from('customers').select('*').eq('company_id', targetCompanyId).order('name')
             ];
 
@@ -534,6 +535,11 @@ export const App: React.FC = () => {
             const mappedProducts = (productsData.data || []).map(mapProduct);
 
             if (productVendorsData && productVendorsData.data) {
+                // AUTO-FIX: Backfill missing prices if data is found to be incomplete
+                backfillVendorPrices(supabase, targetCompanyId).then(updated => {
+                    if (updated) console.log("System: Vendor prices backfilled.");
+                });
+
                 const vendorMap = new Map((vendorsData.data || []).map((v: any) => [v.id, v.name]));
                 mappedProducts.forEach(p => {
                     const options = productVendorsData.data
@@ -1762,7 +1768,7 @@ export const App: React.FC = () => {
     };
 
     const renderContent = () => {
-        if (orderForProcurement) return <ProcurementWorkspace key={orderForProcurement.id} order={orderForProcurement} vendors={vendors} products={products} onBack={(updated) => { setOrderForProcurement(null); if (updated) handleSaveOrder(updated); }} onOrderComplete={handleSaveOrder} />;
+        if (orderForProcurement) return <ProcurementWorkspace key={orderForProcurement.id} order={orderForProcurement} vendors={vendors} products={products} onBack={() => setOrderForProcurement(null)} onOrderComplete={handleSaveOrder} />;
 
         if (activeItem === 'My Carts' || activeItem === 'Carts to Submit') {
             if (view === 'detail' && selectedCart) {

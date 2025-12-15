@@ -263,7 +263,11 @@ const Suppliers: React.FC<SuppliersProps> = ({ vendors, products, orders, onSele
         }
         console.log("DEBUG: Filtering products for vendor:", selectedVendor.id, selectedVendor.name);
         console.log("DEBUG: Total products available:", products.length);
-        const filtered = products.filter(p => p.vendorId === selectedVendor.id);
+        const filtered = products.filter(p => {
+            const isPrimary = p.vendorId === selectedVendor.id;
+            const isOption = p.vendorOptions?.some(opt => opt.vendorId === selectedVendor.id);
+            return isPrimary || isOption;
+        });
         console.log("DEBUG: Matching products found:", filtered.length);
         return filtered;
     }, [selectedVendor, products]);
@@ -457,11 +461,17 @@ const Suppliers: React.FC<SuppliersProps> = ({ vendors, products, orders, onSele
                                                 catalogView === 'card' ? (
                                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">{vendorCatalog.map(product => (<ProductCard key={product.id} product={product} />))}</div>
                                                 ) : (
-                                                    <div className="overflow-x-auto bg-muted/10 rounded-xl border border-border"><table className="w-full text-sm"><thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-b border-border"><tr><th className="px-4 py-3 text-left">Product</th><th className="px-4 py-3 text-left">SKU</th><th className="px-4 py-3 text-right">Price</th></tr></thead><tbody className="divide-y divide-border text-foreground">{vendorCatalog.map(p => <tr key={p.id} className="hover:bg-muted/50 transition-colors">
-                                                        <td className="px-4 py-3 font-semibold">{p.name}</td>
-                                                        <td className="px-4 py-3 font-mono text-muted-foreground">{p.sku}</td>
-                                                        <td className="px-4 py-3 font-semibold text-right text-green-600 dark:text-green-400">${p.unitPrice.toFixed(2)}</td>
-                                                    </tr>)}</tbody></table></div>
+                                                    <div className="overflow-x-auto bg-muted/10 rounded-xl border border-border"><table className="w-full text-sm"><thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-b border-border"><tr><th className="px-4 py-3 text-left">Product</th><th className="px-4 py-3 text-left">SKU</th><th className="px-4 py-3 text-right">Price</th></tr></thead><tbody className="divide-y divide-border text-foreground">{vendorCatalog.map(p => {
+                                                        const vendorOption = p.vendorOptions?.find(vo => vo.vendorId === selectedVendor.id);
+                                                        const displayPrice = vendorOption ? vendorOption.price : p.unitPrice;
+                                                        return (
+                                                            <tr key={p.id} className="hover:bg-muted/50 transition-colors">
+                                                                <td className="px-4 py-3 font-semibold">{p.name}</td>
+                                                                <td className="px-4 py-3 font-mono text-muted-foreground">{p.sku}</td>
+                                                                <td className="px-4 py-3 font-semibold text-right text-green-600 dark:text-green-400">${displayPrice.toFixed(2)}</td>
+                                                            </tr>
+                                                        );
+                                                    })}</tbody></table></div>
                                                 )
                                             ) : <p className="text-center py-12 text-muted-foreground border border-dashed border-border rounded-xl">{unfilteredVendorCatalog.length > 0 ? 'No items match your filter.' : 'No catalog items found for this supplier.'}</p>}
                                         </div>

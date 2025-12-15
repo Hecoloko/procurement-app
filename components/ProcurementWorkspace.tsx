@@ -139,6 +139,22 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
     }
   }, [itemsToAssign, products]);
 
+  // Safety: Ensure selectedItems only contains valid items currently in itemsToAssign
+  useEffect(() => {
+    setSelectedItems(prev => {
+      const validIds = new Set(itemsToAssign.map(i => i.id));
+      const next = new Set(prev);
+      let hasChanges = false;
+      for (const id of prev) {
+        if (!validIds.has(id)) {
+          next.delete(id);
+          hasChanges = true;
+        }
+      }
+      return hasChanges ? next : prev;
+    });
+  }, [itemsToAssign]);
+
   const handleVendorSelect = (itemId: string, vendorId: string) => {
     setItemVendorAssignments(prev => ({ ...prev, [itemId]: vendorId }));
   };
@@ -162,6 +178,12 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
       alert("Please select at least one item to convert to PO.");
       return;
     }
+
+    if (!confirm(`Are you sure you want to create Purchase Orders for ${selectedList.length} item(s)?`)) {
+      return;
+    }
+
+    console.log("DEBUG: handleCreatePOs processing items:", selectedList.map(i => ({ id: i.id, name: i.name, vendor: itemVendorAssignments[i.id] || i.vendorId })));
 
     selectedList.forEach(item => {
       // Use direct lookup to be safe against potential type mismatches (string vs number)
@@ -241,11 +263,12 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
         <table className="w-full text-sm border-collapse min-w-[600px]">
           <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-50 dark:bg-white/5">
             <tr>
-              <th className="px-6 py-3 text-left font-bold rounded-tl-2xl">
+              <th className="px-6 py-3 text-left font-bold rounded-tl-2xl flex items-center gap-2">
                 <input
                   type="checkbox"
                   className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
                   onChange={(e) => {
+                    console.log("DEBUG: Select All Toggled", { checked: e.target.checked, totalItems: itemsToAssign.length });
                     if (e.target.checked) {
                       setSelectedItems(new Set(itemsToAssign.map(i => i.id)));
                     } else {
@@ -254,6 +277,9 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
                   }}
                   checked={itemsToAssign.length > 0 && selectedItems.size === itemsToAssign.length}
                 />
+                <span className="text-xs font-normal text-gray-500 normal-case">
+                  ({selectedItems.size}/{itemsToAssign.length})
+                </span>
               </th>
               <th className="px-6 py-3 text-left font-bold">Product</th>
               <th className="px-6 py-3 text-center font-bold">Qty</th>
@@ -314,12 +340,24 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
                               handleVendorSelect(item.id, val);
                               // Find price for the selected vendor
                               const vendorOptions = product?.vendorOptions || [];
-                              const opt = vendorOptions.find(vo => vo.vendorId === val);
+                              // Use String comparison for robustness
+                              const opt = vendorOptions.find(vo => String(vo.vendorId) === String(val));
+
+                              console.log("DEBUG: Vendor Select", {
+                                itemId: item.id,
+                                selectedVendorId: val,
+                                originalVendorId: item.vendorId,
+                                foundOptionIndex: opt ? "FOUND" : "NOT FOUND"
+                              });
+
                               if (opt) {
                                 handlePriceChange(item.id, opt.price);
-                              } else if (val === item.vendorId) {
+                              } else if (String(val) === String(item.vendorId)) {
                                 // Fallback to original item price if it matches original vendor
                                 handlePriceChange(item.id, item.unitPrice);
+                              } else {
+                                // Vendor is unavailable/has no price -> Reset manual override to 0
+                                handlePriceChange(item.id, 0);
                               }
                             } else {
                               // Handle clearing vendor? Maybe not allowed or just clear assignment
@@ -332,15 +370,54 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
                           }}
                           options={vendors.map(v => {
                             const vendorOptions = product?.vendorOptions || [];
-                            const opt = vendorOptions.find(vo => vo.vendorId === v.id);
-                            let label = v.name;
-                            let rightLabel = null;
-                            if (opt) {
-                              rightLabel = `$${opt.price.toFixed(2)}`;
-                            } else if (v.id === item.vendorId) {
-                              rightLabel = `$${item.unitPrice.toFixed(2)}`;
+                            // Use strict String comparison to find matching option
+                            const opt = vendorOptions.find(vo => String(vo.vendorId) === String(v.id));
+
+                            // Check BOTH item snapshot and live product data for primary vendor match
+                            const isOriginalVendor = (item.vendorId && String(v.id) === String(item.vendorId)) ||
+                              (product?.vendorId && String(v.id) === String(product.vendorId));
+
+                            // Calculate lowest price for this product
+                            const validPrices = vendorOptions.filter(vo => !isNaN(vo.price) && vo.price > 0).map(vo => vo.price);
+
+                            // Ensure we include the base unit price if the original vendor is not already in the options list
+                            if (isOriginalVendor && !vendorOptions.find(vo => String(vo.vendorId) === String(v.id))) {
+                              validPrices.push(item.unitPrice);
                             }
-                            return { value: v.id, label, rightLabel };
+                            const minPrice = validPrices.length > 0 ? Math.min(...validPrices) : 0;
+
+                            let label = v.name;
+                            let rightLabel: React.ReactNode = <span className="text-gray-400 text-xs italic">Unavailable</span>;
+                            let value = v.id;
+
+                            let price = 0;
+                            let hasPrice = false;
+
+                            if (opt) {
+                              price = opt.price;
+                              hasPrice = true;
+                            } else if (isOriginalVendor) {
+                              price = item.unitPrice;
+                              hasPrice = true;
+                            }
+
+                            if (hasPrice) {
+                              const isCheapest = minPrice > 0 && Math.abs(price - minPrice) < 0.01;
+                              rightLabel = (
+                                <div className="flex items-center gap-2">
+                                  {isCheapest && (
+                                    <span className="bg-green-100 text-green-800 text-[10px] font-bold px-1.5 py-0.5 rounded border border-green-200 uppercase tracking-wide">
+                                      Best Price
+                                    </span>
+                                  )}
+                                  <span className={`font-mono font-medium ${isCheapest ? "text-green-600 dark:text-green-400 text-sm font-bold" : "text-gray-600 dark:text-gray-300"}`}>
+                                    ${price.toFixed(2)}
+                                  </span>
+                                </div>
+                              );
+                            }
+
+                            return { value, label, rightLabel };
                           })}
                           placeholder="Select a vendor..."
                           className="w-full max-w-xs bg-gray-50 dark:bg-white/10 border-gray-300 dark:border-white/20 text-gray-900 dark:text-white flex-1"
@@ -353,22 +430,20 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
 
                       {(() => {
                         const vendorOptions = product?.vendorOptions || [];
-                        // Include the original item price as an option if not already in vendorOptions
-                        const allOptions = [...vendorOptions];
-                        if (item.vendorId && !allOptions.find(o => o.vendorId === item.vendorId)) {
-                          allOptions.push({ id: 'original', vendorId: item.vendorId, price: item.unitPrice, vendorSku: item.sku, isPreferred: false });
-                        }
+                        const prices = vendorOptions.map(vo => ({ price: vo.price, vendorId: vo.vendorId })).filter(p => !isNaN(p.price) && p.price > 0);
 
-                        if (allOptions.length > 0 && effectiveVendorId) {
-                          const currentPrice = currentUnitPrice;
-                          const cheapestOption = allOptions.sort((a, b) => a.price - b.price)[0];
+                        if (prices.length > 0) {
+                          const minOption = prices.reduce((min, curr) => curr.price < min.price ? curr : min, prices[0]);
 
-                          if (cheapestOption && currentPrice > cheapestOption.price) {
-                            const savings = currentPrice - cheapestOption.price;
-                            const cheapestVendor = vendors.find(v => v.id === cheapestOption.vendorId);
+                          // If current selection is more expensive than min option
+                          if (minOption.price < currentUnitPrice - 0.01) {
+                            const cheapestVendor = vendors.find(v => v.id === minOption.vendorId);
+                            const savings = currentUnitPrice - minOption.price;
                             return (
-                              <div className="text-xs text-blue-600 dark:text-blue-400 font-bold flex items-center gap-1 mt-1 animate-pulse">
-                                <ArrowUpTrayIcon className="w-4 h-4 rotate-180" />
+                              <div className="text-xs text-blue-500 font-bold flex items-center gap-1 cursor-pointer hover:underline" onClick={() => handleVendorSelect(item.id, minOption.vendorId)}>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                                  <path fillRule="evenodd" d="M10 3a.75.75 0 01.75.75v10.638l3.96-4.158a.75.75 0 111.08 1.04l-5.25 5.5a.75.75 0 01-1.08 0l-5.25-5.5a.75.75 0 111.08-1.04l3.96 4.158V3.75A.75.75 0 0110 3z" clipRule="evenodd" />
+                                </svg>
                                 Save ${savings.toFixed(2)} with {cheapestVendor?.name || 'Cheaper Vendor'}
                               </div>
                             );
@@ -518,7 +593,12 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
 
       <div className="border-b border-gray-200 dark:border-white/10 mt-6 mb-6">
         <nav className="-mb-px flex space-x-8">
-          <button onClick={() => setActiveTab('assign')} disabled={itemsToAssign.length === 0} className={`py-4 px-1 border-b-2 font-bold text-sm transition-colors disabled:text-gray-400 dark:disabled:text-gray-600 disabled:border-transparent ${activeTab === 'assign' ? 'border-green-500 text-green-600 dark:text-green-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-500'}`}>Assign Items ({itemsToAssign.length})</button>
+          <button
+            onClick={() => setActiveTab('assign')}
+            className={`pb-4 px-1 ${activeTab === 'assign' ? 'border-b-2 border-green-500 text-green-600 font-bold' : 'text-gray-500 hover:text-gray-700'}`}
+          >
+            Assign Items ({itemsToAssign.length})
+          </button>
           <button onClick={() => setActiveTab('manage')} disabled={poCount === 0} className={`py-4 px-1 border-b-2 font-bold text-sm transition-colors disabled:text-gray-400 dark:disabled:text-gray-600 disabled:border-transparent ${activeTab === 'manage' ? 'border-green-500 text-green-600 dark:text-green-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-500'}`}>Manage POs ({poCount})</button>
         </nav>
       </div>
