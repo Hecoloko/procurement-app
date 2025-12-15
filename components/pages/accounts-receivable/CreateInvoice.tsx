@@ -250,7 +250,7 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ currentCompanyId, current
                                 <tr>
                                     <td style="padding: 15px 0; border-bottom: 1px solid #f5f5f5; color: #333;">
                                         ${item.description}
-                                        ${item.quantity > 1 ? `<span style="color: #777;"> (Qty: ${item.quantity})</span>` : ''}
+                                        ${(item.quantity || 0) > 1 ? `<span style="color: #777;"> (Qty: ${item.quantity})</span>` : ''}
                                     </td>
                                     <td align="right" style="padding: 15px 0; border-bottom: 1px solid #f5f5f5; font-weight: bold; color: #333;">
                                         $${(item.totalPrice || 0).toFixed(2)}

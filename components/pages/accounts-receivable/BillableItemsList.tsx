@@ -105,8 +105,8 @@ const BillableItemsList: React.FC<BillableItemsListProps> = ({ companyId, custom
 
         // First, sort the master list based on preference
         const sortedItems = [...items].sort((a, b) => {
-            const dateA = new Date(a.createdAt).getTime();
-            const dateB = new Date(b.createdAt).getTime();
+            const dateA = new Date(a.createdAt || 0).getTime();
+            const dateB = new Date(b.createdAt || 0).getTime();
             return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
         });
 
