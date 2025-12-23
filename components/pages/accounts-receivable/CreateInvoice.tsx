@@ -8,6 +8,7 @@ import UnbilledItemsModal from './UnbilledItemsModal';
 import { ChevronLeftIcon, PlusIcon, TrashIcon, BriefcaseIcon } from '../../Icons';
 
 import { BillableItem } from '../../../types';
+import { StripeCheckoutButton } from '../../StripeCheckoutButton';
 
 interface CreateInvoiceProps {
     currentCompanyId: string;
@@ -289,14 +290,15 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ currentCompanyId, current
                                 </td>
                             </tr>
                             
-                             <!-- Pay Button Call to Action -->
+
+                            <!-- Pay Button Call to Action -->
                             <tr>
                                 <td colspan="2" align="center" style="padding-top: 40px;">
-                                    <a href="${finalLink}" style="background-color: #1a3b5c; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;">
+                                    <a href="${finalLink}" style="background-color: #635BFF; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;">
                                         Pay Invoice Online
                                     </a>
                                     <div style="margin-top: 15px;">
-                                        <a href="${finalLink}" style="color: #1a3b5c; text-decoration: underline; font-size: 14px;">View Invoice Details</a>
+                                        <a href="${finalLink}" style="color: #635BFF; text-decoration: underline; font-size: 14px;">View Invoice Details</a>
                                     </div>
                                 </td>
                             </tr>

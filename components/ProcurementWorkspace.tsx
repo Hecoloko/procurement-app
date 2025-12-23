@@ -225,10 +225,17 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
       };
     });
 
+    // Determine new status
+    // itemsToAssign contains ALL currently unassigned items.
+    // selectedItems contains the IDs of items we are CURRENTLY turning into POs.
+    // So if selectedItems.size < itemsToAssign.length, it means some items remain unassigned.
+    const isPartial = selectedItems.size < itemsToAssign.length;
+    const newStatus: any = isPartial ? 'Partially Procured' : 'Processing';
+
     const updatedOrder = {
       ...localOrder,
       purchaseOrders: [...(localOrder.purchaseOrders || []), ...newPurchaseOrders],
-      status: 'Processing' as const
+      status: newStatus
     };
 
     setLocalOrder(updatedOrder);

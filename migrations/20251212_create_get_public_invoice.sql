@@ -15,7 +15,7 @@ BEGIN
     'due_date', i.due_date,
     'status', i.status,
     'amount', i.amount,
-    'total_amount', i.total_amount,
+    'total_amount', i.amount,
     'tax_total', i.tax_total,
     'company_id', i.company_id,
     'customer_id', i.customer_id,

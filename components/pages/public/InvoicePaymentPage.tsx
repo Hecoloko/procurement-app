@@ -1,80 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Invoice } from '../../../types';
 import { supabase } from '../../../supabaseClient';
-import { loadStripe } from '@stripe/stripe-js';
-import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+
 import { CreditCardIcon, QrCodeIcon, BuildingLibraryIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { ProcureProLogoIcon } from '../../Icons';
 import StatusModal from '../../StatusModal';
+import { StripeCheckoutButton } from '../../StripeCheckoutButton';
 
-// Initialize Stripe (use your publishable key)
-const stripePromise = loadStripe('pk_test_TYooMQauvdEDq54NiTphI7jx');
-
-// Inner component for Stripe Elements logic
-const CheckoutForm = ({ invoice, onSuccess }: { invoice: Invoice, onSuccess: (txId: string) => void }) => {
-    const stripe = useStripe();
-    const elements = useElements();
-    const [error, setError] = useState<string | null>(null);
-    const [processing, setProcessing] = useState(false);
-
-    const handleSubmit = async (event: React.FormEvent) => {
-        event.preventDefault();
-        if (!stripe || !elements) return;
-
-        setProcessing(true);
-        setError(null);
-
-        // Simulation of Payment processing since we don't have a live backend endpoint for intents yet in this context
-        // In a real app we'd fetch clientSecret from backend here.
-
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        // Mock success
-        onSuccess('pay_mock_' + Date.now());
-        setProcessing(false);
-
-        /* Real Implementation Logic:
-        const { error: paymentMethodError, paymentMethod } = await stripe.createPaymentMethod({
-            type: 'card',
-            card: elements.getElement(CardElement)!,
-        });
-
-        if (paymentMethodError) {
-            setError(paymentMethodError.message || 'Payment failed');
-            setProcessing(false);
-            return;
-        }
-
-        // Call backend to charge
-        // const response = await fetch('/api/charge-invoice', { ... });
-        */
-    };
-
-    return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="p-4 border rounded-lg bg-background">
-                <CardElement options={{
-                    style: {
-                        base: {
-                            fontSize: '16px',
-                            color: '#424770',
-                            '::placeholder': { color: '#aab7c4' },
-                        },
-                        invalid: { color: '#9e2146' },
-                    },
-                }} />
-            </div>
-            {error && <div className="text-red-500 text-sm">{error}</div>}
-            <button
-                type="submit"
-                disabled={!stripe || processing}
-                className="w-full bg-primary text-primary-foreground font-bold py-3 rounded-xl hover:opacity-90 transition-all disabled:opacity-50 flex justify-center items-center"
-            >
-                {processing ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : `Pay $${invoice.totalAmount.toFixed(2)}`}
-            </button>
-        </form>
-    );
-};
 
 const InvoicePaymentPage: React.FC = () => {
     const [invoice, setInvoice] = useState<Invoice | null>(null);
@@ -155,6 +87,17 @@ const InvoicePaymentPage: React.FC = () => {
             setLoading(false);
         };
         loadInvoice();
+    }, []);
+
+    // Check for Payment Success Return
+    useEffect(() => {
+        if (window.location.hash.includes('success=true')) {
+            const sessionIdMatch = window.location.hash.match(/session_id=([^&]*)/);
+            const sessionId = sessionIdMatch ? sessionIdMatch[1] : 'unknown';
+            setPaymentSuccess(true);
+            // Optionally clear the hash params to prevent refresh re-triggering, 
+            // but keeping 'success=true' is fine for now as proof.
+        }
     }, []);
 
     const handleSuccess = (txId: string) => {
@@ -283,9 +226,17 @@ const InvoicePaymentPage: React.FC = () => {
                     {/* Content */}
                     <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
                         {activeTab === 'card' && (
-                            <Elements stripe={stripePromise}>
-                                <CheckoutForm invoice={invoice} onSuccess={handleSuccess} />
-                            </Elements>
+                            <div className="flex flex-col items-center justify-center py-6 space-y-4">
+                                <StripeCheckoutButton
+                                    invoiceId={invoice.id}
+                                    companyId={invoice.companyId}
+                                    className="w-full py-4 text-lg"
+                                    label={`Pay $${invoice.totalAmount.toFixed(2)} with Stripe`}
+                                />
+                                <p className="text-xs text-gray-400 text-center mt-4">
+                                    You will be redirected to Stripe's secure checkout page to complete your payment.
+                                </p>
+                            </div>
                         )}
 
                         {activeTab === 'qr' && (

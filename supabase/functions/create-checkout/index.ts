@@ -19,23 +19,16 @@ serve(async (req) => {
     try {
         const { invoiceId, companyId } = await req.json();
 
-        // 1. Get Invoice from Supabase
+        // 1. Get Invoice from Supabase via RPC (Bypasses RLS securely)
         const supabaseClient = createClient(
             Deno.env.get("SUPABASE_URL") ?? "",
             Deno.env.get("SUPABASE_ANON_KEY") ?? "",
             { global: { headers: { Authorization: req.headers.get("Authorization")! } } }
         );
 
-        // Fetch invoice with items and company details for metadata
+        // Fetch invoice using the public RPC function
         const { data: invoice, error: invoiceError } = await supabaseClient
-            .from("invoices")
-            .select("*, customer:customers(*), items:invoice_items(*)") // Assuming invoice_items is the table, might be 'billable_items' based on PRD, but simpler for now.
-            // Wait, PRD said billable_items linked to invoice. 
-            // If standard 'invoice_items' table doesn't exist, we should use 'billable_items'.
-            // Let's stick to 'invoice_items' if that's what the existing code assumed, OR query billable_items.
-            // Earlier file showed 'invoice.items'. Let's assume there's a relation.
-            .eq("id", invoiceId)
-            .single();
+            .rpc('get_public_invoice', { invoice_uuid: invoiceId });
 
         if (invoiceError || !invoice) {
             console.error("Invoice fetch error:", invoiceError);
@@ -51,7 +44,7 @@ serve(async (req) => {
                     product_data: {
                         name: item.description,
                     },
-                    unit_amount: Math.round((item.unit_price || item.total_amount) * 100), // Handle varied schemas
+                    unit_amount: Math.round((item.unit_price || item.total_price) * 100), // Handle varied schemas
                 },
                 quantity: item.quantity || 1,
             }));
@@ -63,7 +56,7 @@ serve(async (req) => {
                     product_data: {
                         name: `Invoice #${invoice.invoice_number || invoice.id}`,
                     },
-                    unit_amount: Math.round(invoice.total_amount * 100),
+                    unit_amount: Math.round(invoice.amount * 100), // Corrected: amount column
                 },
                 quantity: 1,
             });
@@ -74,8 +67,9 @@ serve(async (req) => {
             payment_method_types: ["card"],
             line_items,
             mode: "payment",
-            success_url: `${req.headers.get("origin")}/invoices?success=true&session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${req.headers.get("origin")}/invoices/view/${invoiceId}?canceled=true`,
+            // Update to use Hash Routing #/pay/:id
+            success_url: `${req.headers.get("origin")}/#/pay/${invoiceId}?success=true&session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${req.headers.get("origin")}/#/pay/${invoiceId}?canceled=true`,
             metadata: {
                 invoiceId: invoice.id,
                 companyId: companyId || invoice.company_id,

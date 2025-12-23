@@ -13,6 +13,7 @@ const getComprehensiveStatusTheme = (status: OrderStatus) => {
         case 'Needs Revision': return 'bg-orange-100 text-orange-800 dark:bg-orange-500/20 dark:text-orange-300 border border-orange-200 dark:border-orange-500/30';
         case 'Rejected': return 'bg-red-100 text-red-800 dark:bg-red-500/20 dark:text-red-300 border border-red-200 dark:border-red-500/30';
         case 'Processing': return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-500/20 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30';
+        case 'Partially Procured': return 'bg-teal-100 text-teal-800 dark:bg-teal-500/20 dark:text-teal-300 border border-teal-200 dark:border-teal-500/30';
         case 'Shipped': return 'bg-cyan-100 text-cyan-800 dark:bg-cyan-500/20 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-500/30';
         case 'Completed': return 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600';
         case 'Draft': return 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border border-gray-200 dark:border-gray-700';
@@ -183,12 +184,12 @@ const AllOrders: React.FC<AllOrdersProps> = ({ orders, onProcureOrder, onSelectO
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-center">
-                                        {order.status === 'Approved' && can('orders:procure') && (
+                                        {(order.status === 'Approved' || order.status === 'Partially Procured') && can('orders:procure') && (
                                             <button
                                                 onClick={(e) => handleProcureClick(e, order)}
                                                 className="bg-primary hover:opacity-90 text-primary-foreground font-bold py-2 px-4 text-xs rounded-lg transition-colors duration-200 active:scale-95 whitespace-nowrap shadow-md"
                                             >
-                                                Start Procurement
+                                                {order.status === 'Partially Procured' ? 'Resume Procurement' : 'Start Procurement'}
                                             </button>
 
                                         )}

@@ -117,6 +117,7 @@ export type OrderStatus =
   | 'Needs Revision'
   | 'Rejected'
   | 'Processing'
+  | 'Partially Procured'
   | 'Shipped'
   | 'Completed'
   | 'Scheduled';
