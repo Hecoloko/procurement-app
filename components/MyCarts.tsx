@@ -159,12 +159,12 @@ const CartCard: React.FC<{
     return (
         <div
             onClick={() => onSelectCart(cart)}
-            className={`group relative flex flex-col bg-card rounded-xl transition-all duration-200 cursor-pointer border shadow-sm overflow-hidden
-        ${isSelected ? 'ring-2 ring-primary border-transparent' : `border-border hover:shadow-md hover:border-primary/50`}
+            className={`group relative flex flex-col bg-card rounded-xl transition-all duration-300 cursor-pointer border shadow-sm overflow-hidden
+        ${isSelected ? 'ring-2 ring-primary border-transparent scale-[1.02] shadow-lg' : `border-border hover:shadow-xl hover:shadow-primary/5 hover:border-primary/30 hover:-translate-y-1 hover:scale-[1.02]`}
       `}
         >
-            {/* Colored Top Accent */}
-            <div className={`h-1.5 w-full ${theme.bg.replace('/5', '/80')} dark:${theme.bg.replace('/5', '/50')}`}></div>
+            {/* Colored Top Accent with Gradient */}
+            <div className={`h-1.5 w-full bg-gradient-to-r ${theme.bg.replace('bg-', 'from-').replace('/5', '/80')} to-transparent dark:${theme.bg.replace('bg-', 'from-').replace('/5', '/50')}`}></div>
 
             <div className="p-5 flex flex-col flex-grow">
                 <div className="flex justify-between items-start mb-3">
@@ -356,7 +356,7 @@ const MyCarts: React.FC<MyCartsProps> = ({ carts, setCarts, onSelectCart, onOpen
                     <p className="text-muted-foreground mt-2">Manage your procurement requests.</p>
                 </div>
                 {can('carts:create') && (
-                    <button onClick={onOpenCreateCartModal} className="flex items-center bg-primary hover:opacity-90 text-primary-foreground font-bold py-2.5 px-5 rounded-xl shadow-lg transition-all duration-200 active:scale-95">
+                    <button onClick={onOpenCreateCartModal} className="flex items-center bg-gradient-to-r from-primary to-yellow-500 hover:from-yellow-400 hover:to-primary text-primary-foreground font-bold py-2.5 px-5 rounded-xl shadow-lg hover:shadow-primary/25 transition-all duration-300 active:scale-95 hover:-translate-y-0.5">
                         <PlusCircleIcon className="w-5 h-5 mr-2" />
                         New Cart
                     </button>

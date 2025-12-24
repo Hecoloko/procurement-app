@@ -34,6 +34,9 @@ import CommunicationCenter from './components/CommunicationCenter';
 import { DUMMY_THREADS, DUMMY_MESSAGES, DUMMY_ROLES } from './constants';
 import EditScheduleModal from './components/EditScheduleModal';
 import Header from './components/Header';
+import OrderHub from './components/hubs/OrderHub';
+import FinanceHub from './components/hubs/FinanceHub';
+import AdminHub from './components/hubs/AdminHub';
 import GlobalCartDrawer from './components/GlobalCartDrawer';
 import MobileApp from './components/mobile/MobileApp';
 import { PermissionsProvider } from './contexts/PermissionsContext';
@@ -1778,65 +1781,123 @@ export const App: React.FC = () => {
     const renderContent = () => {
         if (orderForProcurement) return <ProcurementWorkspace key={orderForProcurement.id} order={orderForProcurement} vendors={vendors} products={products} onBack={() => setOrderForProcurement(null)} onOrderComplete={handleSaveOrder} />;
 
-        if (activeItem === 'My Carts' || activeItem === 'Carts to Submit') {
-            if (view === 'detail' && selectedCart) {
-                return <CartDetail cart={selectedCart} onBack={() => setView('list')} onOpenCatalog={() => setView('catalog')} properties={properties} products={products} onUpdateCartName={handleUpdateCartName} onUpdateCartItem={(prod, qty, note) => handleUpdateCartItem(selectedCart.id, prod, qty, note)} onSubmitForApproval={handleSubmitCart} onRevertToDraft={handleRevertCartToDraft} onOpenEditSchedule={(cart) => { setCartForScheduleEdit(cart); setIsEditScheduleModalOpen(true); }} onManualAdd={(item) => handleUpdateCartItem(selectedCart.id, { sku: item.sku, name: item.name, unitPrice: item.unitPrice }, item.quantity, item.note)} />;
-            }
-            if (view === 'catalog' && selectedCart) {
-                return <ProductDashboard products={products} companies={availableCompanies} currentCompanyId={viewingCompanyId || currentUser?.companyId || ''} activeCart={selectedCart} onUpdateItem={(prod, qty, note) => handleUpdateCartItem(selectedCart.id, prod, qty, note)} onBack={() => setView('detail')} onRefresh={() => session && fetchInitialData(session)} />;
-            }
-            return <MyCarts carts={carts} setCarts={setCarts} onSelectCart={(c) => { const freshCart = carts.find(cart => cart.id === c.id) || c; setSelectedCart(freshCart); setView('detail'); }} onOpenCreateCartModal={() => setIsCreateCartModalOpen(true)} onBulkSubmit={handleBulkSubmit} properties={properties} initialStatusFilter={activeItem === 'Carts to Submit' ? 'Needs Attention' : 'All'} orders={orders} onDeleteCart={handleDeleteCart} onDeleteOrder={handleDeleteOrder} onBulkDeleteCarts={handleBulkDeleteCarts} onReuseCart={handleReuseCart} />;
-        }
 
-        if (activeItem === 'All Orders') return <AllOrders orders={orders} onProcureOrder={(o) => setOrderForProcurement(o)} onSelectOrder={(o) => { setSelectedOrder(o); }} properties={properties} onDeleteOrder={handleDeleteOrder} users={users} />;
-        if (activeItem === 'Purchase Orders') return <PurchaseOrders orders={orders} vendors={vendors} onSelectOrder={(o) => { setSelectedOrder(o); }} properties={properties} />;
-        if (activeItem === 'Approvals') return <Approvals orders={orders} onUpdateOrderStatus={handleUpdateOrderStatus} onSelectOrder={(o) => { setSelectedOrder(o); }} users={users} properties={properties} />;
-        if (activeItem === 'Receiving') return <Receiving orders={orders} vendors={vendors} onUpdatePoStatus={handleUpdatePoStatus} onSelectOrder={(o) => setSelectedOrder(o)} />;
+        // Hub: Data & Communications (Overview)
         if (activeItem === 'Communications') return <CommunicationCenter threads={threads} messages={messages} users={users} orders={orders} currentUser={currentUser} onSendMessage={handleSendMessage} onStartNewThread={handleStartThread} onSelectOrder={setSelectedOrder} />;
-        if (activeItem === 'Company Settings') return <AdminSettings vendors={vendors} properties={properties} units={units} users={users} roles={roles} companies={availableCompanies} currentUser={currentUser} onAddProperty={handleAddProperty} onDeleteProperty={handleDeleteProperty} onAddUnit={handleAddUnit} onAddRole={handleAddRole} onUpdateRole={handleUpdateRole} onDeleteRole={handleDeleteRole} onViewAsUser={setImpersonatingUser} onAddUser={handleAddUser} onAddCompany={handleAddCompany} onDeleteUser={handleDeleteUser} products={products} onUpdateProduct={handleUpdateProduct} />;
-        if (activeItem === 'Payment Settings') return <PaymentSettings companyId={viewingCompanyId || currentUser?.companyId || ''} />;
-        if (activeItem === 'Suppliers') return <Suppliers vendors={vendors} products={products} orders={orders} properties={properties} companies={availableCompanies} currentCompanyId={viewingCompanyId || currentUser?.companyId || ''} onSwitchCompany={currentUser?.roleId === 'role-0' ? handleSwitchCompany : undefined} onSelectOrder={(o) => { setSelectedOrder(o); }} onAddVendor={handleAddVendor} onAddProduct={handleAddProduct} onAddVendorAccount={handleAddVendorAccount} />;
-        if (activeItem === 'Chart of Accounts') return <ChartOfAccounts accounts={accounts} onAddAccount={handleAddAccount} onUpdateAccount={handleUpdateAccount} onDeleteAccount={handleDeleteAccount} />;
 
-        // AP & AR Routes
-        if (activeItem === 'Bills') return <VendorInvoicesList companyId={viewingCompanyId || currentUser?.companyId || ''} onViewDetail={(inv) => { setSelectedVendorInvoice(inv); console.log("Selected Invoice:", inv); }} />;
-        if (activeItem === 'Bill Payments') return <Transactions orders={orders} vendors={vendors} onUpdatePoPaymentStatus={handleUpdatePoPaymentStatus} />;
-        if (activeItem === 'Invoices') return (
-            <InvoicesPage
-                currentCompanyId={viewingCompanyId || currentUser?.companyId || ''}
-                currentUser={currentUser}
-                products={products}
-                customers={customers}
-                properties={properties}
-                units={units}
-                preSelectedPropertyId={invoicePreSelectedPropertyId}
-                preSelectedUnitId={invoicePreSelectedUnitId}
-                onClearPreSelectedProperty={() => {
-                    setInvoicePreSelectedPropertyId(null);
-                    setInvoicePreSelectedUnitId(null);
-                }}
-            />
-        );
-        if (activeItem === 'Property AR') return <PropertyARList properties={properties} units={units} onSelectProperty={handleNavigateToPropertyInvoice} onSelectUnit={(pid, uid) => handleNavigateToPropertyInvoice(pid, uid)} />;
-        if (activeItem === 'Invoice History') {
+        // Hub: Order Management (Procurement)
+        if (activeItem === 'Procurement' || activeItem === 'My Carts' || activeItem === 'All Orders' || activeItem === 'Approvals' || activeItem === 'Purchase Orders' || activeItem === 'Receiving') {
             return (
-                <React.Suspense fallback={<div className="p-8 text-center">Loading...</div>}>
-                    <InvoiceHistoryPage companyId={viewingCompanyId || currentUser?.companyId || ''} />
-                </React.Suspense>
+                <OrderHub
+                    carts={carts}
+                    setCarts={setCarts}
+                    orders={orders}
+                    vendors={vendors}
+                    products={products}
+                    properties={properties}
+                    users={users}
+                    availableCompanies={availableCompanies}
+                    currentCompanyId={viewingCompanyId || currentUser?.companyId || ''}
+                    currentUser={currentUser}
+                    view={view}
+                    setView={setView}
+                    selectedCart={selectedCart}
+                    setSelectedCart={setSelectedCart}
+                    activeCart={activeCart}
+                    setActiveCart={setActiveCart}
+                    onSelectOrder={(o) => setSelectedOrder(o)}
+                    onProcureOrder={(o) => setOrderForProcurement(o)}
+                    onDeleteOrder={handleDeleteOrder}
+                    onUpdateOrderStatus={handleUpdateOrderStatus}
+                    onUpdatePoStatus={handleUpdatePoStatus}
+                    onOpenCreateCartModal={() => setIsCreateCartModalOpen(true)}
+                    onBulkSubmit={handleBulkSubmit}
+                    onDeleteCart={handleDeleteCart}
+                    onBulkDeleteCarts={handleBulkDeleteCarts}
+                    onReuseCart={handleReuseCart}
+                    onUpdateCartName={handleUpdateCartName}
+                    onUpdateCartItem={(prod, qty, note) => selectedCart ? handleUpdateCartItem(selectedCart.id, prod, qty, note) : Promise.resolve()}
+                    onSubmitForApproval={handleSubmitCart}
+                    onRevertToDraft={handleRevertCartToDraft}
+                    onOpenEditSchedule={(cart) => { setCartForScheduleEdit(cart); setIsEditScheduleModalOpen(true); }}
+                    onSwitchCompany={currentUser?.roleId === 'role-0' ? handleSwitchCompany : undefined}
+                    onRefresh={() => session && fetchInitialData(session)}
+                />
             );
         }
-        if (activeItem === 'Property AR') return <PropertyARList properties={properties} units={units} onSelectProperty={handleNavigateToPropertyInvoice} onSelectUnit={(pid, uid) => handleNavigateToPropertyInvoice(pid, uid)} />;
-        if (activeItem === 'Reports') return <Reports orders={orders} vendors={vendors} products={products} />;
-        if (activeItem === 'Integrations') return <Integrations />;
-        if (activeItem === 'Properties') return <Properties properties={properties} units={units} orders={orders} users={users} onSelectOrder={setSelectedOrder} />;
-        if (activeItem === 'Product Dashboard') return <ProductDashboard products={products} companies={availableCompanies} currentCompanyId={viewingCompanyId || currentUser?.companyId || ''} onSwitchCompany={currentUser?.roleId === 'role-0' ? handleSwitchCompany : undefined} onRefresh={() => session && fetchInitialData(session)} />;
 
-        return <Dashboard orders={orders} carts={carts} onNavigateToApprovals={() => handleNavigation('Approvals')} onNavigateToOrdersInTransit={() => handleNavigation('Receiving')} onNavigateToCartsToSubmit={() => handleNavigation('Carts to Submit')} onNavigateToCompletedOrders={() => handleNavigation('All Orders')} onNavigateToMyOrders={() => handleNavigation('All Orders')} onOpenCreateCartModal={() => setIsCreateCartModalOpen(true)} onGenerateReport={() => { }} />;
+        // Hub: Finance (AP / AR)
+        if (activeItem === 'Finance' || activeItem === 'Bill Payments' || activeItem === 'Invoices' || activeItem === 'Invoice History' || activeItem === 'Property AR' || activeItem === 'Suppliers' || activeItem === 'Chart of Accounts') {
+            return (
+                <FinanceHub
+                    orders={orders}
+                    vendors={vendors}
+                    accounts={accounts}
+                    products={products}
+                    customers={customers}
+                    properties={properties}
+                    units={units}
+                    availableCompanies={availableCompanies}
+                    currentCompanyId={viewingCompanyId || currentUser?.companyId || ''}
+                    currentUser={currentUser}
+                    invoicePreSelectedPropertyId={invoicePreSelectedPropertyId}
+                    invoicePreSelectedUnitId={invoicePreSelectedUnitId}
+                    onClearPreSelectedProperty={() => {
+                        setInvoicePreSelectedPropertyId(null);
+                        setInvoicePreSelectedUnitId(null);
+                    }}
+                    onNavigateToPropertyInvoice={handleNavigateToPropertyInvoice}
+                    onUpdatePoPaymentStatus={handleUpdatePoPaymentStatus}
+                    onViewDetail_Bill={(inv) => { setSelectedVendorInvoice(inv); }}
+                    onAddAccount={handleAddAccount}
+                    onUpdateAccount={handleUpdateAccount}
+                    onDeleteAccount={handleDeleteAccount}
+                    onSelectOrder={(o) => setSelectedOrder(o)}
+                    onSwitchCompany={currentUser?.roleId === 'role-0' ? handleSwitchCompany : undefined}
+                    onAddVendor={handleAddVendor}
+                    onAddProduct={handleAddProduct}
+                    onAddVendorAccount={handleAddVendorAccount}
+                />
+            );
+        }
+
+        // Hub: Management (Admin)
+        if (activeItem === 'Management' || activeItem === 'Properties' || activeItem === 'Reports' || activeItem === 'Company Settings' || activeItem === 'Payment Settings' || activeItem === 'Integrations') {
+            return (
+                <AdminHub
+                    orders={orders}
+                    vendors={vendors}
+                    products={products}
+                    properties={properties}
+                    units={units}
+                    users={users}
+                    roles={roles}
+                    availableCompanies={availableCompanies}
+                    currentUser={currentUser}
+                    currentCompanyId={viewingCompanyId || currentUser?.companyId || ''}
+                    onSelectOrder={(o) => setSelectedOrder(o)}
+                    onAddProperty={handleAddProperty}
+                    onDeleteProperty={handleDeleteProperty}
+                    onAddUnit={handleAddUnit}
+                    onAddRole={handleAddRole}
+                    onUpdateRole={handleUpdateRole}
+                    onDeleteRole={handleDeleteRole}
+                    onViewAsUser={setImpersonatingUser}
+                    onAddUser={handleAddUser}
+                    onAddCompany={handleAddCompany}
+                    onDeleteUser={handleDeleteUser}
+                    onUpdateProduct={handleUpdateProduct}
+                    onSwitchCompany={handleSwitchCompany}
+                />
+            );
+        }
+
+        return <Dashboard orders={orders} carts={carts} onNavigateToApprovals={() => handleNavigation('Approvals')} onNavigateToOrdersInTransit={() => handleNavigation('Receiving')} onNavigateToCartsToSubmit={() => handleNavigation('My Carts')} onNavigateToCompletedOrders={() => handleNavigation('All Orders')} onNavigateToMyOrders={() => handleNavigation('All Orders')} onOpenCreateCartModal={() => setIsCreateCartModalOpen(true)} onGenerateReport={() => { }} />;
     };
 
     return (
         <PermissionsProvider user={currentUser} roles={roles}>
-            <div className="flex h-screen bg-background font-sans text-foreground">
+            <div className="flex h-screen bg-transparent font-sans text-foreground overflow-hidden">
                 <Sidebar
                     activeItem={activeItem}
                     setActiveItem={handleNavigation}

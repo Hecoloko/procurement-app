@@ -32,9 +32,9 @@ const NavButton: React.FC<{
     <div className="relative group flex justify-center">
       <button
         onClick={onClick}
-        className={`flex items-center w-full text-sm font-medium transition-all duration-200 rounded-xl ${isActive
-          ? 'bg-primary text-primary-foreground shadow-lg'
-          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+        className={`relative flex items-center w-full text-sm font-bold transition-all duration-300 rounded-xl overflow-hidden ${isActive
+          ? 'bg-gradient-to-r from-primary to-yellow-500 text-primary-foreground shadow-lg shadow-primary/20 scale-[1.02]'
+          : 'text-muted-foreground hover:bg-white/5 hover:text-foreground hover:translate-x-1'
           } ${isCollapsed ? 'justify-center p-3' : 'py-3 px-4'}`}
       >
         <Icon className={`w-5 h-5 flex-shrink-0`} />
@@ -55,20 +55,26 @@ const NavButton: React.FC<{
 // IMPORTANT: Logic below handles 'view' vs 'view-own' fallback
 const navItemPermissions: Record<string, Permission> = {
   'Dashboard': 'dashboard:view',
+  'Communications': 'communications:view',
+
+  // Hubs
+  'Procurement': 'carts:view', // Basic access point for all things ordering
+  'Finance': 'transactions:view', // Restricted to finance roles
+  'Management': 'settings:view', // Admin only
+
+  // Legacy mappings (kept for safety if old links exist)
   'My Carts': 'carts:view',
   'Properties': 'properties:view',
-  'Communications': 'communications:view',
   'All Orders': 'orders:view',
   'Approvals': 'approvals:view',
   'Purchase Orders': 'purchaseOrders:view',
   'Receiving': 'receiving:view',
-
-  'Bill Payments': 'transactions:view', // Renamed from Transactions
+  'Bill Payments': 'transactions:view',
   'Reports': 'reports:view',
   'Suppliers': 'suppliers:view',
-  'Invoices': 'orders:view', // Reuse orders permission for now
+  'Invoices': 'orders:view',
   'Invoice History': 'orders:view',
-  'Property AR': 'suppliers:view', // Reuse suppliers permission for now
+  'Property AR': 'suppliers:view',
   'Integrations': 'integrations:view',
   'Company Settings': 'settings:view',
   'Payment Settings': 'settings:view',

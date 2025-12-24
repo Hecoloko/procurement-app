@@ -194,24 +194,26 @@ export const billbackService = {
         const orderPropertyId = order?.property_id;
         const companyId = order?.company_id || (po as any).company_id;
 
-        const billablePayload = items.map((item: any) => {
-            const cost = item.total_price || (item.unit_price * item.quantity);
-            // Use item-specific property ID if available (not on cart_item usually), otherwise Order's property ID
-            const targetPropertyId = orderPropertyId || null;
+        const billablePayload = items
+            .filter((item: any) => item.purchase_order_id === poId)
+            .map((item: any) => {
+                const cost = item.total_price || (item.unit_price * item.quantity);
+                // Use item-specific property ID if available (not on cart_item usually), otherwise Order's property ID
+                const targetPropertyId = orderPropertyId || null;
 
-            return {
-                company_id: companyId,
-                property_id: targetPropertyId,
-                unit_id: order?.unit_id || null,
-                source_type: 'PurchaseOrder',
-                source_id: poId,
-                description: `${item.name} (Qty: ${item.quantity})`,
-                cost_amount: cost,
-                markup_amount: 0, // Removed auto 20% markup
-                total_amount: cost, // Total = Cost
-                status: 'Pending'
-            };
-        });
+                return {
+                    company_id: companyId,
+                    property_id: targetPropertyId,
+                    unit_id: order?.unit_id || null,
+                    source_type: 'PurchaseOrder',
+                    source_id: poId,
+                    description: `${item.name} (Qty: ${item.quantity})`,
+                    cost_amount: cost,
+                    markup_amount: 0, // Removed auto 20% markup
+                    total_amount: cost, // Total = Cost
+                    status: 'Pending'
+                };
+            });
 
         console.log("Generating Billable Items Payload:", JSON.stringify(billablePayload));
 

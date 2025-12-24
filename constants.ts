@@ -18,53 +18,13 @@ import {
 
 export const NAVIGATION_DATA: NavSection[] = [
   {
-    title: 'OPERATIONAL',
+    title: 'OVERVIEW',
     items: [
       { name: 'Dashboard', icon: DashboardIcon },
-      { name: 'My Carts', icon: CartIcon },
-      { name: 'Properties', icon: PropertiesIcon },
+      { name: 'Procurement', icon: CartIcon }, // Maps to OrderHub
+      { name: 'Finance', icon: TransactionIcon }, // Maps to FinanceHub
+      { name: 'Management', icon: SettingsIcon }, // Maps to AdminHub
       { name: 'Communications', icon: CommunicationIcon },
-    ],
-  },
-  {
-    title: 'ORDER TRACKING',
-    items: [
-      { name: 'All Orders', icon: POIcon },
-      { name: 'Approvals', icon: ApprovalIcon },
-      { name: 'Purchase Orders', icon: POIcon },
-      { name: 'Receiving', icon: ReceivingIcon },
-    ],
-  },
-
-  {
-    title: 'ACCOUNTS PAYABLE',
-    items: [
-
-      { name: 'Bill Payments', icon: TransactionIcon },
-      { name: 'Suppliers', icon: SupplierIcon },
-    ],
-  },
-  {
-    title: 'ACCOUNTS RECEIVABLE',
-    items: [
-      { name: 'Invoices', icon: DocumentReportIcon }, // Using DocumentReportIcon for now
-      { name: 'Invoice History', icon: DocumentReportIcon }, // Tracking Feature
-      { name: 'Property AR', icon: PropertiesIcon },    // Using PropertiesIcon for now as generic user icon
-    ],
-  },
-  {
-    title: 'FINANCIAL REPORTS',
-    items: [
-      { name: 'Reports', icon: DocumentReportIcon },
-      { name: 'Chart of Accounts', icon: DocumentReportIcon },
-    ],
-  },
-  {
-    title: 'SYSTEM SETTINGS',
-    items: [
-      { name: 'Integrations', icon: IntegrationIcon },
-      { name: 'Company Settings', icon: SettingsIcon },
-      { name: 'Payment Settings', icon: SettingsIcon },
     ],
   },
 ];

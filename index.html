@@ -1,92 +1,94 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="theme-color" content="#ffffff" />
-    <title>Procurement System Dashboard</title>
 
-    <!-- Add Inter Font for Rivian-like typography -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#ffffff" />
+  <title>Procurement System Dashboard</title>
 
-    <!-- Keep CDN Tailwind for speed (you can switch to a Tailwind build later) -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        darkMode: ["class"],
-        theme: {
-          container: {
-            center: true,
-            padding: "2rem",
-            screens: {
-              "2xl": "1400px",
+  <!-- Add Inter Font for Rivian-like typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Keep CDN Tailwind for speed (you can switch to a Tailwind build later) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: ["class"],
+      theme: {
+        container: {
+          center: true,
+          padding: "2rem",
+          screens: {
+            "2xl": "1400px",
+          },
+        },
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          padding: {
+            'safe-top': 'env(safe-area-inset-top)',
+            'safe-bottom': 'env(safe-area-inset-bottom)',
+          },
+          colors: {
+            border: "var(--border)",
+            input: "var(--input)",
+            ring: "var(--ring)",
+            background: "var(--background)",
+            foreground: "var(--foreground)",
+            primary: {
+              DEFAULT: "var(--primary)",
+              foreground: "var(--primary-foreground)",
+            },
+            secondary: {
+              DEFAULT: "var(--secondary)",
+              foreground: "var(--secondary-foreground)",
+            },
+            destructive: {
+              DEFAULT: "var(--destructive)",
+              foreground: "var(--destructive-foreground)",
+            },
+            muted: {
+              DEFAULT: "var(--muted)",
+              foreground: "var(--muted-foreground)",
+            },
+            accent: {
+              DEFAULT: "var(--accent)",
+              foreground: "var(--accent-foreground)",
+            },
+            popover: {
+              DEFAULT: "var(--popover)",
+              foreground: "var(--popover-foreground)",
+            },
+            card: {
+              DEFAULT: "var(--card)",
+              foreground: "var(--card-foreground)",
+            },
+            sidebar: {
+              DEFAULT: "var(--sidebar)",
+              foreground: "var(--sidebar-foreground)",
+              primary: "var(--sidebar-primary)",
+              "primary-foreground": "var(--sidebar-primary-foreground)",
+              accent: "var(--sidebar-accent)",
+              "accent-foreground": "var(--sidebar-accent-foreground)",
+              border: "var(--sidebar-border)",
+              ring: "var(--sidebar-ring)",
             },
           },
-          extend: {
-            fontFamily: {
-              sans: ['Inter', 'sans-serif'],
-            },
-            padding: {
-              'safe-top': 'env(safe-area-inset-top)',
-              'safe-bottom': 'env(safe-area-inset-bottom)',
-            },
-            colors: {
-              border: "var(--border)",
-              input: "var(--input)",
-              ring: "var(--ring)",
-              background: "var(--background)",
-              foreground: "var(--foreground)",
-              primary: {
-                DEFAULT: "var(--primary)",
-                foreground: "var(--primary-foreground)",
-              },
-              secondary: {
-                DEFAULT: "var(--secondary)",
-                foreground: "var(--secondary-foreground)",
-              },
-              destructive: {
-                DEFAULT: "var(--destructive)",
-                foreground: "var(--destructive-foreground)",
-              },
-              muted: {
-                DEFAULT: "var(--muted)",
-                foreground: "var(--muted-foreground)",
-              },
-              accent: {
-                DEFAULT: "var(--accent)",
-                foreground: "var(--accent-foreground)",
-              },
-              popover: {
-                DEFAULT: "var(--popover)",
-                foreground: "var(--popover-foreground)",
-              },
-              card: {
-                DEFAULT: "var(--card)",
-                foreground: "var(--card-foreground)",
-              },
-              sidebar: {
-                  DEFAULT: "var(--sidebar)",
-                  foreground: "var(--sidebar-foreground)",
-                  primary: "var(--sidebar-primary)",
-                  "primary-foreground": "var(--sidebar-primary-foreground)",
-                  accent: "var(--sidebar-accent)",
-                  "accent-foreground": "var(--sidebar-accent-foreground)",
-                  border: "var(--sidebar-border)",
-                  ring: "var(--sidebar-ring)",
-              },
-            },
-            borderRadius: {
-              lg: "var(--radius)",
-              md: "calc(var(--radius) - 2px)",
-              sm: "calc(var(--radius) - 4px)",
-            },
-          }
+          borderRadius: {
+            lg: "var(--radius)",
+            md: "calc(var(--radius) - 2px)",
+            sm: "calc(var(--radius) - 4px)",
+          },
         }
       }
-    </script>
+    }
+  </script>
   <script type="importmap">
 {
   "imports": {
@@ -100,176 +102,202 @@
   }
 }
 </script>
-<style>
-  /* Rivian-inspired Theme - Refined & Clean */
-  :root {
-    /* Clean, tech-white background */
-    --background: oklch(0.99 0.002 90); 
-    --foreground: oklch(0.15 0.01 0); /* Sharp Black */
+  <style>
+    /* Rivian-inspired Theme - Refined & Clean */
+    :root {
+      /* Clean, tech-white background */
+      --background: oklch(0.99 0.002 90);
+      --foreground: oklch(0.15 0.01 0);
+      /* Sharp Black */
 
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.15 0.01 0);
+      --card: oklch(1 0 0);
+      --card-foreground: oklch(0.15 0.01 0);
 
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.15 0.01 0);
+      --popover: oklch(1 0 0);
+      --popover-foreground: oklch(0.15 0.01 0);
 
-    /* Rivian "Compass Yellow" for Primary Actions */
-    --primary: oklch(0.81 0.17 82.8); 
-    --primary-foreground: oklch(0.15 0.02 0); /* Dark text on yellow for contrast */
+      /* Rivian "Compass Yellow" for Primary Actions */
+      --primary: oklch(0.81 0.17 82.8);
+      --primary-foreground: oklch(0.15 0.02 0);
+      /* Dark text on yellow for contrast */
 
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.15 0.01 0);
+      --secondary: oklch(0.97 0 0);
+      --secondary-foreground: oklch(0.15 0.01 0);
 
-    --muted: oklch(0.96 0.005 90);
-    --muted-foreground: oklch(0.45 0.01 0);
+      --muted: oklch(0.96 0.005 90);
+      --muted-foreground: oklch(0.45 0.01 0);
 
-    --accent: oklch(0.96 0.005 90);
-    --accent-foreground: oklch(0.15 0.01 0);
+      --accent: oklch(0.96 0.005 90);
+      --accent-foreground: oklch(0.15 0.01 0);
 
-    --destructive: oklch(0.5 0.15 25); /* Deep Red */
-    --destructive-foreground: oklch(0.98 0 0);
+      --destructive: oklch(0.5 0.15 25);
+      /* Deep Red */
+      --destructive-foreground: oklch(0.98 0 0);
 
-    --border: oklch(0.92 0.005 90);
-    --input: oklch(0.94 0.005 90);
-    --ring: oklch(0.81 0.17 82.8); /* Yellow ring focus */
+      --border: oklch(0.92 0.005 90);
+      --input: oklch(0.94 0.005 90);
+      --ring: oklch(0.81 0.17 82.8);
+      /* Yellow ring focus */
 
-    --chart-1: oklch(0.81 0.17 82.8);
-    --chart-2: oklch(0.4 0.08 150); /* Forest Green */
-    --chart-3: oklch(0.3 0.05 260); /* Deep Slate */
-    --chart-4: oklch(0.6 0.15 60); /* Earthy Orange */
-    --chart-5: oklch(0.7 0.1 90);
+      --chart-1: oklch(0.81 0.17 82.8);
+      --chart-2: oklch(0.4 0.08 150);
+      /* Forest Green */
+      --chart-3: oklch(0.3 0.05 260);
+      /* Deep Slate */
+      --chart-4: oklch(0.6 0.15 60);
+      /* Earthy Orange */
+      --chart-5: oklch(0.7 0.1 90);
 
-    /* Sidebar - slightly distinct off-white */
-    --sidebar: oklch(0.98 0.002 90);
-    --sidebar-foreground: oklch(0.15 0.01 0);
-    --sidebar-primary: oklch(0.81 0.17 82.8);
-    --sidebar-primary-foreground: oklch(0.15 0.02 0);
-    --sidebar-accent: oklch(0.94 0.005 90);
-    --sidebar-accent-foreground: oklch(0.15 0.01 0);
-    --sidebar-border: oklch(0.92 0.005 90);
-    --sidebar-ring: oklch(0.81 0.17 82.8);
+      /* Sidebar - slightly distinct off-white */
+      --sidebar: oklch(0.98 0.002 90);
+      --sidebar-foreground: oklch(0.15 0.01 0);
+      --sidebar-primary: oklch(0.81 0.17 82.8);
+      --sidebar-primary-foreground: oklch(0.15 0.02 0);
+      --sidebar-accent: oklch(0.94 0.005 90);
+      --sidebar-accent-foreground: oklch(0.15 0.01 0);
+      --sidebar-border: oklch(0.92 0.005 90);
+      --sidebar-ring: oklch(0.81 0.17 82.8);
 
-    --radius: 0.75rem; /* Moderate rounding, clean technical feel */
-  }
+      --radius: 0.75rem;
+      /* Moderate rounding, clean technical feel */
+    }
 
-  .dark {
-    /* Deep Forest/Slate Background - Rivian Dark Mode feel */
-    --background: oklch(0.15 0.015 160); 
-    --foreground: oklch(0.95 0.01 160);
+    .dark {
+      /* Deep Forest/Slate Background - Rivian Dark Mode feel */
+      --background: oklch(0.15 0.015 160);
+      --foreground: oklch(0.95 0.01 160);
 
-    --card: oklch(0.18 0.015 160); /* Slightly lighter forest/slate */
-    --card-foreground: oklch(0.95 0.01 160);
+      --card: oklch(0.18 0.015 160);
+      /* Slightly lighter forest/slate */
+      --card-foreground: oklch(0.95 0.01 160);
 
-    --popover: oklch(0.18 0.015 160);
-    --popover-foreground: oklch(0.95 0.01 160);
+      --popover: oklch(0.18 0.015 160);
+      --popover-foreground: oklch(0.95 0.01 160);
 
-    /* Rivian Yellow pops against dark green */
-    --primary: oklch(0.81 0.17 82.8);
-    --primary-foreground: oklch(0.12 0.02 160);
+      /* Rivian Yellow pops against dark green */
+      --primary: oklch(0.81 0.17 82.8);
+      --primary-foreground: oklch(0.12 0.02 160);
 
-    --secondary: oklch(0.22 0.02 160);
-    --secondary-foreground: oklch(0.95 0.01 160);
+      --secondary: oklch(0.22 0.02 160);
+      --secondary-foreground: oklch(0.95 0.01 160);
 
-    --muted: oklch(0.20 0.015 160);
-    --muted-foreground: oklch(0.70 0.02 160);
+      --muted: oklch(0.20 0.015 160);
+      --muted-foreground: oklch(0.70 0.02 160);
 
-    --accent: oklch(0.22 0.02 160);
-    --accent-foreground: oklch(0.95 0.01 160);
+      --accent: oklch(0.22 0.02 160);
+      --accent-foreground: oklch(0.95 0.01 160);
 
-    --destructive: oklch(0.4 0.15 25);
-    --destructive-foreground: oklch(0.95 0.01 160);
+      --destructive: oklch(0.4 0.15 25);
+      --destructive-foreground: oklch(0.95 0.01 160);
 
-    --border: oklch(0.25 0.015 160);
-    --input: oklch(0.22 0.015 160);
-    --ring: oklch(0.81 0.17 82.8);
+      --border: oklch(0.25 0.015 160);
+      --input: oklch(0.22 0.015 160);
+      --ring: oklch(0.81 0.17 82.8);
 
-    /* Sidebar matches dark theme */
-    --sidebar: oklch(0.14 0.015 160);
-    --sidebar-foreground: oklch(0.95 0.01 160);
-    --sidebar-primary: oklch(0.81 0.17 82.8);
-    --sidebar-primary-foreground: oklch(0.12 0.02 160);
-    --sidebar-accent: oklch(0.20 0.015 160);
-    --sidebar-accent-foreground: oklch(0.95 0.01 160);
-    --sidebar-border: oklch(0.20 0.015 160);
-    --sidebar-ring: oklch(0.81 0.17 82.8);
-  }
+      /* Sidebar matches dark theme */
+      --sidebar: oklch(0.14 0.015 160);
+      --sidebar-foreground: oklch(0.95 0.01 160);
+      --sidebar-primary: oklch(0.81 0.17 82.8);
+      --sidebar-primary-foreground: oklch(0.12 0.02 160);
+      --sidebar-accent: oklch(0.20 0.015 160);
+      --sidebar-accent-foreground: oklch(0.95 0.01 160);
+      --sidebar-border: oklch(0.20 0.015 160);
+      --sidebar-ring: oklch(0.81 0.17 82.8);
+    }
 
-  /* Animation Keyframes */
-  @keyframes gradient-xy {
-      0% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
-  }
+    /* Animation Keyframes */
+    @keyframes gradient-xy {
+      0% {
+        background-position: 0% 50%;
+      }
 
-  .animate-gradient-mesh {
+      50% {
+        background-position: 100% 50%;
+      }
+
+      100% {
+        background-position: 0% 50%;
+      }
+    }
+
+    .animate-gradient-mesh {
       background: linear-gradient(-45deg, var(--background), var(--card), var(--background), var(--muted));
       background-size: 400% 400%;
       animation: gradient-xy 15s ease infinite;
-  }
-
-  /* For screen, hide the printable-area. This avoids conflicts with Tailwind's `hidden` class. */
-  @media screen {
-    .printable-area {
-      display: none;
     }
-  }
 
-  @media print {
-    /* Hide everything in the body by default */
-    body * {
-      visibility: hidden;
+    /* For screen, hide the printable-area. This avoids conflicts with Tailwind's `hidden` class. */
+    @media screen {
+      .printable-area {
+        display: none;
+      }
     }
-    /* Then, make the printable area and all its children visible */
-    .printable-area, .printable-area * {
-      visibility: visible;
+
+    @media print {
+
+      /* Hide everything in the body by default */
+      body * {
+        visibility: hidden;
+      }
+
+      /* Then, make the printable area and all its children visible */
+      .printable-area,
+      .printable-area * {
+        visibility: visible;
+      }
+
+      /* Position the printable area to take up the whole page for printing */
+      .printable-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+      }
     }
-    /* Position the printable area to take up the whole page for printing */
-    .printable-area {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 100%;
+
+    body {
+      /* Use the gradient mesh background by default */
+      background-color: var(--background);
+      /* Subtle, premium gradient */
+      background: radial-gradient(circle at 50% 0%, oklch(0.98 0.01 90 / 0.5), transparent 70%),
+        radial-gradient(circle at 80% 10%, oklch(0.96 0.02 85 / 0.3), transparent 50%),
+        var(--background);
+
+      color: var(--foreground);
+      font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      overscroll-behavior-y: none;
+      /* Prevent pull-to-refresh on whole body */
     }
-  }
 
-  body {
-    /* Use the gradient mesh background by default */
-    background-color: var(--background); 
-    /* Subtle, premium gradient */
-    background: radial-gradient(circle at 50% 0%, oklch(0.98 0.01 90 / 0.5), transparent 70%),
-                radial-gradient(circle at 80% 10%, oklch(0.96 0.02 85 / 0.3), transparent 50%),
-                var(--background);
-    
-    color: var(--foreground);
-    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
-    -webkit-tap-highlight-color: transparent;
-    -webkit-touch-callout: none;
-    overscroll-behavior-y: none; /* Prevent pull-to-refresh on whole body */
-  }
-  
-  .dark body {
-      background: radial-gradient(circle at 50% 0%, oklch(0.20 0.03 160 / 0.4), transparent 70%),
-                  radial-gradient(circle at 80% 10%, oklch(0.18 0.04 150 / 0.2), transparent 50%),
-                  var(--background);
-  }
+    .dark body {
+      background: radial-gradient(circle at 10% 20%, oklch(0.81 0.17 82.8 / 0.08), transparent 40%),
+        radial-gradient(circle at 90% 10%, oklch(0.81 0.17 82.8 / 0.05), transparent 40%),
+        radial-gradient(circle at 50% 0%, oklch(0.25 0.04 160 / 0.6), transparent 70%),
+        var(--background);
+      background-attachment: fixed;
+    }
 
-  /* Glassmorphism Utility */
-  .glass {
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-  }
-  .dark .glass {
-    background: rgba(30, 30, 30, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-  }
+    /* Glassmorphism Utility */
+    .glass {
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
 
-</style>
+    .dark .glass {
+      background: rgba(30, 30, 30, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+  </style>
 </head>
-  <body>
-    <div id="root"></div>
-    <!-- Vite entry -->
-    <script type="module" src="/index.tsx"></script>
-  </body>
+
+<body>
+  <div id="root"></div>
+  <!-- Vite entry -->
+  <script type="module" src="/index.tsx"></script>
+</body>
+
 </html>

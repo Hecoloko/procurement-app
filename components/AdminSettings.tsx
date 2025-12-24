@@ -182,7 +182,7 @@ const UserAvatar: React.FC<{ name: string; url: string }> = ({ name, url }) => {
 const UserSettings: React.FC<{
     users: AdminUser[];
     roles: Role[];
-    currentUser: AdminUser;
+    currentUser: AdminUser | null;
     onViewAsUser: (user: AdminUser) => void;
     onAddUserClick: () => void;
     onDeleteUser: (userId: string) => void;
@@ -257,13 +257,13 @@ const UserSettings: React.FC<{
                                         </td>
                                         <td className="px-6 py-4 text-center">
                                             <div className="flex items-center justify-center space-x-1 opacity-70 group-hover/row:opacity-100 transition-opacity">
-                                                {currentUser.roleId === 'role-1' && user.id !== currentUser.id && (
+                                                {currentUser?.roleId === 'role-1' && user.id !== currentUser?.id && (
                                                     <button onClick={() => onViewAsUser(user)} className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors" title={`View as ${user.name}`}>
                                                         <EyeIcon className="w-5 h-5" />
                                                     </button>
                                                 )}
                                                 <button className="p-2 text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10 rounded-lg transition-colors"><PencilIcon className="w-5 h-5" /></button>
-                                                {user.id !== currentUser.id && (
+                                                {user.id !== currentUser?.id && (
                                                     <button
                                                         onClick={() => handleDeleteClick(user)}
                                                         className="p-2 text-red-600 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg transition-colors"
@@ -776,7 +776,7 @@ interface AdminSettingsProps {
     users: AdminUser[];
     roles: Role[];
     companies?: Company[];
-    currentUser: AdminUser;
+    currentUser: AdminUser | null;
     onAddProperty: (propertyData: { name: string; userIds: string[] }) => void;
     onAddUnit: (unitData: { propertyId: string; name: string; }) => void;
     onAddRole: (roleData: Omit<Role, 'id'>) => void;
@@ -795,7 +795,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ vendors, properties, unit
     const [activeTab, setActiveTab] = useState('users');
     const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
 
-    const isOwner = currentUser.roleId === 'role-0';
+    const isOwner = currentUser?.roleId === 'role-0';
     const { can } = usePermissions();
 
     const baseTabs = [
@@ -839,7 +839,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ vendors, properties, unit
             case 'companies': return companies && onAddCompany ? <CompanySettings companies={companies} onAddCompany={onAddCompany} roles={roles} /> : null;
             case 'appearance': return <ThemeSwitcher />;
             case 'data': return products && onUpdateProduct ? <DataManagementSettings products={products} vendors={vendors} onUpdateProduct={onUpdateProduct} /> : <div className="p-8 text-center text-muted-foreground">Data management features unavailable.</div>;
-            case 'payments': return <PaymentSettings companyId={currentUser.companyId} />;
+            case 'payments': return <PaymentSettings companyId={currentUser?.companyId || ''} />;
             default: return null;
         }
     };
