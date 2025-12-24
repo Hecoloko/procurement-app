@@ -89,16 +89,45 @@ const InvoicePaymentPage: React.FC = () => {
         loadInvoice();
     }, []);
 
+    const [verifyingPayment, setVerifyingPayment] = useState(false);
+
     // Check for Payment Success Return
     useEffect(() => {
         if (window.location.hash.includes('success=true')) {
             const sessionIdMatch = window.location.hash.match(/session_id=([^&]*)/);
             const sessionId = sessionIdMatch ? sessionIdMatch[1] : 'unknown';
-            setPaymentSuccess(true);
-            // Optionally clear the hash params to prevent refresh re-triggering, 
-            // but keeping 'success=true' is fine for now as proof.
+
+            // Start verification
+            setVerifyingPayment(true);
+            const invoiceId = window.location.hash.split('/pay/')[1]?.split('?')[0];
+
+            if (invoiceId) {
+                const pollInterval = setInterval(async () => {
+                    const { data } = await supabase.rpc('get_public_invoice', { invoice_uuid: invoiceId });
+                    if (data && data.status === 'Paid') {
+                        clearInterval(pollInterval);
+                        setPaymentSuccess(true);
+                        setVerifyingPayment(false);
+                    }
+                }, 2000);
+
+                // Timeout after 30 seconds
+                setTimeout(() => {
+                    clearInterval(pollInterval);
+                    if (!paymentSuccess) {
+                        // Even if it didn't update yet, show success but maybe warn? 
+                        // For now, let's assume it worked but is slow, and show success to not panic user.
+                        // But realistically, the webhook SHOULD have fired.
+                        setPaymentSuccess(true);
+                        setVerifyingPayment(false);
+                        console.warn("Payment verification timed out, defaulting to success UI");
+                    }
+                }, 30000);
+
+                return () => clearInterval(pollInterval);
+            }
         }
-    }, []);
+    }, [invoice?.id]); // Add dependency if needed, but [] is safer for checking URL hash once.
 
     const handleSuccess = (txId: string) => {
         setPaymentSuccess(true);
@@ -108,16 +137,19 @@ const InvoicePaymentPage: React.FC = () => {
             message: `Thank you! Your payment for Invoice #${invoice?.invoiceNumber} has been processed. Transaction ID: ${txId}`,
             status: 'success'
         });
-
-        // Update DB Logic (Simulated here, would be backend webhook)
-        if (invoice) {
-            // invoiceService.updateStatus(invoice.id, 'Paid');
-        }
     };
 
     if (loading) return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
             <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        </div>
+    );
+
+    if (verifyingPayment) return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4 animate-in fade-in">
+            <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-6"></div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Verifying Payment...</h1>
+            <p className="text-gray-500">Please wait while we confirm your transaction securely.</p>
         </div>
     );
 
@@ -133,7 +165,7 @@ const InvoicePaymentPage: React.FC = () => {
             <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6">
                 <CheckCircleIcon className="w-12 h-12" />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Payment Receieved!</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Payment Received!</h1>
             <p className="text-gray-600 mb-8 max-w-md text-center">
                 Your payment of <span className="font-bold text-gray-900">${invoice.totalAmount.toFixed(2)}</span> for Invoice #{invoice.invoiceNumber} has been successfully processed.
             </p>

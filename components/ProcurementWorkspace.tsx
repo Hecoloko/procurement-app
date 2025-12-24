@@ -84,7 +84,8 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
   useEffect(() => {
     if (activeTab === 'manage' && localOrder.purchaseOrders) {
       const allPOsReceived = localOrder.purchaseOrders.every(po => po.status === 'Received');
-      if (allPOsReceived && localOrder.status !== 'Completed') {
+      // Fix: Only complete if we ACTUALLY have POs, they are all received, AND no items are left to assign.
+      if (localOrder.purchaseOrders.length > 0 && allPOsReceived && localOrder.status !== 'Completed' && itemsToAssign.length === 0) {
         const completedOrder = { ...localOrder, status: 'Completed' as const };
         setLocalOrder(completedOrder);
         onOrderComplete(completedOrder);
@@ -210,19 +211,49 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
     });
 
     const existingPoCount = localOrder.purchaseOrders?.length || 0;
-    const newPurchaseOrders: PurchaseOrder[] = Object.entries(posByVendor).map(([vendorId, items], index) => {
-      // Generate PO ID by inheriting sequence from Order ID
-      // If multiple POs, add vendor suffix like V1, V2, V3...
-      const vendorSuffix = Object.keys(posByVendor).length > 1 ? `V${existingPoCount + index + 1}` : undefined;
-      const poId = generatePOId(localOrder.id, vendorSuffix);
+    const modifiedPOs: PurchaseOrder[] = [];
+    const newPurchaseOrders: PurchaseOrder[] = [];
+    let addedPoCount = 0;
 
-      return {
-        id: poId,
-        originalOrderId: localOrder.id,
-        vendorId,
-        items,
-        status: 'Issued'
-      };
+    Object.entries(posByVendor).forEach(([vendorId, items]) => {
+      // Check for existing 'Issued' PO for this vendor
+      const existingPO = localOrder.purchaseOrders?.find(po => po.vendorId === vendorId && po.status === 'Issued');
+
+      if (existingPO) {
+        // MERGE into existing PO
+        const itemsWithPoId = items.map(i => ({
+          ...i,
+          purchaseOrderId: existingPO.id // Link to EXISTING PO
+        }));
+
+        const updatedPO = {
+          ...existingPO,
+          items: [...(existingPO.items || []), ...itemsWithPoId]
+        };
+
+        modifiedPOs.push(updatedPO);
+      } else {
+        // CREATE NEW PO
+        // Generate PO ID by inheriting sequence from Order ID
+        // If multiple POs (existing + new), add vendor suffix
+        const totalPosSoFar = existingPoCount + addedPoCount;
+        const vendorSuffix = (Object.keys(posByVendor).length + existingPoCount) > 1 ? `V${totalPosSoFar + 1}` : undefined;
+        const poId = generatePOId(localOrder.id, vendorSuffix);
+
+        const itemsWithPoId = items.map(i => ({
+          ...i,
+          purchaseOrderId: poId
+        }));
+
+        newPurchaseOrders.push({
+          id: poId,
+          originalOrderId: localOrder.id,
+          vendorId,
+          items: itemsWithPoId,
+          status: 'Issued'
+        });
+        addedPoCount++;
+      }
     });
 
     // Determine new status
@@ -232,9 +263,16 @@ const ProcurementWorkspace: React.FC<ProcurementWorkspaceProps> = ({ order, vend
     const isPartial = selectedItems.size < itemsToAssign.length;
     const newStatus: any = isPartial ? 'Partially Procured' : 'Processing';
 
+    // Construct updated PO list: Replace modified ones, append new ones
+    const currentPOs = localOrder.purchaseOrders || [];
+    const finalPOs = currentPOs.map(po => {
+      const modified = modifiedPOs.find(m => m.id === po.id);
+      return modified || po;
+    }).concat(newPurchaseOrders);
+
     const updatedOrder = {
       ...localOrder,
-      purchaseOrders: [...(localOrder.purchaseOrders || []), ...newPurchaseOrders],
+      purchaseOrders: finalPOs,
       status: newStatus
     };
 

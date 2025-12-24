@@ -158,8 +158,7 @@ const mapOrder = (dbOrder: any, products: Product[]): Order => {
                 console.log("DEBUG: mapOrder mapping by PO ID", { itemId: item.id, itemPoId: item.purchaseOrderId, dbPoId: dbPO.id, match: item.purchaseOrderId === dbPO.id });
                 return item.purchaseOrderId === dbPO.id;
             }
-            const product = products.find(p => p.sku === item.sku);
-            return product?.vendorId === dbPO.vendor_id;
+            return false;
         });
         return {
             id: dbPO.id,
@@ -952,9 +951,14 @@ export const App: React.FC = () => {
             }
 
             if (error) {
-                console.error('Error updating/inserting item:', error);
-                alert(`Failed to add item: ${error.message}`);
-                return;
+                // If unique violation (duplicate entry due to race condition), just ignore and proceed to refresh
+                if (error.code === '23505') {
+                    console.warn('Item already exists in cart (race condition handled). Refreshing...');
+                } else {
+                    console.error('Error updating/inserting item:', error);
+                    alert(`Failed to add item: ${error.message}`);
+                    return;
+                }
             }
         }
 
@@ -1123,7 +1127,7 @@ export const App: React.FC = () => {
         setOrders(prev => prev.map(o => o.id === updatedOrder.id ? updatedOrder : o));
         if (selectedOrder?.id === updatedOrder.id) setSelectedOrder(updatedOrder);
 
-        if (updatedOrder.status) await supabase.from('orders').update({ status: updatedOrder.status }).eq('id', updatedOrder.id);
+
         if (updatedOrder.purchaseOrders) {
             for (const po of updatedOrder.purchaseOrders) {
                 const calculatedAmount = (po.items || []).reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
@@ -1176,6 +1180,10 @@ export const App: React.FC = () => {
                 }
             }
         }
+
+
+        if (updatedOrder.status) await supabase.from('orders').update({ status: updatedOrder.status }).eq('id', updatedOrder.id);
+
         const { data } = await supabase.from('orders').select('*, cart:carts(cart_items(*)), purchase_orders(*), order_status_history(*)').eq('id', updatedOrder.id).single();
         if (data) {
             const remapped = mapOrder(data, products);
